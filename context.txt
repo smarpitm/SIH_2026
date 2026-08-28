@@ -50,7 +50,7 @@ M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   NOT STARTED
 M6 Certificate issue + PDF     Smarpit   NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
-M8 UI polish + i18n            Kush/Nish NOT STARTED
+M8 UI polish + i18n            Kush/Nish K11 CODED & POLISHED (branch kush)
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -90,6 +90,23 @@ to keep one source of truth and avoid merge conflicts.
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
   /api/v1/public/certificates/PRM-CERT-2026-00001 -> ok:true VALID 5 anchors;
   /api/v1/dashboards/admin -> pendingApplications 4.
+- K11 (Kush, branch kush): upgraded UI pages from skeletons into a polished, responsive UI:
+  1. Global shell in app/layout.tsx with responsive Header (wordmark PRAMANAM, nav links,
+     language toggle calling setLang from lib/i18n), and statutory demo build footer.
+  2. Role-aware route stub in middleware.ts guarding /trader, /officer, /admin on pm_session cookie.
+  3. Login page with working form, POST /api/v1/auth/login, error alerts, pm_session cookie,
+     Zustand store (added zustand — announced), and role redirection.
+  4. Register page with dynamic role select, conditional orgName for non-traders, district select,
+     and success redirect with green banner.
+  5. Trader portal with instrument table, StatusChip, CountdownRing validity cards (0.9/0.5/0.1 mapping),
+     and applications list.
+  6. Application wizard /trader/apply/[instrumentId] with 3-card steps, step indicator, declaration checkbox gating,
+     and pretty-printed returned JSON success panel.
+  7. Officer queue (/officer) with mobile-first 390px-compatible application cards and Open job links.
+  8. Officer job page with inspection form, sticky PASS/FAIL action bar, and mandatory failure reason requirement.
+  9. Public verify page /verify/[certId] with hero Badge verdict (15vh min mobile height), definition list anchors,
+     history in details, and typed-ID fallback lookup input.
+  typecheck + lint green.
 
 --------------------------------------------------------
 MAINTENANCE RULE
