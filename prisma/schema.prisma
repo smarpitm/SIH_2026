@@ -1,0 +1,176 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  TRADER
+  LMO
+  GATC
+  ADMIN
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  SCHEDULED
+  CHECKED_IN
+  PASSED
+  FAILED
+  CERT_ISSUED
+  REJECTED
+}
+
+enum CertStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  REVOKED
+  SUSPENDED
+}
+
+enum AppType {
+  NEW
+  RE_VERIFICATION
+}
+
+enum InspectionResult {
+  PASS
+  FAIL
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  role         Role
+  orgName      String? // business name (TRADER) / centre name (GATC)
+  phone        String?
+  district     String? // jurisdiction for LMO/GATC; home district for TRADER
+  createdAt    DateTime       @default(now())
+
+  instruments       Instrument[]
+  schedules         Schedule[]
+  inspections       InspectionReport[]
+  certificatesIssued Certificate[]
+  notifications     Notification[]
+}
+
+model Instrument {
+  id               String   @id @default(cuid())
+  ownerId          String
+  owner            User     @relation(fields: [ownerId], references: [id])
+  category         String // one of INSTRUMENT_CATEGORIES
+  make             String
+  model            String
+  serialNumber     String
+  capacity         String
+  district         String
+  address          String
+  purchaseProofKey String? // MinIO object key
+  createdAt        DateTime @default(now())
+
+  applications Application[]
+  certificates Certificate[]
+
+  @@unique([serialNumber, district])
+}
+
+model Application {
+  id                   String            @id @default(cuid())
+  instrumentId         String
+  instrument           Instrument        @relation(fields: [instrumentId], references: [id])
+  traderId             String
+  type                 AppType
+  status               ApplicationStatus @default(DRAFT)
+  preferredDate        DateTime?
+  feeAmount            Int               @default(100)
+  feePaidAt            DateTime?
+  declarationAccepted  Boolean           @default(false)
+  reVerificationReason String?
+  createdAt            DateTime          @default(now())
+
+  schedules     Schedule[]
+  inspection    InspectionReport?
+  certificates  Certificate[]
+}
+
+model Schedule {
+  id              String   @id @default(cuid())
+  applicationId   String   @unique
+  application     Application @relation(fields: [applicationId], references: [id])
+  assigneeId      String
+  assignee        User     @relation(fields: [assigneeId], references: [id])
+  assigneeKind    String // "LMO" | "GATC"
+  scheduledFor    DateTime
+  status          String   @default("ASSIGNED") // ASSIGNED | RESCHEDULED | DONE
+  rescheduleCount Int      @default(0)
+  lastReason      String?
+  createdAt       DateTime @default(now())
+}
+
+model InspectionReport {
+  id            String            @id @default(cuid())
+  applicationId String            @unique
+  application   Application       @relation(fields: [applicationId], references: [id])
+  inspectorId   String
+  inspector     User              @relation(fields: [inspectorId], references: [id])
+  result        InspectionResult
+  observations  Json // [{key,label,value,verdict}] per OBSERVATION_CONFIG
+  photoKeys     Json // string[] of MinIO keys
+  gpsLat        Float?
+  gpsLng        Float?
+  checkedInAt   DateTime
+  failReason    String?
+  createdAt     DateTime          @default(now())
+}
+
+model Certificate {
+  id            String     @id @default(cuid())
+  certId        String     @unique // PRM-CERT-2026-00001
+  applicationId String     @unique
+  application   Application @relation(fields: [applicationId], references: [id])
+  instrumentId  String
+  instrument    Instrument @relation(fields: [instrumentId], references: [id])
+  issuedById    String
+  issuedBy      User       @relation(fields: [issuedById], references: [id])
+  issuedByKind  String // "LMO" | "GATC"
+  payloadJws    String // compact JWS
+  qrPayload     String // pmnm.v1 URL-encoded envelope
+  status        CertStatus @default(ACTIVE)
+  validFrom     DateTime
+  validUntil    DateTime
+  pdfKey        String?
+  revokedReason String?
+  revokedAt     DateTime?
+  createdAt     DateTime   @default(now())
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  kind      String // CERT_ISSUED | REMINDER_T30 | REVOKED | SLA
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorKind String // role name or "system:bullmq"
+  action    String
+  entity    String
+  entityId  String
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+
