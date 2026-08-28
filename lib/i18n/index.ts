@@ -1,1 +1,1 @@
-// TODO(Nishka): re-export hook
+export * from "./useTranslation";
