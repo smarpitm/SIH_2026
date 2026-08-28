@@ -50,7 +50,7 @@ M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   NOT STARTED
 M6 Certificate issue + PDF     Smarpit   NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
-M8 UI polish + i18n            Kush/Nish K11 CODED & POLISHED (branch kush)
+M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -119,7 +119,11 @@ to keep one source of truth and avoid merge conflicts.
   9. Public verify page /verify/[certId] with hero Badge verdict (15vh min mobile height), definition list anchors,
      history in details, and typed-ID fallback lookup input.
   typecheck + lint green.
-
+-[N1 Completed] - i18n module implemented and verified.
+- Owned paths updated: lib/i18n/** (en.ts, hi.json, useTranslation.ts, index.ts, check-parity.ts).
+- Translation keys frozen (~40 keys). Parity check script passed.
+- Hook contract re-exported from lib/i18n/index.ts: { useTranslation, en }.
+- Ready for Kush (K5) import.
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating

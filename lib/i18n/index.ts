@@ -1,1 +1,2 @@
-export * from "./useTranslation";
+export { useTranslation } from "./useTranslation";
+export { en } from "./en";

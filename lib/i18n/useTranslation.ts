@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 // TODO(Nishka): full translation dictionary implementation — English fallback
 export function useTranslation() {
