@@ -1,0 +1,1 @@
+// TODO(Nishka): export function useTranslation(): { t: (k: string) => string; lang: "en" | "hi"; setLang: (l: "en" | "hi") => void } — English fallback
