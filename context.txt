@@ -1,0 +1,88 @@
+================================================================
+PRAMANAM - PROJECT CONTEXT
+Generated during K0 scaffolding. Keep this file current.
+================================================================
+
+== 1. PROJECT SNAPSHOT ==
+PRAMANAM is an online verification system for weighing & measuring
+instruments under the Legal Metrology framework. Traders apply online,
+LMO/GATC officers schedule and perform field inspections, certificates
+are issued as signed QR payloads (Ed25519 + JWS) with public badge
+verification, plus an offline sticker-parse mode. The app is a Next.js
+14 (app router) full-stack monolith backed by Postgres/Prisma, Redis/
+BullMQ jobs, and MinIO object storage. All API routes and UI pages are
+currently K0 scaffolding (turn-key mock stubs against packages/shared).
+
+== 2. TECH STACK ==
+- Next.js 14 (app router, TypeScript, Tailwind, ESLint)
+- PostgreSQL / Prisma ORM (v6 pinned, prisma-client-js generator)
+- Redis / BullMQ (queues) + ioredis
+- MinIO (S3-compatible object store; @aws-sdk/client-s3)
+- node:crypto Ed25519 for signature / JWS / QR certificate payloads
+- jose (JWT), qrcode, pdf-lib, vitest, tsx
+
+== 3. REPO MAP ==
+- app/            Next.js app router: UI pages (Kush) + /api/v1 stubs
+- components/     Shared React components: Badge, StatusChip, PhotoInput, CountdownRing
+- lib/            Core server libs: db.ts, hooks.ts, hash.ts + owner dirs (auth, uploads, notify, crypto, pdf, i18n)
+- packages/shared/        Frozen contracts: constants.ts, types.ts, api.ts, mock.ts
+- prisma/         schema.prisma (frozen) + seed.ts
+- workers/        BullMQ worker registry (index.ts placeholder)
+- root files: package.json, tsconfig.json, docker-compose.yml, .env.example, tailwind.config.ts
+
+== 4. FROZEN CONTRACTS ==
+Precedence: PRAMANAM_DECISION_DOC.md is the single source of truth for all implementation decisions.
+Interfaces here are NEVER redefined once set: no field removed, no
+string identifier re-typed, no mock shape changed without a table-top
+sign-off. FROZEN paths:
+- packages/shared/constants.ts, types.ts, api.ts, mock.ts
+- prisma/schema.prisma (FROZEN at K0, exact model set)
+- lib/db.ts, lib/hooks.ts, lib/hash.ts
+- docker-compose.yml, .env.example / .env
+
+== 5. STATE OF THE WORLD ==
+Phase                           Owner     STATUS     Commands
+--------------------------------------------------------------
+M1 Auth + session + RBAC       Manav     NOT STARTED
+M2 Instrument/application/tr   Manav     NOT STARTED
+M3 Officer queue + inspection  Manav     NOT STARTED
+M4 Scheduling + notifications  Manav     NOT STARTED
+M5 Crypto keys/JWS/QR          Smarpit   NOT STARTED
+M6 Certificate issue + PDF     Smarpit   NOT STARTED
+M7 Public verify + search      Smarpit   NOT STARTED
+M8 UI polish + i18n            Kush/Nish NOT STARTED
+Run commands: npm run dev | npm run build | npm run test |
+npm run typecheck | npm run lint | npm run db:push |
+npm run db:seed (tsx prisma/seed.ts, idempotent).
+
+== 6. OWNERSHIP MATRIX ==
+Module                           Owner    Phase
+--------------------------------------------------
+lib/auth (jwt/session/rbac)      Manav    MA1
+lib/uploads (minio/multipart)    Manav    MA2
+lib/notify (notifications)       Manav    MA4
+route stubs (auth/instruments/applications/allocate/inspections/dashboards/reports, openapi)
+                                 Manav    MA-suite
+workers index                    Smarpit  S1
+lib/crypto (keys/jws/qr)         Smarpit  S1
+lib/pdf (certificate/sticker)    Smarpit  S3
+route stubs (certificates/public/search/.well-known)
+                                 Smarpit  S1/S3
+all UI pages + components        Kush     K11
+lib/i18n (t, en, hi)             Nishka   -
+Shared contracts + seed + context maintained by the primary author
+to keep one source of truth and avoid merge conflicts.
+
+== 7. RECENT CHANGES ==
+- scaffold committed (K0: init + Prisma + shared + stubs + UI)
+- seed added: 6 users + 6 instruments, idempotent (db:seed prints "seeded already" on rerun)
+- context.txt created and kept live per maintenance rule.
+- K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
+  sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
+  /api/v1/public/certificates/PRM-CERT-2026-00001 -> ok:true VALID 5 anchors;
+  /api/v1/dashboards/admin -> pendingApplications 4.
+
+--------------------------------------------------------
+MAINTENANCE RULE
+Every task STARTS by reading context.txt and ENDS by updating
+section 5 (STATE OF THE WORLD) and section 7 (RECENT CHANGES).
