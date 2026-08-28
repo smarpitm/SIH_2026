@@ -44,7 +44,7 @@ sign-off. FROZEN paths:
 Phase                           Owner     STATUS     Commands
 --------------------------------------------------------------
 M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch manav, merge pending)
-M2 Instrument/application/tr   Manav     NOT STARTED
+M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — manual check pending
 M3 Officer queue + inspection  Manav     NOT STARTED
 M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   NOT STARTED
@@ -86,6 +86,18 @@ to keep one source of truth and avoid merge conflicts.
   announcement per book). packages/shared/** untouched. typecheck + lint green; MA1 manual
   check green incl. NEGATIVE reuse replay + RBAC jurisdiction shape
   { required: "district:<X>", have: "district:<Y>" }.
+- MA2 (Manav, branch manav): instruments + applications + uploads replacing mock stubs —
+  lib/uploads/{minio,multipart}.ts (S3 client from env, idempotent ensureBucket + versioning,
+  magic-byte sniff only JPEG/PNG/WEBP/PDF, 10 MB cap, UNSUPPORTED_MEDIA_TYPE { details: { reason } });
+  lib/auth/transition.ts (applyTransition — INVALID_STATE_TRANSITION { details: { from, to } } EXACT
+  shape, needed by MA3 too); DTO mappers toInstrumentDTO/toApplicationDTO in lib/auth/dto.ts;
+  routes: GET/POST /instruments (multipart proof -> MinIO, serial+district UNIQUE -> CONFLICT),
+  GET/PATCH /instruments/[id] (only address+capacity mutable), POST /applications (DRAFT,
+  feeAmount=FEE_PAISA), pay (mock: receiptId RCP-xxxxxx), submit (requires feePaidAt +
+  declarationAccepted, DRAFT->SUBMITTED via applyTransition, // TODO AUTO-ALLOCATE-MA3),
+  POST /applications/[id]/photos (multipart -> MinIO keys; TRADER owner or assigned officer);
+  mock GET list stubs replaced with real scoped lists. packages/shared/** untouched.
+  Commit: feat(api): instruments applications uploads state machine.
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
   /api/v1/public/certificates/PRM-CERT-2026-00001 -> ok:true VALID 5 anchors;
