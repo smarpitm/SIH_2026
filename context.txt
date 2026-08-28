@@ -43,7 +43,7 @@ sign-off. FROZEN paths:
 == 5. STATE OF THE WORLD ==
 Phase                           Owner     STATUS     Commands
 --------------------------------------------------------------
-M1 Auth + session + RBAC       Manav     NOT STARTED
+M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch manav, merge pending)
 M2 Instrument/application/tr   Manav     NOT STARTED
 M3 Officer queue + inspection  Manav     NOT STARTED
 M4 Scheduling + notifications  Manav     NOT STARTED
@@ -77,6 +77,15 @@ to keep one source of truth and avoid merge conflicts.
 - scaffold committed (K0: init + Prisma + shared + stubs + UI)
 - seed added: 6 users + 6 instruments, idempotent (db:seed prints "seeded already" on rerun)
 - context.txt created and kept live per maintenance rule.
+- MA1 (Manav, branch manav): real auth + RBAC replacing 5 stubs — lib/auth/{jwt,session,rbac,
+  refresh-store,cookies,dto,audit}.ts; auth routes register/login/refresh/logout/me rewritten
+  (Zod -> jsonOk/jsonErr, closed-set ERROR_CODES only); refresh rotation with in-memory family
+  revocation (reuse of older refresh => family revoked + AuditLog auth.family_revoked);
+  pm_refresh cookie httpOnly SameSite=Lax (Secure added in production — dev runs plain http);
+  AuditLog rows for register/login/refresh/logout/family_revoked; dep added: zod (one-line
+  announcement per book). packages/shared/** untouched. typecheck + lint green; MA1 manual
+  check green incl. NEGATIVE reuse replay + RBAC jurisdiction shape
+  { required: "district:<X>", have: "district:<Y>" }.
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
   /api/v1/public/certificates/PRM-CERT-2026-00001 -> ok:true VALID 5 anchors;
