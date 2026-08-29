@@ -13,7 +13,7 @@ import path from "node:path";
   }
 })();
 
-import { generateKeyPair, KID, keyFingerprint, publicKeyJwk } from "./keys";
+import { KID, keyFingerprint, publicKeyJwk } from "./keys";
 import { signCredential, verifyCredential } from "./jws";
 import { buildQrPayload, parseQrPayload } from "./qr";
 
@@ -31,7 +31,6 @@ function pickInner(s: string): number {
 async function main() {
   const results: { name: string; ok: boolean; note?: string }[] = [];
 
-  generateKeyPair(); // exercised here (pair not asserted further)
   const jwk = publicKeyJwk();
   results.push({
     name: "keys: generated pair + jwk shape",

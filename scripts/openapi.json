@@ -1,0 +1,136 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "PRAMANAM API", "version": "1.0.0", "description": "Online Verification System for Weighing & Measuring Instruments. Envelope: { ok: true, data } | { ok: false, error: { code, message, details } }." },
+  "servers": [{ "url": "/api/v1" }],
+  "paths": {
+    "/auth/login": {
+      "post": { "tags": ["auth"], "summary": "Login",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "email": { "type": "string" }, "password": { "type": "string" } }, "required": ["email", "password"] } } } },
+        "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/auth/register": {
+      "post": { "tags": ["auth"], "summary": "Register",
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "email": { "type": "string" }, "password": { "type": "string", "minLength": 8 }, "role": { "type": "string", "enum": ["TRADER", "LMO", "GATC", "ADMIN"] }, "orgName": { "type": "string" }, "phone": { "type": "string" }, "district": { "type": "string" } }, "required": ["name", "email", "password", "role"] } } } },
+        "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" } } }
+    },
+    "/auth/refresh": {
+      "post": { "tags": ["auth"], "summary": "Rotate refresh token", "responses": { "200": { "$ref": "#/components/responses/Ok" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/auth/logout": {
+      "post": { "tags": ["auth"], "summary": "Logout", "responses": { "200": { "$ref": "#/components/responses/Ok" } } }
+    },
+    "/auth/me": {
+      "get": { "tags": ["auth"], "summary": "Current user", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/instruments": {
+      "get": { "tags": ["instruments"], "summary": "List instruments (role-scoped)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" } } },
+      "post": { "tags": ["instruments"], "summary": "Create instrument (TRADER) — multipart with purchaseProof?", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "409": { "$ref": "#/components/responses/Conflict" }, "415": { "$ref": "#/components/responses/Unsupported" } } }
+    },
+    "/instruments/{id}": {
+      "get": { "tags": ["instruments"], "summary": "Get instrument", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } } },
+      "patch": { "tags": ["instruments"], "summary": "Patch address/capacity", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
+    "/instruments/{id}/sticker": {
+      "get": { "tags": ["instruments"], "summary": "Instrument sticker (S3-backed)", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "501": { "description": "Not implemented yet" } } }
+    },
+    "/applications": {
+      "get": { "tags": ["applications"], "summary": "List applications (role-scoped)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } },
+      "post": { "tags": ["applications"], "summary": "Create application (TRADER owns instrument)", "security": [{ "bearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "instrumentId": { "type": "string" }, "type": { "type": "string", "enum": ["NEW", "RE_VERIFICATION"] }, "preferredDate": { "type": "string" }, "reVerificationReason": { "type": "string" } }, "required": ["instrumentId", "type"] } } } }, "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/applications/{id}": {
+      "get": { "tags": ["applications"], "summary": "Get application", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/applications/{id}/pay": {
+      "post": { "tags": ["applications"], "summary": "Pay (mock)", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/applications/{id}/photos": {
+      "post": { "tags": ["applications"], "summary": "Upload photos (multipart photos[])", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "415": { "$ref": "#/components/responses/Unsupported" } } }
+    },
+    "/applications/{id}/submit": {
+      "post": { "tags": ["applications"], "summary": "Submit + auto-allocate → SCHEDULED", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "declarationAccepted": { "type": "boolean" } }, "required": ["declarationAccepted"] } } } }, "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" }, "500": { "$ref": "#/components/responses/Internal" } } }
+    },
+    "/applications/{id}/reschedule": {
+      "post": { "tags": ["applications"], "summary": "Reschedule (reason min 10)", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "reason": { "type": "string", "minLength": 10 } }, "required": ["reason"] } } } }, "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "409": { "$ref": "#/components/responses/Conflict" } } }
+    },
+    "/schedule/mine": {
+      "get": { "tags": ["schedule"], "summary": "My schedules (LMO/GATC) + overdue flag", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
+    "/schedule/checkin": {
+      "post": { "tags": ["schedule"], "summary": "Check in (window -2h/+8h)", "security": [{ "bearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "scheduleId": { "type": "string" } }, "required": ["scheduleId"] } } } }, "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/schedule/allocate": {
+      "post": { "tags": ["schedule"], "summary": "Allocate officer (auto inside submit; manual endpoint)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+    },
+    "/inspections": {
+      "post": { "tags": ["inspections"], "summary": "Record inspection (multipart: scheduleId, result PASS|FAIL, observations, photos[], gpsLat?, gpsLng?, failReason?)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" }, "415": { "$ref": "#/components/responses/Unsupported" }, "500": { "$ref": "#/components/responses/Internal" } } }
+    },
+    "/notifications": {
+      "get": { "tags": ["notifications"], "summary": "My notifications (newest first)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/notifications/read": {
+      "patch": { "tags": ["notifications"], "summary": "Mark notification ids read", "security": [{ "bearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "ids": { "type": "array", "items": { "type": "string" } } }, "required": ["ids"] } } } }, "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/reports/export": {
+      "get": { "tags": ["reports"], "summary": "Export CSV (entity=instruments|applications|certificates&format=csv; ADMIN all / LMO district / TRADER own)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "CSV stream" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
+    },
+    "/search": {
+      "get": { "tags": ["search"], "summary": "Public search", "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+    },
+    "/dashboards/trader": {
+      "get": { "tags": ["dashboards"], "summary": "Trader DashCounts", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
+    "/dashboards/officer": {
+      "get": { "tags": ["dashboards"], "summary": "Officer dashboard: todaySchedule, overdueCount, stats trio", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
+    "/dashboards/admin": {
+      "get": { "tags": ["dashboards"], "summary": "Admin: KPIs + pendencyByDistrict + officerProductivity top5", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
+    "/certificates/issue": {
+      "post": { "tags": ["certificates"], "summary": "Issue certificate (admin/manual; hook normally fires on PASS)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
+    "/certificates/{id}": {
+      "get": { "tags": ["certificates"], "summary": "Get certificate", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/certificates/{id}/pdf": {
+      "get": { "tags": ["certificates"], "summary": "Download certificate PDF", "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "description": "PDF stream" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/certificates/{id}/revoke": {
+      "post": { "tags": ["certificates"], "summary": "Revoke certificate", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/public/certificates/{certId}": {
+      "get": { "tags": ["public"], "summary": "Public verify badge for certId", "parameters": [{ "name": "certId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/public/certificates/lookup": {
+      "get": { "tags": ["public"], "summary": "Public lookup by serial", "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/public/stats": {
+      "get": { "tags": ["public"], "summary": "Public stats", "responses": { "200": { "$ref": "#/components/responses/Ok" } } }
+    },
+    "/.well-known/pramanam-public-key": {
+      "get": { "tags": ["public"], "summary": "Public verification key (JWK)", "responses": { "200": { "$ref": "#/components/responses/Ok" } } }
+    }
+  },
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } },
+    "schemas": {
+      "Envelope": { "type": "object", "properties": { "ok": { "type": "boolean" }, "data": {} } },
+      "Error": { "type": "object", "properties": { "ok": { "type": "boolean", "enum": [false] }, "error": { "type": "object", "properties": { "code": { "type": "string" }, "message": { "type": "string" }, "details": {} }, "required": ["code", "message"] } } },
+      "UserDTO": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" }, "role": { "type": "string", "enum": ["TRADER", "LMO", "GATC", "ADMIN"] }, "orgName": { "type": "string" }, "district": { "type": "string" } } },
+      "InstrumentDTO": { "type": "object", "properties": { "id": { "type": "string" }, "category": { "type": "string" }, "make": { "type": "string" }, "model": { "type": "string" }, "serialNumber": { "type": "string" }, "capacity": { "type": "string" }, "district": { "type": "string" }, "address": { "type": "string" }, "createdAt": { "type": "string" } } },
+      "ApplicationDTO": { "type": "object", "properties": { "id": { "type": "string" }, "instrumentId": { "type": "string" }, "type": { "type": "string", "enum": ["NEW", "RE_VERIFICATION"] }, "status": { "type": "string" }, "preferredDate": { "type": "string" }, "feePaidAt": { "type": "string" }, "createdAt": { "type": "string" } } },
+      "ScheduleDTO": { "type": "object", "properties": { "id": { "type": "string" }, "applicationId": { "type": "string" }, "assigneeName": { "type": "string" }, "assigneeKind": { "type": "string", "enum": ["LMO", "GATC"] }, "scheduledFor": { "type": "string" }, "rescheduleCount": { "type": "integer" } } },
+      "CertificateDTO": { "type": "object", "properties": { "id": { "type": "string" }, "certId": { "type": "string" }, "status": { "type": "string" }, "validFrom": { "type": "string" }, "validUntil": { "type": "string" }, "instrumentSerial": { "type": "string" }, "pdfUrl": { "type": "string" } } },
+      "DashCounts": { "type": "object", "properties": { "pendingApplications": { "type": "integer" }, "verifiedThisMonth": { "type": "integer" }, "expiringIn30d": { "type": "integer" }, "slaBreaches": { "type": "integer" } } }
+    },
+    "responses": {
+      "Ok": { "description": "ok:true", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Envelope" } } } },
+      "BadRequest": { "description": "VALIDATION_ERROR 400", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unauthorized": { "description": "AUTH_REQUIRED 401", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Forbidden": { "description": "AUTH_FORBIDDEN / JURISDICTION_FORBIDDEN 403", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "NotFound": { "description": "NOT_FOUND 404", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Conflict": { "description": "CONFLICT / INVALID_STATE_TRANSITION / RESCHEDULE_BUDGET_EXHAUSTED 409", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Unsupported": { "description": "UNSUPPORTED_MEDIA_TYPE 415", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+      "Internal": { "description": "INTERNAL 500", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+    }
+  }
+}
