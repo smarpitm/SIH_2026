@@ -45,8 +45,8 @@ Phase                           Owner     STATUS     Commands
 --------------------------------------------------------------
 M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch manav, merge pending)
 M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — manual check pending
-M3 Officer queue + inspection  Manav     MA3 CODED (typecheck green; lint only N1 debt) — manual check pending
-M4 Scheduling + notifications  Manav     NOT STARTED
+M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — feat(api): scheduling allocation inspection pass-hook
+M4 Scheduling + notifications  Manav     MA4 CODED (typecheck green, scoped lint clean; global lint blocked by Smarpit lib/crypto debt) — manual check pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE CODED + SELFTEST ALL PASS 9/9 / PDF NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
@@ -117,6 +117,35 @@ to keep one source of truth and avoid merge conflicts.
 - N1 lint debt fix (requested by Manav): removed unused `useEffect` import in
   lib/i18n/useTranslation.ts (zero behavior change) — unblocks `npm run lint` repo-wide.
   Inform Nishka (lib/i18n/ is her path).
+- MA4 (Manav, branch manav): dashboards + notifications + exports + OpenAPI —
+  lib/notify/notifications.ts (notify(userId, kind, title, body); CERT_ISSUED is written
+  DIRECTLY by Smarpit's lib/crypto/issue.ts — no double-write); GET /dashboards/trader
+  (DashCounts exact: pendingApplications, verifiedThisMonth, expiringIn30d, slaBreaches);
+  GET /dashboards/officer (todaySchedule, overdueCount, stats trio); GET /dashboards/admin
+  (kpis:DashCounts + pendencyByDistrict via raw SQL group-by + officerProductivity top5);
+  GET /notifications + PATCH /notifications/read {ids[]}; GET /reports/export
+  (entity=instruments|applications|certificates&format=csv, ADMIN all / LMO district / TRADER
+  own, CSV + UTF-8 BOM + EXCEL-SAFE =+-@ prefix, format=xlsx → 400 "csv only");
+  scripts/openapi.json (hand-written OpenAPI 3.0, 32 paths, envelope refs) served by
+  app/api/v1/openapi.json/route.ts + scripts/check-openapi.mjs drift guard
+  (path count == route.ts count under app/api/v1 minus openapi.json) + npm script
+  "openapi:check" (32==32 green). Commit: feat(api): dashboards notifications exports openapi.
+- FLAG (Smarpit, merged in MG2 3ba2ec1): `npm run lint` fails on lib/crypto/* —
+  keys.ts 7/43/55 require("node:crypto") [DELIBERATE browser-bundle design, add
+  eslint-disable comments], manual-check.ts 61 unused 'o', selftest.ts 34 unused 'pair' +
+  65 explicit any. lib/crypto/** is frozen to Smarpit — do NOT edit from MA-suite.
+- MA4 follow-up: PATCH moved from /notifications to /notifications/read (book-exact path);
+  openapi.json updated to 33 paths (33 route files) — drift guard green.
+- README.md fully rewritten (root doc, not frozen): overview, E2E flow, features, tech stack,
+  setup + env + demo users, scripts, state machine, envelope + error-code table, full 33-path
+  endpoint reference, repo layout, crypto section, frozen-contract table, sprint status.
+- BOOT FIX (instrumentation.ts — root, not frozen): `next dev` crashed after MG2 because
+  Next 14 compiles instrumentation for BOTH nodejs+edge runtimes and the edge variant cannot
+  handle node: builtins pulled in via workers -> lib/crypto (UnhandledSchemeError), PLUS the
+  file lacked Next's named-export `register()` contract. Fix: named `export async function
+  register()` gated on `process.env.NEXT_RUNTIME === "nodejs"` (canonical Next pattern) —
+  edge bundle tree-shakes workers away, nodejs bundle registers Smarpit's workers unchanged.
+  Verified: dev boots, login OK, dashboards/admin + export + notifications all respond.
 - S1 (Smarpit, branch smarpit): crypto core built in lib/crypto/** —
   1. keys.ts — KID frozen "pramanam-2026-08-01"; generateKeyPair() (Ed25519 PKCS8/SPKI PEM);
      loadKeysFromEnv() reads ED25519_PRIVATE_KEY/ED25519_PUBLIC_KEY (base64) or generates an
