@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { INSTRUMENT_CATEGORIES, DISTRICTS } from "@/packages/shared/constants";
+import { api, ApiError } from "@/components/api-client";
 
 export default function NewInstrumentPage() {
   const router = useRouter();
@@ -32,20 +33,13 @@ export default function NewInstrumentPage() {
     setErrorMsg(null);
 
     try {
-      const r = await fetch("/api/v1/instruments", {
+      const data = await api<Record<string, unknown>>("/api/v1/instruments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const data = await r.json();
-
-      if (data && data.ok) {
-        setOut(data.data);
-      } else {
-        setErrorMsg(data?.error?.message ?? "Failed to register instrument.");
-      }
-    } catch {
-      setErrorMsg("Network error registering instrument.");
+      setOut(data);
+    } catch (e) {
+      setErrorMsg(e instanceof ApiError ? e.message : "Network error registering instrument.");
     } finally {
       setLoading(false);
     }

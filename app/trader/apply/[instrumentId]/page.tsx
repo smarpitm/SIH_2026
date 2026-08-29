@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { api, ApiError } from "@/components/api-client";
+import type { ApplicationDTO } from "@/packages/shared/types";
 
 type Step = 1 | 2 | 3;
 
@@ -22,44 +24,40 @@ export default function ApplyPage() {
     setErrorMsg(null);
 
     try {
-      // 1) Create application
-      const createRes = await fetch("/api/v1/applications", {
+      // 1) Create application (real route returns a single ApplicationDTO)
+      const created = await api<ApplicationDTO>("/api/v1/applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           instrumentId: instrumentId as string,
           type,
           reVerificationReason: type === "RE_VERIFICATION" ? reVerificationReason : undefined,
         }),
       });
-      const created = await createRes.json();
-      const applicationId = created?.data?.[0]?.id ?? "app_stub";
+      const applicationId = created.id;
 
-      // 2) Mock pay
-      const payRes = await fetch(`/api/v1/applications/${applicationId}/pay`, {
+      // 2) Pay fee
+      const paid = await api<Record<string, unknown>>(`/api/v1/applications/${applicationId}/pay`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      const paid = await payRes.json();
 
       // 3) Submit application
-      const submitRes = await fetch(`/api/v1/applications/${applicationId}/submit`, {
+      const submitted = await api<Record<string, unknown>>(`/api/v1/applications/${applicationId}/submit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      const submitted = await submitRes.json();
 
       setSubmittedData({
         applicationId,
-        created: created?.data ?? created,
-        payment: paid?.data ?? paid,
-        submission: submitted?.data ?? submitted,
+        created,
+        payment: paid,
+        submission: submitted,
         submittedAt: new Date().toISOString(),
       });
-    } catch {
-      setErrorMsg("Failed to complete application submission. Please try again.");
+    } catch (e) {
+      setErrorMsg(
+        e instanceof ApiError ? e.message : "Failed to complete application submission. Please try again."
+      );
     } finally {
       setLoading(false);
     }

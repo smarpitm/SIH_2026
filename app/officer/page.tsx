@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
+import { api } from "@/components/api-client";
 import type { ApplicationDTO, InstrumentDTO } from "@/packages/shared/types";
 
 export default function OfficerPage() {
@@ -12,18 +13,16 @@ export default function OfficerPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/v1/applications").then((r) => r.json()),
-      fetch("/api/v1/instruments").then((r) => r.json()),
+      api<ApplicationDTO[]>("/api/v1/applications"),
+      api<InstrumentDTO[]>("/api/v1/instruments"),
     ])
       .then(([apps, insts]) => {
-        if (apps?.data) setApplications(apps.data);
-        if (insts?.data) {
-          const map: Record<string, InstrumentDTO> = {};
-          for (const item of insts.data) {
-            map[item.id] = item;
-          }
-          setInstruments(map);
+        setApplications(apps);
+        const map: Record<string, InstrumentDTO> = {};
+        for (const item of insts) {
+          map[item.id] = item;
         }
+        setInstruments(map);
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));

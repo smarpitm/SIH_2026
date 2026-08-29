@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DISTRICTS, type Role } from "@/packages/shared/constants";
+import { api, ApiError } from "@/components/api-client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -30,22 +31,14 @@ export default function RegisterPage() {
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/v1/auth/register", {
+      await api("/api/v1/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-
-      const json = await res.json();
-
-      if (json && json.ok) {
-        // Redirect to /login with registered query param for green banner
-        router.push("/login?registered=true");
-      } else {
-        setErrorMessage(json?.error?.message ?? "Registration failed. Please check your details.");
-      }
-    } catch {
-      setErrorMessage("Network error. Could not reach registration service.");
+      // Redirect to /login with registered query param for green banner
+      router.push("/login?registered=true");
+    } catch (e) {
+      setErrorMessage(e instanceof ApiError ? e.message : "Network error. Could not reach registration service.");
     } finally {
       setLoading(false);
     }

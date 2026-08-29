@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { OBSERVATION_CONFIG } from "@/packages/shared/constants";
 import { PhotoInput } from "@/components/PhotoInput";
+import { api, ApiError } from "@/components/api-client";
 
 export default function OfficerJobPage() {
   const { applicationId } = useParams<{ applicationId: string }>();
@@ -57,9 +58,8 @@ export default function OfficerJobPage() {
     setLoading(true);
 
     try {
-      const r = await fetch("/api/v1/inspections", {
+      const data = await api<Record<string, unknown>>("/api/v1/inspections", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           applicationId: applicationId as string,
           result,
@@ -68,10 +68,11 @@ export default function OfficerJobPage() {
           values,
         }),
       });
-      const data = await r.json();
       setOut(JSON.stringify(data, null, 2));
-    } catch {
-      setErrorMsg("Failed to submit inspection report. Please check connection.");
+    } catch (e) {
+      setErrorMsg(
+        e instanceof ApiError ? e.message : "Failed to submit inspection report. Please check connection."
+      );
     } finally {
       setLoading(false);
     }
