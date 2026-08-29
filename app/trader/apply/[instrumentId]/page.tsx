@@ -3,8 +3,18 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { StatusChip } from "@/components/StatusChip";
+import { api, ApiError } from "@/components/api-client";
+import type { ApplicationDTO } from "@/packages/shared/types";
 
 type Step = 1 | 2 | 3;
+
+interface SubmittedPayload {
+  applicationId: string;
+  created: ApplicationDTO;
+  payment: Record<string, unknown>;
+  submitted: { status: string };
+}
 
 export default function ApplyPage() {
   const { instrumentId } = useParams<{ instrumentId: string }>();
@@ -12,54 +22,64 @@ export default function ApplyPage() {
   const [step, setStep] = useState<Step>(1);
   const [type, setType] = useState<"NEW" | "RE_VERIFICATION">("NEW");
   const [reVerificationReason, setReVerificationReason] = useState("Periodic 1-year statutory verification");
+  const [preferredDate, setPreferredDate] = useState("");
   const [declared, setDeclared] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [submittedData, setSubmittedData] = useState<Record<string, unknown> | null>(null);
+  const [submittedData, setSubmittedData] = useState<SubmittedPayload | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   async function createAndPay() {
     setLoading(true);
     setErrorMsg(null);
 
+    // guard: server accepts any datetime for preferredDate, so the UI is the
+    // only place a past date gets caught — string compare on ISO date parts
+    const todayStr = new Date().toISOString().slice(0, 10);
+    if (preferredDate && preferredDate < todayStr) {
+      setErrorMsg("Preferred date cannot be in the past — pick today or a future date.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 1) Create application
-      const createRes = await fetch("/api/v1/applications", {
+      // 1) Create application (MA2). declarationAccepted rides along here per the
+      // flow contract; the server enforces it at submit time.
+      const created = await api<ApplicationDTO>("/api/v1/applications", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           instrumentId: instrumentId as string,
           type,
-          reVerificationReason: type === "RE_VERIFICATION" ? reVerificationReason : undefined,
+          ...(preferredDate
+            ? { preferredDate: new Date(`${preferredDate}T00:00:00.000Z`).toISOString() }
+            : {}),
+          ...(type === "RE_VERIFICATION" ? { reVerificationReason } : {}),
+          declarationAccepted: true,
         }),
       });
-      const created = await createRes.json();
-      const applicationId = created?.data?.[0]?.id ?? "app_stub";
+      const applicationId = created.id;
 
-      // 2) Mock pay
-      const payRes = await fetch(`/api/v1/applications/${applicationId}/pay`, {
+      // 2) Pay fee — api() throws on ok:false, so the chain stops on any failure
+      const paid = await api<Record<string, unknown>>(`/api/v1/applications/${applicationId}/pay`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: "{}",
       });
-      const paid = await payRes.json();
 
-      // 3) Submit application
-      const submitRes = await fetch(`/api/v1/applications/${applicationId}/submit`, {
+      // 3) Submit (MA3): DRAFT→SUBMITTED→SCHEDULED with auto-allocation
+      const submitted = await api<{ status: string }>(`/api/v1/applications/${applicationId}/submit`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: "{}",
+        body: JSON.stringify({ declarationAccepted: true }),
       });
-      const submitted = await submitRes.json();
 
       setSubmittedData({
         applicationId,
-        created: created?.data ?? created,
-        payment: paid?.data ?? paid,
-        submission: submitted?.data ?? submitted,
-        submittedAt: new Date().toISOString(),
+        created,
+        payment: paid,
+        submitted,
       });
-    } catch {
-      setErrorMsg("Failed to complete application submission. Please try again.");
+    } catch (e) {
+      setErrorMsg(
+        e instanceof ApiError ? e.message : "Failed to complete application submission. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -215,6 +235,22 @@ export default function ApplyPage() {
                 </div>
               )}
 
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                  Preferred Inspection Date <span className="normal-case font-normal">(optional)</span>
+                </label>
+                <input
+                  type="date"
+                  value={preferredDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(e) => setPreferredDate(e.target.value)}
+                  className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  Leave empty to use the default slot (+7 days) during auto-allocation.
+                </p>
+              </div>
+
               <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex justify-end">
                 <button
                   type="button"
@@ -339,9 +375,15 @@ export default function ApplyPage() {
                 Application Successfully Submitted!
               </h2>
               <p className="text-xs text-zinc-500">
-                Your application has been logged and queued for inspection scheduling.
+                Fee received and auto-allocated to an officer in your district.
               </p>
             </div>
+          </div>
+
+          {/* Final status chip — submit returns the real post-allocation status */}
+          <div className="mt-4 flex items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Status</span>
+            <StatusChip status={submittedData.submitted?.status ?? "SUBMITTED"} />
           </div>
 
           <div className="mt-6">
@@ -353,7 +395,13 @@ export default function ApplyPage() {
             </pre>
           </div>
 
-          <div className="mt-6 flex gap-3">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link
+              href={`/trader/applications/${submittedData.applicationId}`}
+              className="flex-1 text-center rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+            >
+              View Status Timeline →
+            </Link>
             <Link
               href="/trader"
               className="flex-1 text-center rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"

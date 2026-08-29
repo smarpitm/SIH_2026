@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DISTRICTS, type Role } from "@/packages/shared/constants";
+import { api, ApiError } from "@/components/api-client";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,34 +19,59 @@ export default function RegisterPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorMessages, setErrorMessages] = useState<string[] | null>(null);
 
   function updateField<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  // the register API validates with Zod and returns details as flatten():
+  // { formErrors: string[], fieldErrors: Record<string, string[]> } — render them
+  // as readable per-field lines instead of the generic envelope message.
+  function readableErrors(details: unknown): string[] {
+    if (!details || typeof details !== "object") return [];
+    const d = details as { formErrors?: string[]; fieldErrors?: Record<string, string[]> };
+    const label = (field: string) => field.charAt(0).toUpperCase() + field.slice(1);
+    return [
+      ...(d.formErrors ?? []),
+      ...Object.entries(d.fieldErrors ?? {}).flatMap(([field, msgs]) =>
+        msgs.map((m) => `${label(field)}: ${m}`)
+      ),
+    ];
+  }
+
+  // must mirror lib/auth/dto contract enforced by POST /api/v1/auth/register:
+  // min 8 chars + at least one digit (checked here so the user never hits a 400 blind)
+  const passwordValid = form.password.length >= 8 && /\d/.test(form.password);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    setErrorMessages(null);
+
+    if (!passwordValid) {
+      setErrorMessages(["Password must be at least 8 characters and contain at least one digit."]);
+      return;
+    }
+
     setLoading(true);
-    setErrorMessage(null);
-
     try {
-      const res = await fetch("/api/v1/auth/register", {
+      // orgName is z.string().min(1).optional() on the server — an empty string
+      // FAILS validation, so omit the key entirely unless it was actually filled
+      // (the UI only collects it for LMO/GATC).
+      const { orgName, ...withoutOrg } = form;
+      await api("/api/v1/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify(orgName ? form : withoutOrg),
       });
-
-      const json = await res.json();
-
-      if (json && json.ok) {
-        // Redirect to /login with registered query param for green banner
-        router.push("/login?registered=true");
+      // Redirect to /login with registered query param for green banner
+      router.push("/login?registered=true");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const msgs = readableErrors(err.details);
+        setErrorMessages(msgs.length ? msgs : [err.message]);
       } else {
-        setErrorMessage(json?.error?.message ?? "Registration failed. Please check your details.");
+        setErrorMessages(["Network error. Could not reach registration service."]);
       }
-    } catch {
-      setErrorMessage("Network error. Could not reach registration service.");
     } finally {
       setLoading(false);
     }
@@ -63,13 +89,21 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {errorMessage && (
+        {errorMessages && (
           <div
             role="alert"
             className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300"
           >
             <div className="font-semibold">Registration error</div>
-            <div>{errorMessage}</div>
+            {errorMessages.length === 1 ? (
+              <div>{errorMessages[0]}</div>
+            ) : (
+              <ul className="mt-1 list-inside list-disc space-y-0.5">
+                {errorMessages.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
 
@@ -110,10 +144,20 @@ export default function RegisterPage() {
               type="password"
               value={form.password}
               onChange={(e) => updateField("password", e.target.value)}
-              placeholder="Minimum 8 characters"
+              placeholder="Minimum 8 characters, with a digit"
               required
               className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-white"
             />
+            {/* rule from POST /api/v1/auth/register (MA1): min 8 + at least one digit */}
+            <p
+              className={`mt-1 text-[11px] ${
+                form.password && !passwordValid
+                  ? "font-medium text-amber-600 dark:text-amber-400"
+                  : "text-zinc-500 dark:text-zinc-400"
+              }`}
+            >
+              At least 8 characters with at least one digit — e.g. Passw0rd!demo
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

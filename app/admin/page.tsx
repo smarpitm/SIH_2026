@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { api } from "@/components/api-client";
 import type { DashCounts } from "@/packages/shared/types";
 
 const KPIS: { key: keyof DashCounts; label: string; desc: string; color: string }[] = [
@@ -15,11 +16,8 @@ export default function AdminPage() {
   const [dash, setDash] = useState<DashCounts | null>(null);
 
   useEffect(() => {
-    fetch("/api/v1/dashboards/admin")
-      .then((r) => r.json())
-      .then((j) => {
-        if (j?.data) setDash(j.data);
-      })
+    api<DashCounts>("/api/v1/dashboards/admin")
+      .then(setDash)
       .catch(() => undefined);
   }, []);
 

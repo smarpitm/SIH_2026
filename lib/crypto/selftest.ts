@@ -13,7 +13,7 @@ import path from "node:path";
   }
 })();
 
-import { generateKeyPair, KID, keyFingerprint, publicKeyJwk } from "./keys";
+import { KID, keyFingerprint, publicKeyJwk } from "./keys";
 import { signCredential, verifyCredential } from "./jws";
 import { buildQrPayload, parseQrPayload } from "./qr";
 
@@ -31,7 +31,6 @@ function pickInner(s: string): number {
 async function main() {
   const results: { name: string; ok: boolean; note?: string }[] = [];
 
-  const pair = generateKeyPair();
   const jwk = publicKeyJwk();
   results.push({
     name: "keys: generated pair + jwk shape",
@@ -62,7 +61,10 @@ async function main() {
   });
 
   const v1 = await verifyCredential(jws, jwk);
-  results.push({ name: "verify: genuine credential -> valid", ok: v1.valid === true && (v1 as any).payload?.certId === "PRM-CERT-2026-00001" });
+  results.push({
+    name: "verify: genuine credential -> valid",
+    ok: v1.valid === true && (v1.payload as { certId?: string } | undefined)?.certId === "PRM-CERT-2026-00001",
+  });
 
   // flip one char in the PAYLOAD segment
   const pAt = pickInner(segs[1]);

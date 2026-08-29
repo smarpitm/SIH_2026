@@ -4,6 +4,8 @@ import { useState, type FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/store";
+import { api, ApiError } from "@/components/api-client";
+import type { UserDTO } from "@/packages/shared/types";
 
 function LoginForm() {
   const router = useRouter();
@@ -32,48 +34,38 @@ function LoginForm() {
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/v1/auth/login", {
+      // Real login: API sets the httpOnly pm_refresh cookie itself; we keep the
+      // accessToken in zustand (memory) and the user in localStorage via setAuth.
+      const data = await api<{ accessToken: string; user: UserDTO }>("/api/v1/auth/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
-      const json = await res.json();
+      setAuth(data.user, data.accessToken);
 
-      if (json && json.ok && json.data) {
-        const { user, accessToken } = json.data;
-
-        // 1. Store in Zustand store
-        setAuth(user, accessToken);
-
-        // 2. Set pm_session cookie for client & middleware access
-        const cookieVal = encodeURIComponent(accessToken || "demo_token");
-        document.cookie = `pm_session=${cookieVal}; path=/; max-age=604800; SameSite=Lax`;
-
-        // 3. Role-based redirect
-        if (from && from.startsWith("/")) {
-          router.push(from);
-        } else {
-          switch (user.role) {
-            case "TRADER":
-              router.push("/trader");
-              break;
-            case "LMO":
-            case "GATC":
-              router.push("/officer");
-              break;
-            case "ADMIN":
-              router.push("/admin");
-              break;
-            default:
-              router.push("/trader");
-          }
-        }
+      // Role-based redirect
+      if (from && from.startsWith("/")) {
+        router.push(from);
       } else {
-        setErrorMessage(json?.error?.message ?? "Authentication failed. Please check your credentials.");
+        switch (data.user.role) {
+          case "TRADER":
+            router.push("/trader");
+            break;
+          case "LMO":
+          case "GATC":
+            router.push("/officer");
+            break;
+          case "ADMIN":
+            router.push("/admin");
+            break;
+          default:
+            router.push("/trader");
+        }
       }
-    } catch {
-      setErrorMessage("Network error. Could not connect to authentication service.");
+    } catch (e) {
+      setErrorMessage(
+        e instanceof ApiError ? e.message : "Network error. Could not connect to authentication service."
+      );
     } finally {
       setLoading(false);
     }
@@ -94,7 +86,7 @@ function LoginForm() {
         {/* Registered success banner */}
         {registered && (
           <div className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800/40 dark:bg-green-950/40 dark:text-green-300">
-            ✓ Registration successful! You can now sign in with your credentials.
+            ✓ Registered — log in with your credentials.
           </div>
         )}
 
