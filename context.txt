@@ -119,6 +119,11 @@ to keep one source of truth and avoid merge conflicts.
   per-field bullet lines (e.g. "Password: Password must contain at least one digit")
   instead of the generic envelope message. Route untouched (Manav's).
   Commit: fix(auth-ui): register password rule hint + readable validation errors.
+- K12 follow-up 2 (register TRADER orgName): form state always carried orgName:"" but
+  the server schema is z.string().min(1).optional() — empty string FAILS min(1), so
+  every TRADER signup 400'd with "OrgName: Invalid input". Fix (app/register/page.tsx
+  only): payload omits orgName key unless actually filled (UI collects it for LMO/GATC
+  only). UNCOMMITTED — Kush verifying.
 - scaffold committed (K0: init + Prisma + shared + stubs + UI)
 - seed added: 6 users + 6 instruments, idempotent (db:seed prints "seeded already" on rerun)
 - context.txt created and kept live per maintenance rule.

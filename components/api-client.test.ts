@@ -16,7 +16,8 @@ import { useAuthStore } from "@/lib/store";
 type Step = { status: number; body: unknown };
 
 function scriptedFetch(steps: Step[]) {
-  return vi.fn((_input: RequestInfo, _init?: RequestInit) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  return vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => {
     const step = steps.shift();
     if (!step) throw new Error("unexpected extra fetch call");
     return Promise.resolve(

@@ -55,9 +55,13 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      // orgName is z.string().min(1).optional() on the server — an empty string
+      // FAILS validation, so omit the key entirely unless it was actually filled
+      // (the UI only collects it for LMO/GATC).
+      const { orgName, ...withoutOrg } = form;
       await api("/api/v1/auth/register", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: JSON.stringify(orgName ? form : withoutOrg),
       });
       // Redirect to /login with registered query param for green banner
       router.push("/login?registered=true");
