@@ -48,7 +48,7 @@ M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — ma
 M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — feat(api): scheduling allocation inspection pass-hook
 M4 Scheduling + notifications  Manav     MA4 CODED (typecheck green, scoped lint clean; global lint blocked by Smarpit lib/crypto debt) — manual check pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN; PDF print QA pending
+M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED (typecheck + vitest 6/6 green) — manual check pending
@@ -66,7 +66,7 @@ route stubs (auth/instruments/applications/allocate/inspections/dashboards/repor
                                  Manav    MA-suite
 workers index                    Smarpit  S1
 lib/crypto (keys/jws/qr)         Smarpit  S1
-lib/pdf (certificate/sticker)    Smarpit  S3
+lib/pdf (certificate/sticker)    Smarpit  S3 DONE
 route stubs (certificates/public/search/.well-known)
                                  Smarpit  S1/S3
 all UI pages + components        Kush     K11
@@ -322,7 +322,13 @@ to keep one source of truth and avoid merge conflicts.
   `minio server C:\pgportable\minio-data --address :9000 --console-address :9001`.
   PRINT QA (item 5) needs a human: variant-B from screen at 100% zoom,
   variant-A from a phone camera at >= 30cm. No route/typecheck debt added.
-  Commit: feat(pdf): certificate sheet dual-qr sticker versioned minio.
+     Commit: feat(pdf): certificate sheet dual-qr sticker versioned minio.
+   MANUAL CHECK (lib/pdf/manual-check.ts, re-runnable via `npx tsx`): 21/21 gates
+   ALL PASS — dual-QR anchors vs JWS claims byte-for-byte, QR payloads decode by
+   phone, negatives (unknown -> NOT_FOUND / other-trader -> AUTH_FORBIDDEN),
+   positive same-district LMO allowed, re-render after revoke = new vN + old key
+   kept + REVOKED stamp in bytes + metadata, audit cert.pdf_downloaded = 3. typecheck
+   + lint clean for manual-check.ts; files left in C:\pgportable\manual-demo.
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
