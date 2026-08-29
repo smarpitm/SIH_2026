@@ -48,7 +48,7 @@ M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — ma
 M3 Officer queue + inspection  Manav     MA3 CODED (typecheck green; lint only N1 debt) — manual check pending
 M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   ISSUE CODED (workers+routes+issue.ts; selftest pending DB) / PDF NOT STARTED
+M6 Certificate issue + PDF     Smarpit   ISSUE CODED + SELFTEST ALL PASS 9/9 / PDF NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 Run commands: npm run dev | npm run build | npm run test |
@@ -176,14 +176,19 @@ to keep one source of truth and avoid merge conflicts.
      CertificateDTO + payloadJws + qrPayload (+ instrumentCategory, ownerName,
      issuedBy, issuedByKind read from the signed claims).
   5. lib/crypto/issue-selftest.ts — `npx tsx lib/crypto/issue-selftest.ts`:
-     self-contained fixture (trader/officer/instrument/PASSED app), 8 checks
+     self-contained fixture (trader/officer/instrument/PASSED app), 9 checks
      (create, idempotency, WebCrypto verify sub=certId, claims content, QR
      round-trip, tamper flip, VALIDITY_DAYS 365 for COUNTER_SCALE, CERT_ISSUED
-     notification), cleans up after itself, exit 1 on fail. NOT YET EXECUTED:
-     no Docker/Postgres on this machine at S2 time — run after `docker compose
-     up -d && npm run db:push`. Crypto layer beneath it is green
-     (`npx tsx lib/crypto/selftest.ts` ALL PASS). typecheck clean for all
-     S2 files (repo-wide still shows pre-existing lib/auth transition.ts error).
+     notification), cleans up after itself, exit 1 on fail.
+     EXECUTED: ALL PASS (9/9). Postgres provisioned as portable local binaries
+     at C:\\pgportable (PG16.15, initdb -U pramanam, trust auth, db pramanam,
+     started via pg_ctl on port 5432 — matches .env DATABASE_URL); db:push +
+     db:seed green. NOTE: server is not a Windows service — after a reboot run
+     C:\\pgportable\\pgsql\\bin\\pg_ctl.exe -D C:\\pgportable\\data -l
+     C:\\pgportable\\logfile -o "-p 5432" start (add pgsql\\bin to PATH first).
+     Crypto layer green (`npx tsx lib/crypto/selftest.ts` ALL PASS). typecheck
+     clean for all S2 files (repo-wide still shows pre-existing lib/auth
+     transition.ts error).
   BOOK for Manav: issuance intentionally does NOT flip Application status
   (ownership rule) — PASSED -> CERT_ISSUED app transition needs an owner-side
   flip after successful issuance (applyTransition is ready for it).
