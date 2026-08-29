@@ -35,7 +35,13 @@ export function canonicalPayload(obj: unknown): string {
 
 // SERVER-ONLY (lazy node:crypto import keeps the rest browser-safe)
 export async function signCredential(payload: object): Promise<string> {
-  const crypto = await import("node:crypto");
+  // MA-suite fix (boot blocker, needs Smarpit review): `await import("node:crypto")`
+  // is a dynamic node:-scheme import that Next 14's webpack cannot handle
+  // (UnhandledSchemeError broke `next dev` for the whole team after MG2).
+  // Lazy require keeps the same browser-safe design (server-only execution)
+  // and matches the pattern already used in ./keys.ts.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const crypto = require("node:crypto") as typeof import("node:crypto");
   const { loadKeysFromEnv } = await import("./keys");
   const { privateKeyPem } = loadKeysFromEnv();
   const header = { alg: "EdDSA", kid: KID, typ: "JWT" };
