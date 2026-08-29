@@ -47,7 +47,7 @@ M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch 
 M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — manual check pending
 M3 Officer queue + inspection  Manav     MA3 CODED (typecheck green; lint only N1 debt) — manual check pending
 M4 Scheduling + notifications  Manav     NOT STARTED
-M5 Crypto keys/JWS/QR          Smarpit   NOT STARTED
+M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
@@ -117,6 +117,38 @@ to keep one source of truth and avoid merge conflicts.
 - N1 lint debt fix (requested by Manav): removed unused `useEffect` import in
   lib/i18n/useTranslation.ts (zero behavior change) — unblocks `npm run lint` repo-wide.
   Inform Nishka (lib/i18n/ is her path).
+- S1 (Smarpit, branch smarpit): crypto core built in lib/crypto/** —
+  1. keys.ts — KID frozen "pramanam-2026-08-01"; generateKeyPair() (Ed25519 PKCS8/SPKI PEM);
+     loadKeysFromEnv() reads ED25519_PRIVATE_KEY/ED25519_PUBLIC_KEY (base64) or generates an
+     ephemeral pair + prints paste-into-.env-once instructions (dev only); publicKeyJwk() →
+     { kty:"OKP", crv:"Ed25519", x: base64url(raw 32B) } (exact shape S4 serves, Kush consumes);
+     keyFingerprint() = "sha256-" + base64(sha256(publicKeyPem)).
+  2. jws.ts — compact JWS EdDSA; canonicalPayload() recursively key-sorts (deterministic bytes);
+     signCredential() = header {alg:"EdDSA", kid, typ:"JWT"} + payload {iss:"pramanam:doca",...claims}
+     signed with node:crypto — node:crypto loaded LAZILY inside signCredential so the module stays
+     importable client-side; verifyCredential() ISOMORPHIC via WebCrypto subtle.importKey("raw",...)
+     + subtle.verify Ed25519 (Node ≥20 webcrypto + modern Edge/Chrome — K5 offline page); verifies
+     the EXACT three segments received (never re-canonicalizes); returns {valid,payload} |
+     {valid:false, reason:"BAD_SIGNATURE"|"MALFORMED"}; single flipped char in any segment → false.
+  3. qr.ts — PURE string/base64 (no node:crypto; parseQrPayload client-side safe). buildQrPayload
+     → https://<NEXT_PUBLIC_APP_URL host>/verify/offline#pmnm.v1=b64url({v,alg,kid,s:jws}) — signed
+     JWS travels inside the QR (anti-copy rule, ID-only QR forbidden). parseQrPayload accepts full
+     URL form OR bare JWS, tolerates trailing whitespace, junk → null. qrDataUrl(text) → PNG data
+     URL at ECC level Q (G.5 dense-payload budget) for S3's PDF/sticker render.
+  4. selftest.ts — `npx tsx lib/crypto/selftest.ts`: 8 cases (keys+jwk shape, header/iss shape,
+     genuine verify, payload-flip→BAD_SIGNATURE, signature-flip→false, kid-flip→false, QR round-trip,
+     bare-JWS+newline+junk→null) — ALL PASS, exit 0; loads .env itself (tsx doesn't auto-load
+     like next dev does).
+  KEY CEREMONY DONE: real pair generated, .env populated locally from .env.example with both
+  base64 values (.env.example untouched/frozen). Pinned fingerprint for S4 well-known + chat:
+  sha256-PO9p7ojLA9c7h35lZ8tG9bzxbLe99ScGm4hpSXwJi6g=
+  BROWSER-SAFETY: qr.ts + verify half of jws.ts carry no node:crypto even transitively (keys.ts
+  loads node:crypto lazily inside functions so importing KID doesn't pull it client-side).
+  NOT TOUCHED (ownership): packages/shared/**, lib/auth/**, all route files. NOTE for Manav:
+  repo-wide `npm run typecheck` shows pre-existing errors in lib/auth/* + app/api/v1/* (also
+  node_modules/@prisma/client was missing its .d.ts stubs — regenerated). lib/crypto is clean.
+  Commit: feat(crypto): ed25519 jws pmnm.v1 qr selftest.
+
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
   /api/v1/public/certificates/PRM-CERT-2026-00001 -> ok:true VALID 5 anchors;
