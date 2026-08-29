@@ -148,6 +148,7 @@ to keep one source of truth and avoid merge conflicts.
   repo-wide `npm run typecheck` shows pre-existing errors in lib/auth/* + app/api/v1/* (also
   node_modules/@prisma/client was missing its .d.ts stubs — regenerated). lib/crypto is clean.
   Commit: feat(crypto): ed25519 jws pmnm.v1 qr selftest.
+  MERGED to main (fast-forward, main was still 0ef0c1e) — crypto core now on main.
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
