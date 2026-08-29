@@ -1,16 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store";
+import { api } from "@/components/api-client";
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { lang, setLang } = useTranslation();
   const { user, logout } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // restore persisted user after hydration (accessToken intentionally not
+  // persisted — api-client recovers it via /auth/refresh on first 401)
+  useEffect(() => {
+    useAuthStore.getState().rehydrate();
+  }, []);
+
+  async function handleLogout() {
+    try {
+      // API clears the httpOnly pm_refresh cookie
+      await api("/api/v1/auth/logout", { method: "POST" });
+    } catch {
+      // clear locally regardless — never trap the user in a session
+    }
+    logout();
+    router.push("/login");
+  }
 
   const navLinks = [
     { href: "/verify/PRM-CERT-2026-00001", label: "Verify" },
@@ -77,12 +96,15 @@ export function Header() {
           {/* User status or Login/Register */}
           {user ? (
             <div className="hidden items-center gap-2 sm:flex">
-              <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                {user.name} ({user.role})
+              <span className="max-w-[160px] truncate text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                {user.name}
+              </span>
+              <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                {user.role}
               </span>
               <button
                 type="button"
-                onClick={logout}
+                onClick={handleLogout}
                 className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
               >
                 Logout
@@ -146,12 +168,15 @@ export function Header() {
               {user ? (
                 <div className="flex items-center justify-between py-1">
                   <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                    {user.name} ({user.role})
+                    {user.name}{" "}
+                    <span className="rounded-full bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                      {user.role}
+                    </span>
                   </span>
                   <button
                     type="button"
                     onClick={() => {
-                      logout();
+                      handleLogout();
                       setMobileMenuOpen(false);
                     }}
                     className="text-xs text-red-600 font-medium"

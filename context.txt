@@ -51,6 +51,7 @@ M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typec
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN; PDF print QA pending
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
+K12 Real auth UI + guards      Kush      CODED (typecheck + vitest 6/6 green) — manual check pending
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -74,6 +75,55 @@ Shared contracts + seed + context maintained by the primary author
 to keep one source of truth and avoid merge conflicts.
 
 == 7. RECENT CHANGES ==
+- K12 (Kush, branch kush): replaced all mock auth flows with the real MA1 API — UI files,
+  lib/store.ts, middleware.ts only (app/api/v1/auth/** and lib/auth/** untouched):
+  1. lib/store.ts — accessToken in zustand MEMORY only; user persisted to localStorage
+     (key pm_user); setAuth also sets pm_session (presence=1) + pm_role cookies for the
+     middleware UX; logout clears both + localStorage; rehydrate() restores user
+     post-hydration (SSR-mismatch safe; Header calls it in a useEffect).
+  2. components/api-client.ts (NEW) — api<T>(path, init) fetch wrapper: attaches
+     Authorization: Bearer <accessToken>; parses ApiResponse envelope; on 401 calls
+     POST /api/v1/auth/refresh ONCE (single-flight — parallel 401s share one refresh so
+     MA1 reuse-detection never trips) then retries the original request; on second 401
+     clears the store + redirects /login; throws ApiError {code,message,status,details}
+     on ok:false. /api/v1/auth/* paths are exempt from the refresh path so login/register
+     failures surface as form errors, not redirects. POST retry sends same body — 401
+     means never executed server-side, safe.
+  3. app/login/page.tsx — real POST /api/v1/auth/login {email,password} → setAuth;
+     pm_session is no longer set to the raw accessToken (was a leak; now presence-only
+     via store). Role redirect + ?from= kept. Green banner text: "✓ Registered — log in".
+  4. app/register/page.tsx — real POST /api/v1/auth/register via api(); redirect
+     /login?registered=true.
+  5. middleware.ts — pm_session presence check (unchanged) + pm_role bounce:
+     /admin→ADMIN, /officer→LMO|GATC, /trader→TRADER (no/wrong role → "/"). Comment:
+     // server remains authority; middleware is UX.
+  6. components/Header.tsx — user name + separate uppercase role chip; Logout calls
+     POST /api/v1/auth/logout → store.logout() → /login (local clear happens even if
+     the call fails — never trap the user).
+  7. /trader, /officer, /admin + subpages (officer/job, trader/apply, trader/instruments/new)
+     all fetch through api() now; mock data still rendered where MA2/MA4 not merged.
+     trader/apply fixed to read the REAL POST /applications shape (single DTO, was
+     reading created.data[0] from the stub). Public /verify pages left on plain fetch
+     (no auth needed).
+  8. vitest.config.ts (NEW, @ alias) + components/api-client.test.ts — 6 checks:
+     Bearer attach + envelope unwrap; 401→refresh once→retry with new token; second
+     401→store cleared + /login + ApiError; ok:false→ApiError code/message; concurrent
+     401 single-flight refresh (5 fetch calls total); auth-endpoint 401 does NOT
+     refresh/redirect. npx vitest run = 6/6 PASS; npm run typecheck green.
+  Commit: feat(auth-ui): real login register session guards.
+- K12 follow-up (register UX): "Invalid registration payload" on weak passwords was
+  correct server behaviour (MA1 route: password min 8 + regex /\d/) but the form never
+  said so. app/register/page.tsx now (a) shows the rule under the Password field —
+  amber-highlighted while invalid, (b) pre-checks min8+digit before POSTing, and
+  (c) renders the server's Zod details (error.details = flatten()) as readable
+  per-field bullet lines (e.g. "Password: Password must contain at least one digit")
+  instead of the generic envelope message. Route untouched (Manav's).
+  Commit: fix(auth-ui): register password rule hint + readable validation errors.
+- K12 follow-up 2 (register TRADER orgName): form state always carried orgName:"" but
+  the server schema is z.string().min(1).optional() — empty string FAILS min(1), so
+  every TRADER signup 400'd with "OrgName: Invalid input". Fix (app/register/page.tsx
+  only): payload omits orgName key unless actually filled (UI collects it for LMO/GATC
+  only). UNCOMMITTED — Kush verifying.
 - scaffold committed (K0: init + Prisma + shared + stubs + UI)
 - seed added: 6 users + 6 instruments, idempotent (db:seed prints "seeded already" on rerun)
 - context.txt created and kept live per maintenance rule.

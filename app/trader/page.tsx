@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { CountdownRing } from "@/components/CountdownRing";
+import { api } from "@/components/api-client";
 import type { DashCounts, InstrumentDTO, ApplicationDTO } from "@/packages/shared/types";
 
 export default function TraderPage() {
@@ -14,14 +15,14 @@ export default function TraderPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/v1/dashboards/trader").then((r) => r.json()),
-      fetch("/api/v1/instruments").then((r) => r.json()),
-      fetch("/api/v1/applications").then((r) => r.json()),
+      api<DashCounts>("/api/v1/dashboards/trader"),
+      api<InstrumentDTO[]>("/api/v1/instruments"),
+      api<ApplicationDTO[]>("/api/v1/applications"),
     ])
       .then(([d, i, a]) => {
-        if (d?.data) setDash(d.data);
-        if (i?.data) setInstruments(i.data);
-        if (a?.data) setApplications(a.data);
+        setDash(d);
+        setInstruments(i);
+        setApplications(a);
       })
       .catch(() => undefined)
       .finally(() => setLoading(false));
