@@ -41,6 +41,9 @@ export async function GET(req: Request) {
   const format = url.searchParams.get("format");
 
   if (format === "xlsx") return jsonErr("VALIDATION_ERROR", "csv only");
+  // ponytail: xlsx export — no 1-dep SheetML writer is installed in the repo, so per
+  // book MA5 item 2 this stays CSV-only. Ceiling: xlsx until a dep is added.
+  // Upgrade path: add the `xlsx` dep and emit a minimal workbook in this route.
   if (format && format !== "csv") {
     return jsonErr("VALIDATION_ERROR", "unsupported format — only csv");
   }

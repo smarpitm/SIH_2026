@@ -10,9 +10,25 @@ import { audit } from "@/lib/auth/audit";
 const bodySchema = z.object({
   instrumentId: z.string().min(1),
   type: z.enum(["NEW", "RE_VERIFICATION"]),
-  preferredDate: z.string().datetime().optional(),
+  // preferredDate is a FUTURE-or-today date. We compare against the start of TODAY
+  // (UTC) so "today" in any timezone passes; known edge: for a few hours in zones
+  // ahead of UTC, local "today" can appear as yesterday in UTC and be flagged —
+  // acceptable for demo.
+  preferredDate: z
+    .string()
+    .datetime()
+    .refine((v) => new Date(v).getTime() >= startOfTodayUTC(), {
+      message: "preferredDate must be today or a future date",
+    })
+    .optional(),
   reVerificationReason: z.string().min(1).optional(),
 });
+
+/** Start of today in UTC (midnight), used by the preferredDate past-date guard. */
+function startOfTodayUTC(): number {
+  const d = new Date();
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
 
 // book MA2 item 6 — POST /applications (TRADER only, must own the instrument)
 export async function POST(req: Request) {

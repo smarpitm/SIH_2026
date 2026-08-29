@@ -46,7 +46,7 @@ Phase                           Owner     STATUS     Commands
 M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch manav, merge pending)
 M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — manual check pending
 M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — feat(api): scheduling allocation inspection pass-hook
-M4 Scheduling + notifications  Manav     MA4 CODED (typecheck green, scoped lint clean; global lint blocked by Smarpit lib/crypto debt) — manual check pending
+M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: typecheck+lint+openapi:check green) — merge pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
 M7 Public verify + search      Smarpit   NOT STARTED
@@ -411,6 +411,18 @@ to keep one source of truth and avoid merge conflicts.
 - Translation keys frozen (~40 keys). Parity check script passed.
 - Hook contract re-exported from lib/i18n/index.ts: { useTranslation, en }.
 - Ready for Kush (K5) import.
+- MA5 (Manav, degradable): invites + bulk seed — cut-first per book:
+  1. POST /api/v1/auth/invite (ADMIN only) — creates LMO/GATC user with fixed
+     temp password Invite@123 + "share credentials offline" banner; audits
+     auth.invite; 409 on existing email. openapi.json path added (drift guard green).
+  2. prisma/seed-10k.ts (npm run seed:10k) — 10k instruments + ~1.2k applications
+     via createMany batches; status split 60% CERT_ISSUED / 20% SCHEDULED /
+     10% SUBMITTED / 10% FAILED; 30 bulk traders (10/district) never log in
+     (disabled argon2 hash as passwordHash); idempotent via BULK- serial prefix.
+  3. DEFERRED (per book degradability): xlsx export — no 1-dep SheetML writer
+     installed, stays csv-only with ponytail note; PATCH /auth/me prefs — User
+     has no meta column + schema frozen, ponytail note left in place.
+  typecheck + lint + openapi:check green.
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating

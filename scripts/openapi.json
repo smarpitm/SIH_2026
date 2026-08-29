@@ -22,6 +22,9 @@
     "/auth/me": {
       "get": { "tags": ["auth"], "summary": "Current user", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
     },
+    "/auth/invite": {
+      "post": { "tags": ["auth"], "summary": "Invite LMO/GATC (ADMIN only) — creates user with fixed temp password + offline share banner", "security": [{ "bearerAuth": [] }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "email": { "type": "string" }, "role": { "type": "string", "enum": ["LMO", "GATC"] }, "district": { "type": "string" }, "orgName": { "type": "string" } }, "required": ["name", "email", "role", "district", "orgName"] } } } }, "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "403": { "$ref": "#/components/responses/Forbidden" }, "409": { "$ref": "#/components/responses/Conflict" } } }
+    },
     "/instruments": {
       "get": { "tags": ["instruments"], "summary": "List instruments (role-scoped)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" } } },
       "post": { "tags": ["instruments"], "summary": "Create instrument (TRADER) — multipart with purchaseProof?", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "409": { "$ref": "#/components/responses/Conflict" }, "415": { "$ref": "#/components/responses/Unsupported" } } }

@@ -2,6 +2,11 @@ import { jsonOk } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 
+// ponytail (book MA5 item 4): PATCH /auth/me { prefs } notification preferences are
+// SKIPPED — the User model has no meta column and prisma/schema.prisma is frozen,
+// so prefs are not trivially writable. Upgrade path: add a Json `meta` column to
+// User in a schema change, then store prefs here.
+
 // book MA4 item 5 — GET /notifications (own rows, newest first)
 export async function GET(req: Request) {
   const session = await getSession(req);

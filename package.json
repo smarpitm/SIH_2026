@@ -10,6 +10,7 @@
     "test": "vitest run",
     "dev": "next dev",
     "build": "next build",
+    "seed:10k": "tsx prisma/seed-10k.ts",
     "openapi:check": "node scripts/check-openapi.mjs"
   },
   "dependencies": {
