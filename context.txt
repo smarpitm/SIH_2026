@@ -45,7 +45,7 @@ Phase                           Owner     STATUS     Commands
 --------------------------------------------------------------
 M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch manav, merge pending)
 M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — manual check pending
-M3 Officer queue + inspection  Manav     NOT STARTED
+M3 Officer queue + inspection  Manav     MA3 CODED (typecheck green; lint only N1 debt) — manual check pending
 M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   NOT STARTED
 M6 Certificate issue + PDF     Smarpit   NOT STARTED
@@ -98,6 +98,25 @@ to keep one source of truth and avoid merge conflicts.
   POST /applications/[id]/photos (multipart -> MinIO keys; TRADER owner or assigned officer);
   mock GET list stubs replaced with real scoped lists. packages/shared/** untouched.
   Commit: feat(api): instruments applications uploads state machine.
+- MA3 (Manav, branch manav): scheduling + allocation + inspection + PASS hook —
+  lib/auth/allocation.ts (pickAllocationOfficer: fewest open ASSIGNED schedules, tie earliest
+  createdAt; none -> jsonErr INTERNAL "no officer in district"); submit now auto-allocates a
+  Schedule (scheduledFor = preferredDate ?? +7d, assigneeKind = role) and SUBMITTED->SCHEDULED
+  (response { status: "SCHEDULED" }, removed MA2 // TODO AUTO-ALLOCATE-MA3);
+  GET /schedule/mine (LMO/GATC, joined app+instrument+trader, ordered by scheduledFor, overdue
+  flag); POST /schedule/checkin { scheduleId } (assigned officer only, window [scheduledFor-2h, +8h]
+  else VALIDATION_ERROR "outside check-in window", SCHEDULED->CHECKED_IN);
+  POST /applications/[id]/reschedule { reason min 10 } (TRADER owner, while SCHEDULED,
+  rescheduleCount < MAX_RESCHEDULES else RESCHEDULE_BUDGET_EXHAUSTED, bumps count + lastReason,
+  scheduledFor = preferredDate ?? +7d); POST /inspections multipart { scheduleId, result PASS|FAIL,
+  observations (keys validated vs OBSERVATION_CONFIG.default), photos[], gpsLat?, gpsLng?,
+  failReason? } (assigned officer, app must be CHECKED_IN; report stored; PASS ->
+  emitInspectionPass(frozen hooks) + CHECKED_IN->PASSED; FAIL -> failReason required + FAILED;
+  AuditLog both). Routes stay hook-agnostic — no workers/** import (book MA3 item 7).
+  Commit: feat(api): scheduling allocation inspection pass-hook.
+- N1 lint debt fix (requested by Manav): removed unused `useEffect` import in
+  lib/i18n/useTranslation.ts (zero behavior change) — unblocks `npm run lint` repo-wide.
+  Inform Nishka (lib/i18n/ is her path).
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
   /api/v1/public/certificates/PRM-CERT-2026-00001 -> ok:true VALID 5 anchors;
