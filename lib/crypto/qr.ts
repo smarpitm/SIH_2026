@@ -1,4 +1,4 @@
-// PURE string/base64 module — no node:crypto anywhere. Isomorphic:
+// PURE string/base64 module — no node built-ins anywhere. Isomorphic:
 // buildQrPayload runs server-side (S3 sticker render), parseQrPayload runs
 // client-side on Kush's offline verify page.
 import QRCode from "qrcode";
