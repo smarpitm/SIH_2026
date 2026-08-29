@@ -48,7 +48,7 @@ M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — ma
 M3 Officer queue + inspection  Manav     MA3 CODED (typecheck green; lint only N1 debt) — manual check pending
 M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   NOT STARTED
+M6 Certificate issue + PDF     Smarpit   ISSUE CODED (workers+routes+issue.ts; selftest pending DB) / PDF NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 Run commands: npm run dev | npm run build | npm run test |
@@ -149,6 +149,45 @@ to keep one source of truth and avoid merge conflicts.
   node_modules/@prisma/client was missing its .d.ts stubs — regenerated). lib/crypto is clean.
   Commit: feat(crypto): ed25519 jws pmnm.v1 qr selftest.
   MERGED to main (fast-forward, main was still 0ef0c1e) — crypto core now on main.
+- S2 (Smarpit, branch smarpit): certificate issuance replacing stubs —
+  1. workers/index.ts — registerWorkers() with module-level idempotency guard;
+     registers issueCertificate via frozen registerInspectionPassHandler
+     (lib/hooks.ts untouched). Expiry queue stays a TODO(S6) behind REDIS_URL.
+     ANNOUNCED shared-file additions: instrumentation.ts created (ONLY the
+     registerWorkers() call) + next.config.mjs got experimental.instrumentationHook:
+     true (Next 14.2 loads instrumentation.ts only behind that flag; stable in 15).
+  2. lib/crypto/issue.ts — issueCertificate(event): loads Application+Instrument+
+     inspector; IDEMPOTENT via certificate.findUnique(applicationId) -> returns
+     existing row unchanged; certId = "PRM-CERT-2026-" + 5-digit zero-padded
+     sequence derived from MAX(certId) (delete-safe); validFrom = now, validUntil =
+     +VALIDITY_DAYS[category] (frozen constants); claims = { sub: certId,
+     applicationId, type, instrumentSerial, instrumentCategory, ownerName,
+     issuedBy (officer name), issuedByKind, district, validFrom, validUntil };
+     signCredential -> payloadJws; buildQrPayload -> qrPayload; Certificate row
+     ACTIVE; AuditLog actor=inspector action=cert.issued; Notification row
+     (kind CERT_ISSUED) written DIRECTLY via Prisma (no lib/notify import —
+     decoupling per book). NEVER THROWS: catch -> console.error + AuditLog
+     cert.issue_failed; PASS never fails because issuance failed.
+  3. POST /api/v1/certificates/issue { applicationId } — ADMIN or assigned
+     officer; idempotent (existing cert returned); requires app status PASSED
+     (else INVALID_STATE_TRANSITION {from,to}); same pipeline as hook.
+  4. GET /api/v1/certificates/[id] — accepts certId or row id; role-scoped
+     owner trader / issuing officer / same-district LMO / ADMIN; returns frozen
+     CertificateDTO + payloadJws + qrPayload (+ instrumentCategory, ownerName,
+     issuedBy, issuedByKind read from the signed claims).
+  5. lib/crypto/issue-selftest.ts — `npx tsx lib/crypto/issue-selftest.ts`:
+     self-contained fixture (trader/officer/instrument/PASSED app), 8 checks
+     (create, idempotency, WebCrypto verify sub=certId, claims content, QR
+     round-trip, tamper flip, VALIDITY_DAYS 365 for COUNTER_SCALE, CERT_ISSUED
+     notification), cleans up after itself, exit 1 on fail. NOT YET EXECUTED:
+     no Docker/Postgres on this machine at S2 time — run after `docker compose
+     up -d && npm run db:push`. Crypto layer beneath it is green
+     (`npx tsx lib/crypto/selftest.ts` ALL PASS). typecheck clean for all
+     S2 files (repo-wide still shows pre-existing lib/auth transition.ts error).
+  BOOK for Manav: issuance intentionally does NOT flip Application status
+  (ownership rule) — PASSED -> CERT_ISSUED app transition needs an owner-side
+  flip after successful issuance (applyTransition is ready for it).
+  Commit: feat(certs): issue service hook consumer idempotent.
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
