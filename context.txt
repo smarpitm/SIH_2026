@@ -111,6 +111,14 @@ to keep one source of truth and avoid merge conflicts.
      401 single-flight refresh (5 fetch calls total); auth-endpoint 401 does NOT
      refresh/redirect. npx vitest run = 6/6 PASS; npm run typecheck green.
   Commit: feat(auth-ui): real login register session guards.
+- K12 follow-up (register UX): "Invalid registration payload" on weak passwords was
+  correct server behaviour (MA1 route: password min 8 + regex /\d/) but the form never
+  said so. app/register/page.tsx now (a) shows the rule under the Password field —
+  amber-highlighted while invalid, (b) pre-checks min8+digit before POSTing, and
+  (c) renders the server's Zod details (error.details = flatten()) as readable
+  per-field bullet lines (e.g. "Password: Password must contain at least one digit")
+  instead of the generic envelope message. Route untouched (Manav's).
+  Commit: fix(auth-ui): register password rule hint + readable validation errors.
 - scaffold committed (K0: init + Prisma + shared + stubs + UI)
 - seed added: 6 users + 6 instruments, idempotent (db:seed prints "seeded already" on rerun)
 - context.txt created and kept live per maintenance rule.
