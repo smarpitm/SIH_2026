@@ -193,6 +193,17 @@ to keep one source of truth and avoid merge conflicts.
   (ownership rule) — PASSED -> CERT_ISSUED app transition needs an owner-side
   flip after successful issuance (applyTransition is ready for it).
   Commit: feat(certs): issue service hook consumer idempotent.
+  S2 MANUAL CHECK (lib/crypto/manual-check.ts, kept for re-runs): ALL PASS —
+  (1) row ACTIVE, certId PRM-CERT-2026-00001 format, validUntil = validFrom +
+  730d for WEIGHBRIDGE; (2) verifyCredential true, flipped payloadJws false,
+  modified payload re-signed with a DIFFERENT key false + control (our key,
+  same modified payload) true; (3) issue twice -> same certId, ONE row;
+  (4) full hook path: emitInspectionPass (as lmo.guntur) -> certificate row
+  appears + CERT_ISSUED notification to owner (note: standalone scripts must
+  call registerWorkers() themselves — instrumentation.ts only runs under Next);
+  (5) typecheck clean for S2 files; console output greps ZERO matches for
+  PRIVATE/BEGIN/KEY= (keys.ts ephemeral-print only fires when env keys are
+  unset — dev convenience, documented in S1 entry).
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
