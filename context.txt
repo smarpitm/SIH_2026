@@ -48,7 +48,7 @@ M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — ma
 M3 Officer queue + inspection  Manav     MA3 CODED (typecheck green; lint only N1 debt) — manual check pending
 M4 Scheduling + notifications  Manav     NOT STARTED
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   ISSUE CODED + SELFTEST ALL PASS 9/9 / PDF NOT STARTED
+M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN; PDF print QA pending
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 Run commands: npm run dev | npm run build | npm run test |
@@ -204,6 +204,46 @@ to keep one source of truth and avoid merge conflicts.
   (5) typecheck clean for S2 files; console output greps ZERO matches for
   PRIVATE/BEGIN/KEY= (keys.ts ephemeral-print only fires when env keys are
   unset — dev convenience, documented in S1 entry).
+
+- S3 (Smarpit, branch smarpit): PDF layer replacing the two 501 stubs —
+  1. lib/pdf/certificate.ts — A4 portrait branded sheet: header PRAMANAM +
+     "Certificate of Verification · Legal Metrology Act 2009"; body: the 5
+     identity anchors (instrument serial, owner, issued by + kind, category,
+     valid until) sourced ONLY from the signed JWS claims (verifyCredential gate
+     at render — tampered/unverifiable payload is REFUSED); status word
+     (VALID / EXPIRING SOON / EXPIRED / REVOKED / SUSPENDED — 30d window)
+     stamped at generation; footer certId + kid + "Verify: scan QR or
+     <APP_URL>/verify/<certId>"; TWO QRs side by side (§G.5): variant-A =
+     the offline pmnm.v1 buildQrPayload(jws) envelope, variant-B =
+     <APP_URL>/verify/<certId> online fallback; both ECC Q at 30mm print size
+     (>= 28mm rule). Also A6 sticker renderer: big 46mm variant-A QR + serial +
+     category + validUntil + certId.
+  2. lib/pdf/store.ts — own S3 client (deliberately NOT lib/uploads — Manav
+     path); putVersionedPdf stores at certs/<certId>/v<N>.pdf with N = max+1
+     per regeneration (never overwrites) and stores the cert-status in object
+     metadata so routes detect stale renders; getPresignedGetUrl(key, 300s);
+     idempotent ensureBucket.
+  3. GET /api/v1/certificates/[id]/pdf — role-scoped exactly like the cert GET
+     (owner/issuer/same-district LMO/ADMIN); regenerates when pdfKey missing or
+     HeadObject metadata status != current cert status; responds { url }
+     presigned; AuditLog cert.pdf_downloaded.
+  4. GET /api/v1/instruments/[id]/sticker — A6 sticker for the instrument's
+     ACTIVE certificate; role-scoped (owner / same-district LMO-GATC / ADMIN);
+     NEGATIVE: no ACTIVE certificate -> NOT_FOUND envelope. AuditLog
+     cert.sticker_downloaded.
+  5. lib/pdf/pdf-selftest.ts — `npx tsx lib/pdf/pdf-selftest.ts`: status-word
+     matrix, A4 render, tampered-JWS refused at render, versioned MinIO upload
+     (key2 = key1+1), metadata carries status, presigned url points at stored
+     key + actually GETs the PDF back, sticker render + store. EXECUTED:
+     ALL PASS (13/13), exit 0. typecheck clean for all S3 files.
+  INFRA: portable MinIO server downloaded to C:\pgportable\minio.exe, started
+  against C:\pgportable\minio-data on :9000 (console :9001) with the .env
+  credentials (pramanam/pramanam123); bucket pramanam-docs auto-created.
+  NOTE: like Postgres, MinIO is NOT a service — after reboot restart via
+  `minio server C:\pgportable\minio-data --address :9000 --console-address :9001`.
+  PRINT QA (item 5) needs a human: variant-B from screen at 100% zoom,
+  variant-A from a phone camera at >= 30cm. No route/typecheck debt added.
+  Commit: feat(pdf): certificate sheet dual-qr sticker versioned minio.
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;

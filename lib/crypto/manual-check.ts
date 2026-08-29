@@ -58,9 +58,9 @@ async function main() {
   const { createPrivateKey, sign: nodeSign } = await import("node:crypto");
   const claims = JSON.parse(Buffer.from(p.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8"));
   claims.validUntil = new Date(Date.now() + 99 * 86400000).toISOString();
-  const b64u = (o: object) => Buffer.from(JSON.stringify(claims)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const b64u = () => Buffer.from(JSON.stringify(claims)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const hdr = { alg: "EdDSA", kid: "pramanam-2026-08-01", typ: "JWT" };
-  const si = `${Buffer.from(JSON.stringify(hdr)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}.${b64u(claims)}`;
+  const si = `${Buffer.from(JSON.stringify(hdr)).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")}.${b64u()}`;
   const sig = nodeSign(null, Buffer.from(si, "utf8"), createPrivateKey(alt.privateKeyPem));
   const foreignJws = si + "." + Buffer.from(sig).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const vx = await verifyCredential(foreignJws, jwk);

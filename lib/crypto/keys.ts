@@ -4,6 +4,7 @@
 export const KID = "pramanam-2026-08-01";
 
 export function generateKeyPair(): { privateKeyPem: string; publicKeyPem: string } {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy load keeps node:crypto out of client bundles
   const crypto = require("node:crypto");
   const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
   return {
@@ -40,6 +41,7 @@ export function loadKeysFromEnv(): { privateKeyPem: string; publicKeyPem: string
 
 // raw 32-byte ed25519 public key = last 32 bytes of the SPKI DER
 export function publicKeyJwk(): { kty: "OKP"; crv: "Ed25519"; x: string } {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy load keeps node:crypto out of client bundles
   const crypto = require("node:crypto");
   const { publicKeyPem } = loadKeysFromEnv();
   const der = crypto.createPublicKey(publicKeyPem).export({ type: "spki", format: "der" }) as Buffer;
@@ -52,6 +54,7 @@ export function publicKeyJwk(): { kty: "OKP"; crv: "Ed25519"; x: string } {
 }
 
 export function keyFingerprint(): string {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy load keeps node:crypto out of client bundles
   const crypto = require("node:crypto");
   const { publicKeyPem } = loadKeysFromEnv();
   return "sha256-" + crypto.createHash("sha256").update(publicKeyPem).digest("base64");
