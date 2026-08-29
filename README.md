@@ -1,36 +1,99 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PRAMANAM
+
+Online verification system for weighing & measuring instruments under the Legal
+Metrology framework. Traders apply online, LMO/GATC officers schedule and perform
+field inspections, and certificates are issued as signed QR payloads
+(Ed25519 + JWS) with public badge verification and an offline sticker-parse mode.
+
+## Tech Stack
+
+- **Next.js 14** (app router) — full-stack monolith, TypeScript, Tailwind, ESLint
+- **PostgreSQL + Prisma ORM** (v6 pinned)
+- **Redis + BullMQ** job queues (ioredis)
+- **MinIO** — S3-compatible object storage (`@aws-sdk/client-s3`)
+- **node:crypto Ed25519** — signatures / JWS / QR certificate payloads
+- `jose`, `qrcode`, `pdf-lib`, `zod`, `zustand`, `vitest`, `tsx`
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js >= 20 (WebCrypto Ed25519 verify needs >= 20)
+- Docker (for Postgres / Redis / MinIO infra)
+
+### Setup
 
 ```bash
+npm install
+
+# infra: postgres + redis + minio
+docker compose up -d
+
+# env: copy the template and fill it in (never commit real keys)
+cp .env.example .env
+
+# schema + demo data (idempotent seed: 6 users, 6 instruments)
+npm run db:push
+npm run db:seed
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+|---|---|
+| `npm run dev` | dev server |
+| `npm run build` | production build |
+| `npm run test` | vitest |
+| `npm run typecheck` | `tsc --noEmit` |
+| `npm run lint` | next lint |
+| `npm run db:push` | push Prisma schema to Postgres |
+| `npm run db:seed` | idempotent seed (prints "seeded already" on rerun) |
 
-## Learn More
+## Repo Layout
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/            Next.js app router: UI pages + /api/v1 routes
+components/     Shared React components (Badge, StatusChip, PhotoInput, CountdownRing)
+lib/            Core server libs (db, hooks, hash) + owner dirs:
+                  auth/     jwt/session/rbac
+                  uploads/  minio/multipart
+                  notify/   notifications
+                  crypto/   keys, JWS, QR (see below)
+                  pdf/      certificate/sticker renders
+                  i18n/     translations (en/hi)
+packages/shared/ Frozen contracts: constants, types, api, mock
+prisma/         schema.prisma (frozen) + seed.ts
+workers/        BullMQ worker registry
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Cryptography & Verification
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Certificates are compact JWS tokens signed with **Ed25519** (`alg: "EdDSA"`),
+built in `lib/crypto/`:
 
-## Deploy on Vercel
+- `keys.ts` — keygen + env loading. Keys come from `ED25519_PRIVATE_KEY` /
+  `ED25519_PUBLIC_KEY` (base64 PEM) in `.env`. **Never commit real keys** —
+  `.env` is gitignored; `.env.example` only holds empty placeholders.
+- `jws.ts` — `signCredential` (server, node:crypto) and `verifyCredential`
+  (**isomorphic** WebCrypto — runs in Node >= 20 and modern browsers, which is
+  what powers the offline verify page).
+- `qr.ts` — the `pmnm.v1` QR envelope. The **signed JWS travels inside the QR**,
+  so a sticker works fully offline. `qrDataUrl` renders PNG at ECC level Q.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Run the crypto self-check (8 cases: sign/verify, tamper flips, QR round-trip):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx tsx lib/crypto/selftest.ts
+```
+
+## Project Context
+
+Day-to-day development state, ownership matrix, and frozen-contract rules live
+in [`context.txt`](./context.txt). Read it before touching shared paths —
+`packages/shared/**`, `prisma/schema.prisma`, `lib/db.ts`, `lib/hooks.ts`,
+`lib/hash.ts`, and `.env.example` are frozen.
+
