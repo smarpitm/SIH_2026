@@ -2,19 +2,26 @@
 
 import { useState } from "react";
 
-export function PhotoInput({ name = "photo" }: { name?: string }) {
+export function PhotoInput({
+  name = "photo",
+  label = "Photo proof",
+  accept = "image/*",
+}: {
+  name?: string;
+  label?: string;
+  accept?: string;
+}) {
   const [filename, setFilename] = useState("");
   return (
     <label className="block">
-      <span className="mb-1 block text-sm">Photo proof</span>
+      <span className="mb-1 block text-sm">{label}</span>
       <input
         type="file"
         name={name}
-        accept="image/*"
+        accept={accept}
         onChange={(e) => setFilename(e.target.files?.[0]?.name ?? "")}
         className="block w-full text-sm"
       />
-      {/* Upload wiring arrives in K4; here we just echo the chosen filename. */}
       {filename && <span className="mt-1 block text-xs text-muted-foreground">{filename}</span>}
     </label>
   );

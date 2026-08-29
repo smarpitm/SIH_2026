@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/components/api-client";
+import { NotificationBell } from "@/components/NotificationBell";
 
 export function Header() {
   const pathname = usePathname();
@@ -81,6 +82,7 @@ export function Header() {
 
         {/* Language switcher & Auth CTAs */}
         <div className="flex items-center gap-2">
+          {user && <NotificationBell />}
           {/* Language Toggle Placeholder */}
           <button
             type="button"

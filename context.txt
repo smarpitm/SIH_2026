@@ -51,7 +51,8 @@ M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typec
 M6 Certificate issue + PDF     Smarpit   ISSUE CODED + SELFTEST ALL PASS 9/9 / PDF NOT STARTED
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
-K12 Real auth UI + guards      Kush      CODED (typecheck + vitest 6/6 green) — manual check pending
+K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
+K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -124,6 +125,60 @@ to keep one source of truth and avoid merge conflicts.
   every TRADER signup 400'd with "OrgName: Invalid input". Fix (app/register/page.tsx
   only): payload omits orgName key unless actually filled (UI collects it for LMO/GATC
   only). UNCOMMITTED — Kush verifying.
+  (VERIFIED GREEN — committed ff22c85 by Kush.)
+- K13 (Kush, branch kush): trader flows swapped from mock to real endpoints via api-client.
+  UI paths ONLY — no app/api/v1/**, lib/auth/**, lib/uploads/**, packages/shared/** changes.
+  1. app/trader/page.tsx — real instruments table (serial, category, district/address,
+     NEW "Registered" date column from createdAt); mock fraction rings DELETED: validity
+     ring + status chip render from an OPTIONAL certificate field on the instrument
+     payload (ponytail comment in file — no endpoint lists trader certs yet, public
+     lookup still a stub, so rings show "NO CERTIFICATE / ring appears after first PASS"
+     until an MA payload carries one); empty state for zero instruments; applications
+     list rows are Links to the NEW /trader/applications/[id] detail page.
+  2. app/trader/instruments/new/page.tsx — real POST /instruments as multipart
+     FormData (name attrs added so DOM feeds FormData) + PhotoInput name="purchaseProof"
+     (accept jpeg/png/webp/pdf, 10 MB cap server-side); VALIDATION_ERROR details
+     (Zod flatten) mapped to INLINE per-field red errors via NEW export
+     zodFieldErrors() in components/api-client.ts; CONFLICT (serial dup) and
+     UNSUPPORTED_MEDIA_TYPE surface as top banner message.
+  3. app/trader/apply/[instrumentId]/page.tsx — wizard calls the real chain:
+     POST /applications {instrumentId,type,preferredDate(ISO from new date input,
+     optional),declarationAccepted:true} → POST [id]/pay → POST [id]/submit
+     {declarationAccepted:true}; api() throws on ok:false so the chain advances only
+     on success; final panel shows StatusChip of the REAL returned status (submit
+     auto-allocates → SCHEDULED, NOT SUBMITTED — deviation noted vs task text) +
+     "View Status Timeline" button into the detail page. reVerificationReason sent
+     only for RE_VERIFICATION.
+  4. app/trader/applications/[id]/page.tsx (NEW) — GET /applications/[id]; timeline
+     chips DRAFT→SUBMITTED→SCHEDULED→CHECKED_IN→PASSED→CERT_ISSUED (frozen transition
+     order) with current ring-highlighted + prior green; FAILED/REJECTED render as an
+     extra red chip (side states); reschedule panel when status==="SCHEDULED": reason
+     textarea (client min-10 pre-check matching server zod), POST [id]/reschedule
+     {reason} → success notice w/ rescheduleCount + refetch;
+     RESCHEDULE_BUDGET_EXHAUSTED → "Reschedule limit reached" banner. ponytail note:
+     ApplicationDTO has no rescheduleCount so button shows for any SCHEDULED app —
+     server budget is authority.
+  5. components/NotificationBell.tsx (NEW, mounted in Header for logged-in users) —
+     GET /notifications on mount + every open (unread badge = readAt===null count);
+     opening marks unread read via PATCH /notifications/read {ids[]} and flips
+     readAt locally; dropdown lists title/body/createdAt, unread rows tinted;
+     failures degrade silently (bell must never break the page). Notification shape
+     typed locally ({id,kind,title,body,readAt,createdAt}) — frozen types untouched.
+  6. components/PhotoInput.tsx — label/accept props (was hardcoded "Photo proof"/image).
+  Verification: typecheck green; scoped eslint green on all 7 touched files; vitest 6/6;
+  LIVE smoke vs dev server (ravi@demo.in): login ok; instruments list 3 rows w/ createdAt;
+  applications 0 (empty state); notifications 0 (empty state); FULL WRITE CHAIN: create
+  DRAFT → pay RCP-xxxx → submit status SCHEDULED (auto-alloc) → detail SCHEDULED →
+  reschedule ×2 ok (count 1→2) → 3rd reschedule HTTP 409 RESCHEDULE_BUDGET_EXHAUSTED
+  (exact envelope the UI maps to the limit message). Committed by Kush.
+- K13 follow-up (readability + past-date guard): applications list showed raw cuids
+  ("App #cmteg92w…", "Target Instrument: cmtegg3k…"). Fix: portal list resolves
+  instrumentId → serialNumber from the already-fetched instruments list (primary line
+  = serial, secondary = "APP-XXXXXX" cuid tail); detail page does the same via one
+  extra GET /instruments and headings "CS-4412 · APP-0NCGXFC". Wizard now rejects a
+  past preferredDate client-side ("Preferred date cannot be in the past…") — server
+  (MA2) accepts any datetime, so the UI is the only guard; date-input min attr only
+  constrains the picker, not typed values. Committed by Kush.
 - scaffold committed (K0: init + Prisma + shared + stubs + UI)
 - seed added: 6 users + 6 instruments, idempotent (db:seed prints "seeded already" on rerun)
 - context.txt created and kept live per maintenance rule.

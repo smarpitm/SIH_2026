@@ -4,7 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { INSTRUMENT_CATEGORIES, DISTRICTS } from "@/packages/shared/constants";
-import { api, ApiError } from "@/components/api-client";
+import { api, ApiError, zodFieldErrors } from "@/components/api-client";
+import { PhotoInput } from "@/components/PhotoInput";
+import type { InstrumentDTO } from "@/packages/shared/types";
 
 export default function NewInstrumentPage() {
   const router = useRouter();
@@ -20,26 +22,46 @@ export default function NewInstrumentPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [out, setOut] = useState<Record<string, unknown> | null>(null);
+  const [out, setOut] = useState<InstrumentDTO | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]> | null>(null);
 
   function set<K extends keyof typeof form>(k: K, v: string) {
     setForm((f) => ({ ...f, [k]: v }));
   }
 
-  async function onSubmit(e: FormEvent) {
+  function FieldError({ name }: { name: string }) {
+    const msgs = fieldErrors?.[name];
+    if (!msgs?.length) return null;
+    return (
+      <p role="alert" className="mt-1 text-[11px] font-medium text-red-600 dark:text-red-400">
+        {msgs.join(" · ")}
+      </p>
+    );
+  }
+
+  async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setFieldErrors(null);
 
     try {
-      const data = await api<Record<string, unknown>>("/api/v1/instruments", {
+      // MA2 contract: multipart/form-data — text fields + optional purchaseProof
+      // file (server magic-byte sniffs JPEG/PNG/WEBP/PDF, 10 MB cap)
+      const data = await api<InstrumentDTO>("/api/v1/instruments", {
         method: "POST",
-        body: JSON.stringify(form),
+        body: new FormData(e.currentTarget),
       });
       setOut(data);
-    } catch (e) {
-      setErrorMsg(e instanceof ApiError ? e.message : "Network error registering instrument.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        const fe = zodFieldErrors(err.details);
+        setFieldErrors(fe);
+        setErrorMsg(fe ? "Please fix the highlighted fields." : err.message);
+      } else {
+        setErrorMsg("Network error registering instrument.");
+      }
     } finally {
       setLoading(false);
     }
@@ -80,6 +102,7 @@ export default function NewInstrumentPage() {
                 Instrument Category
               </label>
               <select
+                name="category"
                 value={form.category}
                 onChange={(e) => set("category", e.target.value)}
                 className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -99,12 +122,14 @@ export default function NewInstrumentPage() {
                 </label>
                 <input
                   type="text"
+                  name="make"
                   value={form.make}
                   onChange={(e) => set("make", e.target.value)}
                   placeholder="e.g. Essae / Avery"
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
+                <FieldError name="make" />
               </div>
 
               <div>
@@ -113,12 +138,14 @@ export default function NewInstrumentPage() {
                 </label>
                 <input
                   type="text"
+                  name="model"
                   value={form.model}
                   onChange={(e) => set("model", e.target.value)}
                   placeholder="e.g. 40t Heavy / ER-Plus"
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
+                <FieldError name="model" />
               </div>
             </div>
 
@@ -129,12 +156,14 @@ export default function NewInstrumentPage() {
                 </label>
                 <input
                   type="text"
+                  name="serialNumber"
                   value={form.serialNumber}
                   onChange={(e) => set("serialNumber", e.target.value)}
                   placeholder="e.g. WB-9021"
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 font-mono text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
+                <FieldError name="serialNumber" />
               </div>
 
               <div>
@@ -143,12 +172,14 @@ export default function NewInstrumentPage() {
                 </label>
                 <input
                   type="text"
+                  name="capacity"
                   value={form.capacity}
                   onChange={(e) => set("capacity", e.target.value)}
                   placeholder="e.g. 40t / 150kg"
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
+                <FieldError name="capacity" />
               </div>
             </div>
 
@@ -157,6 +188,7 @@ export default function NewInstrumentPage() {
                 Operating District
               </label>
               <select
+                name="district"
                 value={form.district}
                 onChange={(e) => set("district", e.target.value)}
                 className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
@@ -175,11 +207,22 @@ export default function NewInstrumentPage() {
               </label>
               <textarea
                 rows={2}
+                name="address"
                 value={form.address}
                 onChange={(e) => set("address", e.target.value)}
                 placeholder="Plot/Shop address where instrument is located for inspection"
                 required
                 className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              />
+              <FieldError name="address" />
+            </div>
+
+            {/* MA2: optional purchase proof — sent as multipart field `purchaseProof` */}
+            <div className="rounded-lg border border-zinc-200 bg-zinc-50/60 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
+              <PhotoInput
+                name="purchaseProof"
+                label="Purchase Proof (optional — JPEG / PNG / WEBP / PDF, max 10 MB)"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
               />
             </div>
 
