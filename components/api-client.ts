@@ -75,3 +75,14 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   }
   return body.data;
 }
+
+/**
+ * Extract per-field messages from a VALIDATION_ERROR envelope's details
+ * (Zod flatten(): { formErrors, fieldErrors }). Returns null when there are
+ * no field errors (caller should fall back to the generic message).
+ */
+export function zodFieldErrors(details: unknown): Record<string, string[]> | null {
+  if (!details || typeof details !== "object") return null;
+  const fe = (details as { fieldErrors?: Record<string, string[]> }).fieldErrors;
+  return fe && Object.keys(fe).length > 0 ? fe : null;
+}
