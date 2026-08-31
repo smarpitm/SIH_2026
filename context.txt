@@ -53,6 +53,7 @@ M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
+K14 Officer real flows         Kush      CODED (typecheck+lint+vitest green; LIVE smoke: /schedule/mine + checkin window guard) — manual check pending
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -171,6 +172,46 @@ to keep one source of truth and avoid merge conflicts.
   DRAFT → pay RCP-xxxx → submit status SCHEDULED (auto-alloc) → detail SCHEDULED →
   reschedule ×2 ok (count 1→2) → 3rd reschedule HTTP 409 RESCHEDULE_BUDGET_EXHAUSTED
   (exact envelope the UI maps to the limit message). Committed by Kush.
+- K14 (Kush, branch kush): officer flows swapped from mock to real endpoints via
+  api-client. UI paths ONLY — app/api/v1/**, lib/auth/**, lib/uploads/**, packages/shared/**
+  untouched. Contracts consumed per scripts/openapi.json + route sources (read-only):
+  1. app/officer/page.tsx — REWRITTEN on GET /api/v1/schedule/mine (was GET
+     /applications): jobs show traderName (fallback traderOrg), instrumentSerial +
+     category, district (schedule/mine carries none — resolved by serialNumber from
+     the officer-scoped GET /instruments list), APP-XXXXXX short ref, reschedule
+     count badge, scheduledFor datetime; overdue (server-computed flag) pinned first
+     under a red "Overdue — act now" header with red-bordered cards; then Today /
+     Upcoming sections; DONE schedules excluded from the queue but counted in the
+     header ("N completed"); mock serial fallbacks (ins_wb_9021 etc.) DELETED.
+     Cards link to /officer/job/[applicationId]?scheduleId=<id>.
+  2. app/officer/job/[applicationId]/page.tsx — REWORKED: loads application +
+     instruments for a serial·district·APP-ref header; CHECK IN card when status
+     SCHEDULED (needs scheduleId from the queue link) → POST /schedule/checkin
+     {scheduleId} → SCHEDULED→CHECKED_IN, form unlocks via refetch; server window
+     errors surface verbatim (verified LIVE: outside −2h/+8h → 400 "outside
+     check-in window"). Form gates on CHECKED_IN (all inputs disabled + status
+     notice otherwise).
+  3. Inspection submit is now REAL multipart POST /api/v1/inspections: FormData with
+     scheduleId, result, observations JSON (keys from OBSERVATION_CONFIG.default,
+     boolean checkboxes + text areas, all locked until check-in), photos (native
+     <input type=file name=photos multiple accept jpeg/png/webp capture=environment>),
+     gpsLat/gpsLng (REAL geolocation only — fake demo fallback coordinates REMOVED;
+     auto-attempt on unlock + manual retry button); PASS → green "Certificate will be
+     issued automatically" panel; FAIL → "reason recorded" panel echoing failReason.
+  4. 390px one-handed: all action buttons min-h-[44px] (check-in, GPS, PASS/FAIL,
+     submit, open-job, back), checklist rows min-h-[44px] touch targets, sticky
+     PASS/FAIL bar kept, native inputs throughout.
+  5. GPS denied → non-blocking amber banner "Location not captured — you can still
+     submit the report."; submission allowed (server decides policy).
+  useSearchParams (scheduleId) → component wrapped in Suspense (Next 14 requirement).
+  Verification: typecheck green; scoped eslint green (both files); vitest 6/6; LIVE
+  smoke (lmo.guntur@demo.in): login ok; /schedule/mine ok (CS-4412 · Ravi Kumar ·
+  RESCHEDULED · Sept-5 slot returned with trader/serial/overdue fields);
+  POST /schedule/checkin outside window → exact 400 VALIDATION_ERROR "outside
+  check-in window" (the UI shows this message). Full multipart PASS/FAIL submit
+  NOT live-exercised (needs an in-window slot) — payload written field-for-field
+  against the route source; manual check item. Commit:
+  feat(officer-ui): real queue checkin inspection submit.
 - K13 follow-up (readability + past-date guard): applications list showed raw cuids
   ("App #cmteg92w…", "Target Instrument: cmtegg3k…"). Fix: portal list resolves
   instrumentId → serialNumber from the already-fetched instruments list (primary line
