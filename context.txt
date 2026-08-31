@@ -48,7 +48,7 @@ M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — ma
 M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — feat(api): scheduling allocation inspection pass-hook
 M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: typecheck+lint+openapi:check green) — merge pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
+M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
 M7 Public verify + search      Smarpit   NOT STARTED
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
@@ -425,6 +425,15 @@ to keep one source of truth and avoid merge conflicts.
    positive same-district LMO allowed, re-render after revoke = new vN + old key
    kept + REVOKED stamp in bytes + metadata, audit cert.pdf_downloaded = 3. typecheck
    + lint clean for manual-check.ts; files left in C:\pgportable\manual-demo.
+ - [2026-08-31 re-verification, branch smarpit]: S3 PDF task re-validated against
+   the frozen contract with infra started from C:\pgportable (pg16 portable via
+   pg_ctl + minio.exe on :9000). pdf-selftest 14/14 PASS, manual-check 21/21 PASS
+   (exit 0 both). All typecheck errors observed are pre-existing in Manav-owned
+   files (lib/auth/transition.ts, prisma/seed-10k.ts) and untracked tmp-* scratch
+   files — none in lib/pdf/** or the two S3 routes. Commit bdb57e2 already pushed
+   to origin/smarpit with equivalent message "S3: certificate PDF + A6 sticker
+   dual-QR versioned MinIO + 21-gate manual-check"; NOT renamed to the contract
+   string because it is pushed history (no force-push).
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
