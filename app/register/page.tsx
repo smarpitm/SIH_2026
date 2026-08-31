@@ -63,8 +63,8 @@ export default function RegisterPage() {
         method: "POST",
         body: JSON.stringify(orgName ? form : withoutOrg),
       });
-      // Redirect to /login with registered query param for green banner
-      router.push("/login?registered=true");
+      // Redirect to /login with registered query param and email
+      router.push(`/login?registered=true&email=${encodeURIComponent(form.email)}`);
     } catch (err) {
       if (err instanceof ApiError) {
         const msgs = readableErrors(err.details);
