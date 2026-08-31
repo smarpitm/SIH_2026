@@ -48,8 +48,8 @@ M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — ma
 M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — feat(api): scheduling allocation inspection pass-hook
 M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: typecheck+lint+openapi:check green) — merge pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (9/9 + 13/13), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
-M7 Public verify + search      Smarpit   NOT STARTED
+M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
+M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats) + public-selftest 31/31 ALL PASS on live pg (2026-08-31); typecheck+lint clean for M7 files (global typecheck fails only on pre-existing Manav files); UI wiring for Kush pending.
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
@@ -425,6 +425,53 @@ to keep one source of truth and avoid merge conflicts.
    positive same-district LMO allowed, re-render after revoke = new vN + old key
    kept + REVOKED stamp in bytes + metadata, audit cert.pdf_downloaded = 3. typecheck
    + lint clean for manual-check.ts; files left in C:\pgportable\manual-demo.
+ - [2026-08-31 re-verification, branch smarpit]: S3 PDF task re-validated against
+   the frozen contract with infra started from C:\pgportable (pg16 portable via
+   pg_ctl + minio.exe on :9000). pdf-selftest 14/14 PASS, manual-check 21/21 PASS
+   (exit 0 both). All typecheck errors observed are pre-existing in Manav-owned
+   files (lib/auth/transition.ts, prisma/seed-10k.ts) and untracked tmp-* scratch
+   files — none in lib/pdf/** or the two S3 routes. Commit bdb57e2 already pushed
+   to origin/smarpit with equivalent message "S3: certificate PDF + A6 sticker
+   dual-QR versioned MinIO + 21-gate manual-check"; NOT renamed to the contract
+   string because it is pushed history (no force-push).
+ - [M7 2026-08-31, branch smarpit] Public trust surface (PRD #16) — replaced all
+   5 stubs, commit feat(public): badge lookup wellknown revoke stats:
+   1. GET /.well-known/pramanam-public-key — publicKeyJwk() from env keys +
+      { kid, alg:"EdDSA", keyFingerprint }; public, no auth.
+   2. GET /api/v1/public/certificates/[certId] — NO auth -> BadgeDTO. Badge
+      contract (also written as a comment in the route for Kush's renderer):
+      verdict = status/date-based, priority REVOKED > EXPIRED > EXPIRING_SOON >
+      VALID (REVOKED/SUSPENDED from status; EXPIRED = claim validUntil < now OR
+      status EXPIRED; EXPIRING_SOON = within 30d — date math is LIVE here
+      regardless of the S6 scanner column). signatureValid = INDEPENDENT
+      verifyCredential(payloadJws) with env pubkey — NEVER fabricated; a
+      tampered DB payload surfaces signatureValid:false => Kush renders red
+      "CHECK FAILED — POSSIBLE FAKE" regardless of verdict. Anchors = EXACTLY 5
+      {label,value} from signed claims (serial/owner/issued by+kind/valid
+      until/category, DB fallback when sig bad). history = last <=5 AuditLog
+      rows for the cert as {at,what}. lib/public/badge.ts owns buildBadge.
+   3. GET /api/v1/public/certificates/lookup?q= — matches certId OR instrument
+      serial; found -> same badge shape; NOT found -> 200 { found:false }
+      (amber on page, NOT 404). In-memory 30 req/min/IP -> RATE_LIMITED
+      (ponytail note: Redis counter if time allows; map cleared above 5k IPs).
+   4. POST /api/v1/certificates/[id]/revoke — ADMIN or issuing officer only;
+      Zod { reason min 20 }; status -> REVOKED + revokedAt + revokedReason;
+      AuditLog cert.revoked + Notification kind REVOKED to owner; already
+      revoked -> CONFLICT with currentReason in details.
+   5. GET /api/v1/public/stats — { totalInstruments, activeCerts (ACTIVE +
+      EXPIRING_SOON; EXPIRED not active), revokedCerts, lastIssuedAt }, 60s
+      in-memory cache.
+   6. lib/public/public-selftest.ts — `npx tsx lib/public/public-selftest.ts`:
+      31 gates over REAL route handlers + minted tokens (wellknown shape;
+      badge verdict matrix via re-signed claims; tampered payload -> honest
+      signatureValid:false; 5 anchors vs claims; lookup by serial/certId/
+      unknown/missing-q; 31st request RATE_LIMITED; revoke RBAC + Zod +
+      CONFLICT-currentReason + audit + notification; stats shape + cache).
+      EXECUTED: 31/31 ALL PASS against live pg16 (C:\pgportable).
+   BUG FIXED from earlier WIP: lookup route select was missing payloadJws ->
+   would have falsified signatureValid:false for EVERY lookup (red CHECK
+   FAILED on good certs). Now mandatory with a comment explaining why.
+   openapi:check green (34=34), vitest 6/6, eslint 0 errors on M7 files.
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
