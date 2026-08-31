@@ -11,10 +11,11 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const emailParam = searchParams.get("email");
   const from = searchParams.get("from");
 
-  const [email, setEmail] = useState("ravi@demo.in");
-  const [password, setPassword] = useState("Passw0rd!demo");
+  const [email, setEmail] = useState(emailParam || (registered ? "" : "ravi@demo.in"));
+  const [password, setPassword] = useState(registered ? "" : "Passw0rd!demo");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
