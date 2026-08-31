@@ -1,5 +1,69 @@
-import { jsonOk } from "@/packages/shared/api";
+// POST /api/v1/certificates/[id]/revoke
+// Smarpit (M7). Admin OR the cert's issuing officer only.
+// Zod: { reason: string, min 20 chars }.
+// Transitions the cert status -> REVOKED (+ revokedAt + revokedReason), writes an
+// AuditLog row (cert.revoked) and a REVOKED Notification to the instrument owner.
+// Already revoked -> 409 CONFLICT { details: { currentReason } }.
+import { z } from "zod";
+import { jsonOk, jsonErr } from "@/packages/shared/api";
+import { db } from "@/lib/db";
+import { getSession, requireRole } from "@/lib/auth/session";
+import { notify } from "@/lib/notify/notifications";
 
-export async function POST() {
-  return jsonOk({ revoked: true });
+const Body = z.object({ reason: z.string().min(20, "Reason must be at least 20 characters") });
+
+export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const session = await getSession(req);
+  const guard = requireRole(session);
+  if (guard) return guard;
+
+  const cert = await db.certificate.findFirst({
+    where: { OR: [{ certId: params.id }, { id: params.id }] },
+    select: {
+      id: true,
+      certId: true,
+      status: true,
+      revokedReason: true,
+      issuedById: true,
+      instrument: { select: { ownerId: true } },
+    },
+  });
+  if (!cert) return jsonErr("NOT_FOUND", `No certificate matching '${params.id}'`);
+
+  const isIssuer = session!.userId === cert.issuedById;
+  const isAdmin = session!.role === "ADMIN";
+  if (!isIssuer && !isAdmin) {
+    return jsonErr("AUTH_FORBIDDEN", "Only the issuing officer or an admin may revoke this certificate");
+  }
+
+  if (cert.status === "REVOKED") {
+    return jsonErr("CONFLICT", "Certificate already revoked", { currentReason: cert.revokedReason });
+  }
+
+  let reason: string;
+  try {
+    reason = Body.parse(await req.json()).reason;
+  } catch (e) {
+    return jsonErr("VALIDATION_ERROR", "Invalid body", { issues: (e as z.ZodError).issues });
+  }
+
+  const revokedAt = new Date();
+  await db.certificate.update({
+    where: { id: cert.id },
+    data: { status: "REVOKED", revokedAt, revokedReason: reason },
+  });
+
+  await db.auditLog.create({
+    data: {
+      actorId: session!.userId,
+      actorKind: session!.role,
+      action: "cert.revoked",
+      entity: "certificate",
+      entityId: cert.id,
+      meta: { certId: cert.certId, reason },
+    },
+  });
+  await notify(cert.instrument.ownerId, "REVOKED", "Certificate revoked", reason);
+
+  return jsonOk({ revoked: true, certId: cert.certId, status: "REVOKED", revokedAt: revokedAt.toISOString() });
 }
