@@ -23,6 +23,13 @@ const CONFIG: Record<string, { word: string; icon: string; cls: string; heroBg: 
     cls: "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300",
     heroBg: "bg-rose-700 text-white shadow-rose-700/25",
   },
+  // display-only verdict (never a real BadgeDTO verdict) — signatureValid=false wins
+  CHECK_FAILED: {
+    word: "CHECK FAILED",
+    icon: "✕",
+    cls: "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300",
+    heroBg: "bg-rose-700 text-white shadow-rose-700/25",
+  },
 };
 
 // a11y: aria-live announces the verdict; colour is never the only signal (icon + word always).
@@ -30,10 +37,14 @@ export function Badge({
   verdict,
   size = "md",
   className = "",
+  word,
+  subtitle,
 }: {
   verdict: string;
   size?: "sm" | "md" | "hero";
   className?: string;
+  word?: string; // i18n override — G6 verdict words come from lib/i18n t()
+  subtitle?: string; // hero sub-line override (e.g. "SIGNATURE VERIFIED")
 }) {
   const m = CONFIG[verdict] ?? {
     word: verdict,
@@ -52,10 +63,10 @@ export function Badge({
           {m.icon}
         </span>
         <span className="mt-1.5 text-2xl font-black tracking-wider sm:text-3xl">
-          {m.word}
+          {word ?? m.word}
         </span>
         <span className="mt-1 text-[11px] font-semibold uppercase tracking-widest opacity-90">
-          Official Legal Metrology Certificate
+          {subtitle ?? "Official Legal Metrology Certificate"}
         </span>
       </div>
     );

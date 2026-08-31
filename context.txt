@@ -54,6 +54,7 @@ M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys fro
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
 K14 Officer real flows         Kush      CODED (typecheck+lint+vitest green; LIVE smoke: /schedule/mine + checkin window guard) — manual check pending
+K5  Verify UI real wiring      Kush      CODED (typecheck + eslint green; vitest 12/12 incl. new G6 grammar + i18n fallback tests; i18n parity check green) — manual check pending
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -499,6 +500,39 @@ to keep one source of truth and avoid merge conflicts.
 - Translation keys frozen (~40 keys). Parity check script passed.
 - Hook contract re-exported from lib/i18n/index.ts: { useTranslation, en }.
 - Ready for Kush (K5) import.
+- K5 (Kush, branch kush): verify UI wired to real M7 endpoints + offline validator + i18n.
+  OWNERSHIP NOTE: lib/i18n/useTranslation.ts extended in place (Nishka's path) because the
+  N1 hook on main was still a pass-through stub — export contract { t, lang, setLang }
+  unchanged, key set untouched (parity check green), English fallback per N1. en.ts value
+  verdict.tampered aligned to the frozen G6 string "CHECK FAILED — POSSIBLE FAKE" (key set
+  unchanged). Inform Nishka.
+  1. app/verify/[certId]/page.tsx — real GET /api/v1/public/certificates/[certId] BadgeDTO.
+     G6 grammar hero: green VALID + "SIGNATURE VERIFIED" sub-line, amber EXPIRING SOON,
+     red EXPIRED/REVOKED, red "CHECK FAILED — POSSIBLE FAKE" whenever signatureValid=false
+     (verdict-independent) + next-action line "Report to your Local Legal Metrology office".
+     Icons accompany every colour; aria-live="polite" hero; ≤5 anchors (server sends exactly
+     5; slice(0,5) defensive) with labels translated via verify.anchors.* keys; history in
+     <details>. NOT_FOUND renders AMBER "No record found — check the ID printed on the
+     certificate" (never a raw 404). Typed-ID input navigates /verify/[id].
+  2. components/verdict.ts (NEW, pure .ts) — verdictView(verdict, signatureValid) G6 mapping
+     (tone/icon/wordKey/subKey), unit-tested in components/verify-ui.test.ts. Badge.tsx gained
+     a display-only CHECK_FAILED config + word/subtitle overrides.
+  3. app/verify/offline/page.tsx — REAL client-side verification: textarea accepts pmnm.v1
+     envelope or bare compact JWS via Smarpit's parseQrPayload (lib/crypto/qr), verified with
+     verifyCredential (lib/crypto/jws, WebCrypto Ed25519). Pubkey fetched ONCE from
+     /api/v1/.well-known/pramanam-public-key, cached in localStorage (pm_pubkey_jwk; ponytail:
+     cache never expires, key rotation bumps the key per G.4). After the first key fetch the
+     verify path makes ZERO network calls. Verdicts: green = signature ok + signed-claim
+     validUntil in future; red = BAD_SIGNATURE/MALFORMED or expired-per-claims; amber =
+     signature ok but validity unknown offline (no readable validUntil) or key not yet cached.
+     Decoded signed claims shown on green/amber/red-with-claims.
+  4. lib/i18n — t() now resolves en.ts/hi.json (resolveJsonModule), missing hi keys fall back
+     to English then caller fallback; ?lang=hi URL param wins on load, toggle choice persists
+     in localStorage (pm_lang); module-level subscribers so the Header toggle flips mounted
+     pages live.
+  VALIDATION: npm run typecheck 0 errors; eslint 0 errors on touched files; vitest 12/12
+  (6 new: G6 verdictView matrix + translate fallback matrix); i18n parity check green.
+  Commit: feat(verify-ui): real badge offline validator i18n.
 - MA5 (Manav, degradable): invites + bulk seed — cut-first per book:
   1. POST /api/v1/auth/invite (ADMIN only) — creates LMO/GATC user with fixed
      temp password Invite@123 + "share credentials offline" banner; audits
