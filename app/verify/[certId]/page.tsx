@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/Badge";
@@ -26,24 +26,34 @@ export default function VerifyPage() {
   const [badge, setBadge] = useState<BadgeDTO | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [serverError, setServerError] = useState(false);
   const [typedId, setTypedId] = useState("");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     setLoading(true);
     setNotFound(false);
+    setServerError(false);
 
     fetch(`/api/v1/public/certificates/${certId}`)
       .then((r) => r.json())
       .then((j) => {
         if (j && j.ok && j.data) {
           setBadge(j.data);
-        } else {
+        } else if (j && !j.ok && j.error?.code === "NOT_FOUND") {
+          // lookup contract: missing cert -> amber "check the ID", never a raw 404
           setNotFound(true);
+        } else {
+          // server/network fault — do NOT masquerade as "record not found"
+          setServerError(true);
         }
       })
-      .catch(() => setNotFound(true))
+      .catch(() => setServerError(true))
       .finally(() => setLoading(false));
   }, [certId]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
 
   function onTypedLookup(e: FormEvent) {
     e.preventDefault();
@@ -91,6 +101,34 @@ export default function VerifyPage() {
       <div className="mx-auto w-full max-w-lg py-12 text-center">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-zinc-300 border-t-zinc-900 dark:border-zinc-700 dark:border-t-white" />
         <p className="mt-3 text-sm text-zinc-500">Verifying cryptographic certificate…</p>
+      </div>
+    );
+  }
+
+  if (serverError) {
+    return (
+      <div className="mx-auto w-full max-w-lg space-y-6">
+        <div className="rounded-2xl border border-zinc-300 bg-zinc-50 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-zinc-200 font-bold text-zinc-700 text-xl dark:bg-zinc-800 dark:text-zinc-300">
+            !
+          </div>
+          <h1 className="mt-4 text-2xl font-bold text-zinc-900 dark:text-white">
+            Verification temporarily unavailable
+          </h1>
+          <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+            The verification service did not respond correctly for{" "}
+            <span className="font-mono font-bold text-zinc-900 dark:text-white">{certId}</span>.
+            Please try again in a moment.
+          </p>
+          <button
+            type="button"
+            onClick={load}
+            className="mt-5 rounded-lg bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+          >
+            Retry
+          </button>
+        </div>
+        {lookupCard}
       </div>
     );
   }
