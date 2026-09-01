@@ -49,7 +49,7 @@ M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — f
 M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: typecheck+lint+openapi:check green) — merge pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
-M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS on live pg (2026-09-01); public-selftest 31/31; typecheck+lint clean for M7 files; UI wiring for Kush pending (search item contract documented in route comment).
+M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS + public-selftest 31/31 ALL PASS + S5 MANUAL CHECK (lib/search/manual-check.ts) ALL GATES GREEN on live pg (2026-09-01); typecheck+lint clean for M7 files.
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
@@ -548,6 +548,18 @@ to keep one source of truth and avoid merge conflicts.
      installed, stays csv-only with ponytail note; PATCH /auth/me prefs — User
      has no meta column + schema frozen, ponytail note left in place.
   typecheck + lint + openapi:check green.
+- S5 MANUAL CHECK (lib/search/manual-check.ts, runnable via `npx tsx`):
+  All 4 verification gates ALL PASS (exit 0) on live PostgreSQL:
+  1. Admin vs LMO Scoped Search (q="Essae"): Admin finds all Essae instruments across
+     districts (Guntur & Krishna); LMO Krishna finds ONLY Krishna district rows (count logged).
+  2. NEGATIVE Checks: Cross-district serial probe by LMO Guntur for Krishna serial returns
+     0 rows (NOT a leak); query with 100 chars (>64 limit) returns VALIDATION_ERROR.
+  3. Stats Integrity: /public/stats matches direct SQL / Prisma counts exactly (totalInstruments,
+     activeCerts, revokedCerts, lastIssuedAt).
+  4. Credential & JWK: /public/certificates/[certId]/credential.json parses valid JWS payload,
+     WebCrypto signature verifies, kid matches "pramanam-2026-08-01", and jwk/kid matches
+     /.well-known/pramanam-public-key exactly.
+  All files lint clean (0 errors) and openapi:check 35/35 in sync.
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
