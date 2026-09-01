@@ -77,7 +77,7 @@
       "get": { "tags": ["reports"], "summary": "Export CSV (entity=instruments|applications|certificates&format=csv; ADMIN all / LMO district / TRADER own)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "description": "CSV stream" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
     },
     "/search": {
-      "get": { "tags": ["search"], "summary": "Public search", "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" } } }
+      "get": { "tags": ["search"], "summary": "Role-scoped lookup (TRADER own / LMO,GATC district / ADMIN all) over instrument serial+make+model and certificate certId; q required 1..64 chars", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "q", "in": "query", "required": true, "schema": { "type": "string", "minLength": 1, "maxLength": 64 } }, { "name": "district", "in": "query", "required": false, "schema": { "type": "string", "enum": ["Guntur", "Krishna", "Vijayawada"] } }, { "name": "category", "in": "query", "required": false, "schema": { "type": "string" } }, { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "enum": ["ACTIVE", "EXPIRING_SOON", "EXPIRED", "REVOKED", "SUSPENDED"] } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "401": { "$ref": "#/components/responses/Unauthorized" } } }
     },
     "/dashboards/trader": {
       "get": { "tags": ["dashboards"], "summary": "Trader DashCounts", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
@@ -102,6 +102,9 @@
     },
     "/public/certificates/{certId}": {
       "get": { "tags": ["public"], "summary": "Public verify badge for certId", "parameters": [{ "name": "certId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "404": { "$ref": "#/components/responses/NotFound" } } }
+    },
+    "/public/certificates/{certId}/credential.json": {
+      "get": { "tags": ["public"], "summary": "Machine credential artifact { jws, jwk, kid, fetchedAt } (OpenCerts-style; no auth, rate-limited)", "parameters": [{ "name": "certId", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "404": { "$ref": "#/components/responses/NotFound" }, "429": { "description": "Rate limited" } } }
     },
     "/public/certificates/lookup": {
       "get": { "tags": ["public"], "summary": "Public lookup by serial", "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "404": { "$ref": "#/components/responses/NotFound" } } }

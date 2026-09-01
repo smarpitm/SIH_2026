@@ -49,7 +49,7 @@ M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — f
 M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: typecheck+lint+openapi:check green) — merge pending
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
-M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats) + public-selftest 31/31 ALL PASS on live pg (2026-08-31); typecheck+lint clean for M7 files (global typecheck fails only on pre-existing Manav files); UI wiring for Kush pending.
+M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS on live pg (2026-09-01); public-selftest 31/31; typecheck+lint clean for M7 files; UI wiring for Kush pending (search item contract documented in route comment).
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
@@ -472,6 +472,43 @@ to keep one source of truth and avoid merge conflicts.
    would have falsified signatureValid:false for EVERY lookup (red CHECK
    FAILED on good certs). Now mandatory with a comment explaining why.
    openapi:check green (34=34), vitest 6/6, eslint 0 errors on M7 files.
+
+ - [M7 2026-09-01, branch smarpit] PRD #11 search & retrieval — replaced the
+   search stub, commit feat(search): role-scoped lookup credential artifact:
+   1. GET /api/v1/search?q=<1..64> — Postgres-only ILIKE contains (frozen
+      schema has no trigram index; // ponytail: pg_trgm GIN index needs a
+      migration — schema FROZEN, stays a chat note). Matches instrument
+      serialNumber/make/model + Certificate.certId. Optional filters
+      district/category (enums) + status (CERT_STATUSES; instruments are
+      filtered on their DERIVED status). RBAC scope: TRADER -> own
+      instruments/certs only; LMO/GATC -> own district; ADMIN -> all (same
+      shape as MA2 GET /instruments). Items { kind:"instrument"|
+      "certificate", id, title, subtitle, district, status, url } with url ->
+      /trader/instruments/[id] (instrument status derived from latest cert,
+      "UNCERTIFIED" when none — no status column in frozen schema) or
+      /verify/[certId]. take 25/kind. NEGATIVES: missing/empty/whitespace q
+      and >64 chars -> VALIDATION_ERROR; bad enum -> VALIDATION_ERROR.
+   2. GET /api/v1/public/certificates/[certId]/credential.json — OpenCerts-
+      style machine artifact { jws, jwk, kid, fetchedAt }: jws = RAW compact
+      JWS byte-for-byte as issued (consumer verifies — same honest trust
+      model as badge), jwk = current Ed25519 OKP JWK, kid = pramanam-2026-
+      08-01, fetchedAt = ISO. NO auth; rate-limited like lookup (shares the
+      consumeLookup bucket, 30 req/min/IP -> RATE_LIMITED). Unknown -> 404.
+   3. lib/search/search-selftest.ts (`npx tsx lib/search/search-selftest.ts`)
+      — 29 gates over REAL route handlers + minted tokens against live pg16:
+      q validation negatives, AUTH_REQUIRED, RBAC scoping matrix (trader A/B,
+      LMO Guntur/Krishna, ADMIN), make/model/certId matching, item contract
+      urls/statuses, district/category/status filters, credential shape +
+      byte-identical jws + 404 + 31st-request RATE_LIMITED, and the p95
+      sanity (50 queries, console.time). Idempotent: purges prior srchst
+      fixtures first. EXECUTED: 29/29 ALL PASS (2026-09-01, live pg).
+   4. p95 sanity printed for PR notes: 50 queries, p95-loop-50 ~95 ms total,
+      avg 1.9-2.2 ms/query (target < 500 ms) against the seeded dataset.
+   5. openapi.json: /search summary/params refreshed (auth + q 1..64 +
+      filters) + new /public/certificates/{certId}/credential.json path —
+      drift guard green (35=35). vitest 6/6, eslint exit 0 on all three
+      files; typecheck clean for M7 files (global still fails only on
+      pre-existing Manav files).
 
 - K0 verified (Step 14): docker infra up (pg/redis/minio healthy), db:push in
   sync, db:seed 6 users, typecheck 0 errors; dev server boots; landing renders;
