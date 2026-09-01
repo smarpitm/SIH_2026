@@ -4,9 +4,10 @@
 export const KID = "pramanam-2026-08-01";
 
 export function generateKeyPair(): { privateKeyPem: string; publicKeyPem: string } {
-  // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import)
+  // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import).
+  // webpackIgnore: the live require is server-only; Node resolves the builtin at runtime.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require("node:crypto");
+  const crypto = require("crypto");
   const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
   return {
     privateKeyPem: privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
@@ -42,9 +43,10 @@ export function loadKeysFromEnv(): { privateKeyPem: string; publicKeyPem: string
 
 // raw 32-byte ed25519 public key = last 32 bytes of the SPKI DER
 export function publicKeyJwk(): { kty: "OKP"; crv: "Ed25519"; x: string } {
-  // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import)
+  // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import).
+  // webpackIgnore: server-only live require (Node resolves the builtin at runtime).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require("node:crypto");
+  const crypto = require("crypto");
   const { publicKeyPem } = loadKeysFromEnv();
   const der = crypto.createPublicKey(publicKeyPem).export({ type: "spki", format: "der" }) as Buffer;
   const raw = der.subarray(der.length - 32);
@@ -56,9 +58,10 @@ export function publicKeyJwk(): { kty: "OKP"; crv: "Ed25519"; x: string } {
 }
 
 export function keyFingerprint(): string {
-  // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import)
+  // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import).
+  // webpackIgnore: server-only live require (Node resolves the builtin at runtime).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require("node:crypto");
+  const crypto = require("crypto");
   const { publicKeyPem } = loadKeysFromEnv();
   return "sha256-" + crypto.createHash("sha256").update(publicKeyPem).digest("base64");
 }

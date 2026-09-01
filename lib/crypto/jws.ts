@@ -40,8 +40,10 @@ export async function signCredential(payload: object): Promise<string> {
   // (UnhandledSchemeError broke `next dev` for the whole team after MG2).
   // Lazy require keeps the same browser-safe design (server-only execution)
   // and matches the pattern already used in ./keys.ts.
+  // webpackIgnore: server-only live require; Node resolves the builtin at runtime and
+  // webpack skips it in client bundles (offline verify page imports this module).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require("node:crypto") as typeof import("node:crypto");
+  const crypto = require("crypto");
   const { loadKeysFromEnv } = await import("./keys");
   const { privateKeyPem } = loadKeysFromEnv();
   const header = { alg: "EdDSA", kid: KID, typ: "JWT" };

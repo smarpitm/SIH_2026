@@ -4,7 +4,8 @@ export const en: Record<string, string> = {
   "verdict.expiring": "Expiring Soon",
   "verdict.expired": "Expired Certificate",
   "verdict.revoked": "Certificate Revoked",
-  "verdict.tampered": "CHECK FAILED: Possible Fake",
+  // value aligned to the frozen DECISION DOC G6 grammar string (key set unchanged — N1 keys frozen)
+  "verdict.tampered": "CHECK FAILED — POSSIBLE FAKE",
   "verdict.notFound": "Certificate Not Found",
   "verify.title": "Verify Weighing & Measuring Instrument",
   "verify.scanHint": "Point camera at the certificate QR code",
