@@ -55,6 +55,7 @@ K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck +
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
 K14 Officer real flows         Kush      CODED (typecheck+lint+vitest green; LIVE smoke: /schedule/mine + checkin window guard) — manual check pending
 K5  Verify UI real wiring      Kush      CODED (typecheck + eslint green; vitest 12/12 incl. new G6 grammar + i18n fallback tests; i18n parity check green) — manual check pending
+K15 Admin + finishing touches  Kush      CODED (typecheck 0 errors; vitest 18/18; eslint clean on all touched files) — manual check pending
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -594,6 +595,41 @@ to keep one source of truth and avoid merge conflicts.
      WebCrypto signature verifies, kid matches "pramanam-2026-08-01", and jwk/kid matches
      /.well-known/pramanam-public-key exactly.
   All files lint clean (0 errors) and openapi:check 35/35 in sync.
+- K15 (Kush, branch kush): admin + finishing touches — UI paths only (no API/route files touched):
+  1. app/admin/dashboard/page.tsx (NEW) — real GET /dashboards/admin payload
+     { kpis: DashCounts, pendencyByDistrict, officerProductivity } (the old /admin page
+     had wrongly typed the whole payload as DashCounts): KPI grid reads dash.kpis;
+     district pendency table rendered only when pendencyByDistrict present (task's
+     "if payload includes it"); invite-user miniform → POST /api/v1/auth/invite
+     (MA5 SHIPPED the endpoint so NO ponytail hiding): name/email/role(LMO|GATC)/
+     district(DISTRICTS)/orgName, success banner shows returned tempPassword +
+     banner, Zod fieldErrors surfaced via zodFieldErrors. app/admin/page.tsx is now
+     a server redirect("/admin/dashboard") — single implementation, no dup KPI grid.
+     officerProductivity left unrendered (not in the task list — data still in payload).
+  2. components/export-url.ts (NEW, pure .ts) + components/export-buttons.tsx (NEW) —
+     ExportButtons used on /admin/dashboard + /trader: window.open per task spec, so
+     the browser applies the endpoint's Content-Disposition filename (instruments.csv
+     etc); preserves current page query string on top of entity+format=csv; loading
+     toast (aria-live) cleared on a fixed 2.5s delay (download completion is not
+     observable from the opener — ponytail note in file; upgrade path fetch+blob).
+     buildExportUrl unit-tested in components/export-buttons.test.ts (2 tests) —
+     lives in a .ts module because vitest cannot parse .tsx under tsconfig jsx:preserve.
+  3. Print CSS: app/globals.css @media print — @page A4 margin 14mm; header, footer,
+     .no-print hidden; body forced white/black; main padding/max-width reset; shadows
+     removed. app/verify/[certId] gains a no-print "Print certificate handout" button
+     and no-print on the typed-lookup card → printed page doubles as the certificate
+     handout. app/trader/instruments/[id]/page.tsx (NEW) — path was a 404 although
+     M7 search items link there: minimal instrument record card (GET /instruments/[id])
+     with Print button + Apply link, prints clean A4.
+  4. app/officer/page.tsx — now also fetches GET /dashboards/officer; consumes
+     todaySchedule.length ("Today's schedule: N" chip) + overdueCount (red/green
+     "Overdue: N" chip) ONLY when the payload includes them (optional chaining,
+     endpoint failure silently skipped).
+  5. Trader page: serial numbers now Link to /trader/instruments/[id] (matches the
+     M7 search item contract url).
+  VALIDATION: npm run typecheck 0 errors; vitest 18/18 (2 new export-url tests);
+  eslint clean on all touched files. NO route/API/frozen files touched.
+  Commit: feat(admin-ui): kpi exports print css.
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating

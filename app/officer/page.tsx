@@ -20,18 +20,24 @@ interface ScheduleJob {
   traderOrg: string | null;
 }
 
+// GET /dashboards/officer (MA4) — consumed if present, never required
+type OfficerDash = { todaySchedule?: unknown[]; overdueCount?: number } | null;
+
 export default function OfficerPage() {
   const [jobs, setJobs] = useState<ScheduleJob[]>([]);
   const [districts, setDistricts] = useState<Record<string, string>>({});
+  const [officerDash, setOfficerDash] = useState<OfficerDash>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api<ScheduleJob[]>("/api/v1/schedule/mine"),
       api<InstrumentDTO[]>("/api/v1/instruments"),
+      api<NonNullable<OfficerDash>>("/api/v1/dashboards/officer").catch(() => null),
     ])
-      .then(([mine, insts]) => {
+      .then(([mine, insts, d]) => {
         setJobs(mine);
+        setOfficerDash(d);
         // schedule/mine carries no district — resolve it via serial from the
         // jurisdiction-scoped instruments list (both are officer-scoped)
         const map: Record<string, string> = {};
@@ -125,6 +131,27 @@ export default function OfficerPage() {
             Your assigned field jobs — overdue pinned first
             {doneCount > 0 && ` · ${doneCount} completed`}
           </p>
+          {/* MA4 dashboard fields, shown only when the payload includes them */}
+          {officerDash && (
+            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+              {officerDash.todaySchedule && (
+                <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+                  Today&rsquo;s schedule: {officerDash.todaySchedule.length}
+                </span>
+              )}
+              {typeof officerDash.overdueCount === "number" && (
+                <span
+                  className={`rounded-full px-2.5 py-1 font-semibold ${
+                    officerDash.overdueCount > 0
+                      ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
+                  }`}
+                >
+                  Overdue: {officerDash.overdueCount}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

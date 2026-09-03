@@ -5,6 +5,7 @@ import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { CountdownRing } from "@/components/CountdownRing";
 import { api } from "@/components/api-client";
+import { ExportButtons } from "@/components/export-buttons";
 import type { DashCounts, InstrumentDTO, ApplicationDTO } from "@/packages/shared/types";
 
 // ponytail: no endpoint lists a trader's certificates yet (cert lookup route is
@@ -50,12 +51,16 @@ export default function TraderPage() {
             Manage your weighing &amp; measuring instruments, track validity, and submit verification applications.
           </p>
         </div>
-        <Link
-          href="/trader/instruments/new"
-          className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
-        >
-          + Add Instrument
-        </Link>
+        <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {/* K15: CSV exports (trader scope = own records) */}
+          <ExportButtons entities={["instruments", "applications", "certificates"]} />
+          <Link
+            href="/trader/instruments/new"
+            className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+          >
+            + Add Instrument
+          </Link>
+        </div>
       </div>
 
       {/* KPI Cards & Instrument Validity Ring Row */}
@@ -169,7 +174,9 @@ export default function TraderPage() {
                 return (
                   <tr key={ins.id} className="transition hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
                     <td className="px-5 py-3.5 font-mono font-semibold text-zinc-900 dark:text-white">
-                      {ins.serialNumber}
+                      <Link href={`/trader/instruments/${ins.id}`} className="hover:underline">
+                        {ins.serialNumber}
+                      </Link>
                     </td>
                     <td className="px-5 py-3.5 text-zinc-700 dark:text-zinc-300">
                       {ins.category}

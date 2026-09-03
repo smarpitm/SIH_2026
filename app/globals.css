@@ -25,3 +25,45 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Print (K15): nav/footer hidden, A4 clean output. /verify/[certId] printed
+ * doubles as the certificate handout. ponytail: on a dark-OS print the dark:
+ * card tokens survive (Tailwind media query) — upgrade path: print-scoped
+ * light palette only if demo QA actually hits it. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm;
+  }
+  header,
+  footer,
+  .no-print {
+    display: none !important;
+  }
+  html,
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  div,
+  article,
+  section,
+  table,
+  td,
+  th,
+  dl,
+  dd,
+  dt {
+    background-color: transparent !important;
+    color: #18181b !important;
+    border-color: #e4e4e7 !important;
+  }
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

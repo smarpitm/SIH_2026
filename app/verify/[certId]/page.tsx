@@ -61,9 +61,9 @@ export default function VerifyPage() {
     router.push(`/verify/${encodeURIComponent(typedId.trim())}`);
   }
 
-  // shared typed-ID fallback card (not-found branch + badge view)
+  // shared typed-ID fallback card (not-found branch + badge view) — never printed
   const lookupCard = (
-    <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="no-print rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
       <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
         {t("verify.typedFallback", "Search Another Certificate by Number")}
       </h2>
@@ -180,6 +180,17 @@ export default function VerifyPage() {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-6">
+      {/* K15: print doubles as the certificate handout (nav/footer/.no-print hidden via globals.css) */}
+      <div className="no-print text-right">
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="text-xs font-semibold text-zinc-500 underline hover:text-zinc-900 dark:hover:text-white"
+        >
+          🖨 Print certificate handout
+        </button>
+      </div>
+
       {/* G6 hero: colour verdict within 1.5s; icon + word accompany every colour */}
       <Badge
         verdict={badge.signatureValid ? badge.verdict : "CHECK_FAILED"}
