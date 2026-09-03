@@ -50,7 +50,7 @@ M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: t
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
 M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS + public-selftest 31/31 ALL PASS + S5 MANUAL CHECK (lib/search/manual-check.ts) ALL GATES GREEN on live pg (2026-09-01); typecheck+lint clean for M7 files.
-S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK GREEN (workers/expiry-manual-check.ts 10/10 gates, exit 0, live pg 2026-09-03; back-to-back rerun converges {flipped:0, reminders:0}); BullMQ repeatable 00:30 IST + ADMIN manual trigger; typecheck+lint green for touched files; openapi 36/36.
+S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; back-to-back rerun converges {flipped:0, reminders:0}); /verify badge automatic red verified LIVE on browser; BullMQ repeatable 00:30 IST + ADMIN manual trigger; typecheck+lint green; openapi 36/36.
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
@@ -79,6 +79,22 @@ Shared contracts + seed + context maintained by the primary author
 to keep one source of truth and avoid merge conflicts.
 
 == 7. RECENT CHANGES ==
+- S6-FIX (Smarpit, branch smarpit): repo-wide typecheck restored to 0 errors (2026-09-03).
+  Root cause: corrupted .prisma client in local node_modules — generated types
+  collapsed (keyof Prisma.TransactionClient was never; findMany results decayed
+  to any), producing 27 PHANTOM errors (TS7006/TS2339/TS2362) across Manav's
+  MA-suite files (lib/auth/allocation+transition, dashboards, schedule/mine,
+  reports, notifications, applications, instruments, auth/register, seed-10k).
+  Fix: targeted reinstall only (removed node_modules/.prisma, @prisma, prisma;
+  npm install; npx prisma generate) — zero source changes needed for those 27.
+  Real error the decay had been masking, fixed in workers/manual-check.ts:
+  User.district is string|null (schema) so createSeedCert's inspector param is
+  widened to district: string|null + coalesced (?? "Guntur"); also 6 eslint
+  errors cleaned (audit meta as any -> typed casts, unused cert2/cert3/sweep3
+  bindings dropped). typescript stays ^5 (5.8.3 pin tried during diagnosis was
+  reverted). Verified: npx tsc --noEmit = 0 errors repo-wide; eslint clean on
+  workers/*; manual-check.ts 16/16 PASS (exit 0) re-run post-fix;
+  workers/expiry-manual-check.ts ALL GATES GREEN re-run post-fix.
 - S6 (Smarpit, branch smarpit): PRD #6 validity tracking + PRD #7 automated
   reminders via BullMQ. Commit: feat(workers): expiry ladder reminders bullmq.
   1. workers/expiry-scan.ts (NEW) — runExpirySweep(): sweeps ALL certificates
@@ -631,7 +647,24 @@ to keep one source of truth and avoid merge conflicts.
      WebCrypto signature verifies, kid matches "pramanam-2026-08-01", and jwk/kid matches
      /.well-known/pramanam-public-key exactly.
   All files lint clean (0 errors) and openapi:check 35/35 in sync.
+- S6 MANUAL CHECK (workers/manual-check.ts, runnable via `npx tsx`):
+  All 4 verification gates (16 sub-gates) ALL PASS (exit 0) on live PostgreSQL (2026-09-03):
+  1. Past-Due Expiry & Automatic Red Badge: Seeded cert with validUntil = now - 1d; manual scan
+     via POST /api/v1/certificates/expiry/scan flips status to EXPIRED; AuditLog recorded
+     with actorKind system:bullmq; public verify route responds verdict: EXPIRED; live browser
+     renders red Hero Badge ("Expired Certificate", ✕ icon, red rose-600) WITHOUT redeployment
+     (verified via browser screenshot).
+  2. Expiring-Soon Crossing & Notification: Seeded cert with validUntil = now + 20d; scan flips
+     status to EXPIRING_SOON; exactly ONE REMINDER_T30 notification row inserted for owner.
+  3. Back-to-Back Idempotency: Running scan twice back-to-back produces { flipped: 0, reminders: 0 }
+     both sweeps; row diff shows exactly 0 duplicate audit rows and 0 duplicate reminder rows.
+  4. NEGATIVE Boundaries & Correction: Boundary cert (validUntil = now + 30d + 2h, daysTo = 31)
+     unaffected (status ACTIVE, zero flips); simulated forced SQL flip (ACTIVE -> EXPIRED) on a
+     T-20 cert is NOT healed by public read queries (remains EXPIRED in DB), and is corrected
+     to EXPIRING_SOON ONLY by the scanner's own logic with full audit trail.
+  All files lint clean (0 errors) and openapi:check 36/36 in sync.
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
 section 5 (STATE OF THE WORLD) and section 7 (RECENT CHANGES).
+
