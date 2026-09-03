@@ -50,6 +50,7 @@ M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: t
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
 M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS + public-selftest 31/31 ALL PASS + S5 MANUAL CHECK (lib/search/manual-check.ts) ALL GATES GREEN on live pg (2026-09-01); typecheck+lint clean for M7 files.
+S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK GREEN (workers/expiry-manual-check.ts 10/10 gates, exit 0, live pg 2026-09-03; back-to-back rerun converges {flipped:0, reminders:0}); BullMQ repeatable 00:30 IST + ADMIN manual trigger; typecheck+lint green for touched files; openapi 36/36.
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
@@ -78,6 +79,42 @@ Shared contracts + seed + context maintained by the primary author
 to keep one source of truth and avoid merge conflicts.
 
 == 7. RECENT CHANGES ==
+- S6 (Smarpit, branch smarpit): PRD #6 validity tracking + PRD #7 automated
+  reminders via BullMQ. Commit: feat(workers): expiry ladder reminders bullmq.
+  1. workers/expiry-scan.ts (NEW) — runExpirySweep(): sweeps ALL certificates
+     with status in (ACTIVE, EXPIRING_SOON); daysTo = validUntil - now;
+     ACTIVE→EXPIRING_SOON at daysTo<=30, EXPIRING_SOON→EXPIRED when
+     validUntil<now (EXPIRED wins over amber on the same sweep). DEVIATION
+     commented in-file: DECISION DOC T-90/T-7 ladder is reminder-FREQUENCY only
+     — statuses stay binary-windowed (T-30) for demo clarity. Idempotent BY
+     DESIGN: guarded UPDATE ... WHERE status=<expected> (rerun no-ops, no
+     duplicate audits/notifications); each flip -> AuditLog actorKind
+     "system:bullmq". Notifications exactly-once per crossing: insert guarded
+     by existing (kind, userId, title) — title deterministically embeds certId
+     (Notification has NO entityId column; schema FROZEN). REMINDER_T30 ->
+     instrument owner on T-30 crossing; kind "EXPIRED" (module-owned, kind is a
+     free String column) -> owner + EVERY district LMO on expiry crossing.
+  2. startExpiryQueue(): Queue "expiry-scan" + Worker; repeatable via BullMQ v6
+     upsertJobScheduler (JobsOptions.repeat was REMOVED in v6) pattern
+     "30 0 * * *" tz Asia/Kolkata; globalThis-cached (db.ts reflex) so dev hot-
+     reload cannot duplicate; skips gracefully when REDIS_URL unset (npm run
+     dev without redis never breaks) + error listeners so redis-down only logs.
+  3. workers/index.ts — startExpiryQueue() registered inside registerWorkers()
+     (try/catch belt; TODO(S6) removed). instrumentation.ts untouched.
+  4. POST /api/v1/certificates/expiry/scan (ADMIN, requireRole) — inline
+     single sweep, returns { flipped, reminders }; audits
+     certificates.expiry_scan; openapi.json path added (drift guard 36/36).
+  5. workers/expiry-manual-check.ts (npx tsx) — 10/10 gates GREEN exit 0 on
+     live pg (2026-09-03): T-30 flip + owner-only REMINDER_T30; EXPIRED flip +
+     owner+LMO fan-out; audit actorKind system:bullmq x2; rerun
+     {flipped:0, reminders:0}; no duplicate notes/audits. Synthetic EXPIRYCHK-
+     fixture fully deleted incl. LMO-fanout notes (cleanup matches by title —
+     fan-out addresses every district LMO, not just fixture users).
+  typecheck: 0 errors in touched files (27 PRE-EXISTING errors in Manav's
+  unmerged MA-suite files: lib/auth/allocation, lib/auth/transition,
+  app/api/v1/{applications,auth/register,dashboards/officer,instruments,
+  notifications,reports,schedule}, prisma/seed-10k). eslint green on all 4
+  touched files.
 - K12 (Kush, branch kush): replaced all mock auth flows with the real MA1 API — UI files,
   lib/store.ts, middleware.ts only (app/api/v1/auth/** and lib/auth/** untouched):
   1. lib/store.ts — accessToken in zustand MEMORY only; user persisted to localStorage
