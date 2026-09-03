@@ -50,7 +50,7 @@ M4 Scheduling + notifications  Manav     CODED + GREEN — e2e: CERT_ISSUED noti
 M5 Crypto keys/JWS/QR          Smarpit   CODED + GREEN — selftest ALL PASS; smoke asserts 3-segment payloadJws + signatureValid:true
 M6 Certificate issue + PDF     Smarpit   CODED + GREEN — issuance now live-verified END-TO-END over HTTP (was only selftested in-process; bundle-isolation bug found+fixed by K-sweep, see §7); pdf-selftest 14/14 + manual-check 21/21; print QA item 5 human-only (phone scan >=30cm)
 M7 Public verify + search       Smarpit   CODED + GREEN — badge verdict VALID + 5 anchors asserted in smoke; search-selftest 29/29 + public-selftest 31/31 + S5 MANUAL CHECK all green (2026-09-01); /verify page renders live
-S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; rerun converges {flipped:0, reminders:0}); BullMQ repeatable 00:30 IST + ADMIN trigger; openapi 36/36
+S6 Expiry ladder + reminders   Smarpit   MERGED to main — CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; rerun converges {flipped:0, reminders:0}); BullMQ repeatable 00:30 IST + ADMIN trigger; openapi 36/36
 M8 UI polish + i18n            Kush/Nish CODED + GREEN — loading states on every fetch button + empty states swept; admin dashboard loading/error sentence added (K-sweep 2026-09-03); i18n parity green
 K12 Real auth UI + guards      Kush      CODED + GREEN (real login/register/refresh in use; e2e green)
 K13 Trader real flows          Kush      CODED + GREEN — full trader write chain now covered by tests/smoke.spec.ts (fresh DB, 2026-09-03)
@@ -747,6 +747,7 @@ to keep one source of truth and avoid merge conflicts.
   VALIDATION: npm run typecheck 0 errors; vitest 18/18; next lint 0 errors/warnings;
   all manual checks verified. NO route/API/frozen files touched.
   Commit: feat(admin-ui): kpi exports print css.
+- S6 merged to main by Cline (2026-09-03) — MG3 gate COMPLETE (MA4 + S5 + S6).
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
