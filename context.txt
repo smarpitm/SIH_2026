@@ -43,20 +43,21 @@ sign-off. FROZEN paths:
 == 5. STATE OF THE WORLD ==
 Phase                           Owner     STATUS     Commands
 --------------------------------------------------------------
-M1 Auth + session + RBAC       Manav     MA1 CODED + MANUAL CHECK GREEN (branch manav, merge pending)
-M2 Instrument/application/tr   Manav     MA2 CODED (typecheck+lint green) — manual check pending
-M3 Officer queue + inspection  Manav     MA3 CODED + MERGED (MG1 complete) — feat(api): scheduling allocation inspection pass-hook
-M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: typecheck+lint+openapi:check green) — merge pending
-M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
-M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
-M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS + public-selftest 31/31 ALL PASS + S5 MANUAL CHECK (lib/search/manual-check.ts) ALL GATES GREEN on live pg (2026-09-01); typecheck+lint clean for M7 files.
-S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; back-to-back rerun converges {flipped:0, reminders:0}); /verify badge automatic red verified LIVE on browser; BullMQ repeatable 00:30 IST + ADMIN manual trigger; typecheck+lint green; openapi 36/36.
-M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
-K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
-K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
-K14 Officer real flows         Kush      CODED (typecheck+lint+vitest green; LIVE smoke: /schedule/mine + checkin window guard) — manual check pending
-K5  Verify UI real wiring      Kush      CODED (typecheck + eslint green; vitest 12/12 incl. new G6 grammar + i18n fallback tests; i18n parity check green) — manual check pending
-K15 Admin + finishing touches  Kush      CODED (typecheck 0 errors; vitest 18/18; eslint clean on all touched files) — manual check pending
+M1 Auth + session + RBAC       Manav     CODED + GREEN — merged into kush working tree; every flow runs on it; e2e login/register green (tests/smoke+negative 2026-09-03)
+M2 Instrument/application/upl  Manav     CODED + GREEN — e2e: multipart instrument create with photo proof, apply NEW, pay RCP-xxxx, submit → auto-alloc all green on fresh DB (tests/smoke.spec.ts 2026-09-03)
+M3 Officer queue + inspection  Manav     CODED + GREEN — e2e: /schedule/mine, check-in window, multipart PASS → certificate (tests/smoke.spec.ts); PASS-hook wiring bug fixed by K-sweep (see §7)
+M4 Scheduling + notifications  Manav     CODED + GREEN — e2e: CERT_ISSUED notification row asserted in smoke; MA5 invites+bulk-seed typecheck+lint+openapi:check green; /schedule/allocate still K0 stub (chat issue, non-blocking)
+M5 Crypto keys/JWS/QR          Smarpit   CODED + GREEN — selftest ALL PASS; smoke asserts 3-segment payloadJws + signatureValid:true
+M6 Certificate issue + PDF     Smarpit   CODED + GREEN — issuance now live-verified END-TO-END over HTTP (was only selftested in-process; bundle-isolation bug found+fixed by K-sweep, see §7); pdf-selftest 14/14 + manual-check 21/21; print QA item 5 human-only (phone scan >=30cm)
+M7 Public verify + search       Smarpit   CODED + GREEN — badge verdict VALID + 5 anchors asserted in smoke; search-selftest 29/29 + public-selftest 31/31 + S5 MANUAL CHECK all green (2026-09-01); /verify page renders live
+S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; rerun converges {flipped:0, reminders:0}); BullMQ repeatable 00:30 IST + ADMIN trigger; openapi 36/36
+M8 UI polish + i18n            Kush/Nish CODED + GREEN — loading states on every fetch button + empty states swept; admin dashboard loading/error sentence added (K-sweep 2026-09-03); i18n parity green
+K12 Real auth UI + guards      Kush      CODED + GREEN (real login/register/refresh in use; e2e green)
+K13 Trader real flows          Kush      CODED + GREEN — full trader write chain now covered by tests/smoke.spec.ts (fresh DB, 2026-09-03)
+K14 Officer real flows         Kush      CODED + GREEN — officer check-in + multipart PASS submit now live-exercised end-to-end by tests/smoke.spec.ts (the previously untested full multipart submit)
+K5  Verify UI real wiring      Kush      CODED + GREEN (vitest 12/12 incl. G6 grammar + i18n fallback; /verify renders live; tampered-paste verdict covered by components/offline-verify.test.ts)
+K15 Admin + finishing touches  Kush      CODED + GREEN (vitest 18/18 + e2e 8/8; admin dashboard loading/error sentence added by K-sweep; /admin KPIs nonzero verified on fresh DB)
+E2E demo sweep                 Kush      DONE 2026-09-03 — fresh DB (db:push --force-reset + db:seed), PRD §14 path green end-to-end, tests/smoke+negative 26/26 total, see §7
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -80,6 +81,57 @@ Shared contracts + seed + context maintained by the primary author
 to keep one source of truth and avoid merge conflicts.
 
 == 7. RECENT CHANGES ==
+- DEMO-READY SWEEP DONE (Kush, branch kush, 2026-09-03): fresh-DB walk of the full PRD §14
+  demo path — npm run db:push --force-reset && npm run db:seed, then every step over the live
+  dev server via plain-fetch vitest suites. Result: GREEN end-to-end.
+  1. tests/ (NEW): helpers.ts (envelope fetch, login, bounded `until` polling — no sleeps),
+     smoke.spec.ts (5 tests): login seeded trader ravi → multipart instrument create WITH photo
+     proof (1px PNG → MinIO) → apply NEW (preferredDate=today so the auto-allocated slot is
+     inside the -2h/+8h check-in window) → pay RCP-xxxx → submit → auto-allocated SCHEDULED →
+     lmo.guntur /schedule/mine → checkin → multipart inspection PASS → poll DB: Certificate row
+     ACTIVE, certId PRM-CERT-2026-00001, payloadJws 3 segments, app PASSED, CERT_ISSUED
+     notification contains certId → public badge verdict VALID + signatureValid:true + exactly
+     5 anchors. negative.spec.ts (3 tests), exact { ok:false, error:{code,...} } envelopes:
+     cross-district fetch (lmo.krishna GET /applications/{gunturId}) → 403 JURISDICTION_FORBIDDEN
+     { required: "district:Guntur", have: "district:Krishna" } (NOTE: the /applications LIST is
+     district-scoped so it can never 403 — the DETAIL route is the jurisdiction surface);
+     forced issue on a not-PASSED app via POST /certificates/issue (the API's only status-forcing
+     surface; there is no PATCH that mutates status) → 409 INVALID_STATE_TRANSITION
+     { to: "CERT_ISSUED" } (SUBMITTED is transient — submit auto-allocates straight to
+     SCHEDULED, so `from` is SCHEDULED); text bytes renamed proof.jpg → 415
+     UNSUPPORTED_MEDIA_TYPE (magic-byte sniff). Tests need the dev server running
+     (PRAMANAM_TEST_URL overrides localhost:3000) and fail with an actionable message otherwise.
+  2. DEMO-BLOCKING BUG FOUND + FIXED (app/api/v1/inspections/route.ts — Manav/Smarpit paths,
+     announced): Next.js compiles instrumentation.ts as its OWN server bundle, so the PASS
+     handler registered there lived in a DIFFERENT lib/hooks module instance than the one
+     bundled with the /inspections route — inspection PASS ran with ZERO handlers and silently
+     issued NO certificate (no cert.issued AND no cert.issue_failed audits; the full multipart
+     PASS→issue chain had never been live-exercised). Fix: call registerWorkers() at module
+     scope of the route (idempotent; startExpiryQueue is globalThis-cached so no double queue).
+     DEVIATION from the "routes never import workers directly" note — forced by bundle
+     isolation; instrumentation.ts registration kept as harmless second belt.
+  3. CHAT ISSUES (others' paths, one-liners):
+     - Manav: POST /schedule/allocate is still the K0 stub returning MOCK.schedules[0] — demo
+       path uses auto-allocation inside submit, so non-blocking, but it will return mock data
+       if anyone calls it.
+     - Manav: Application status never flips PASSED→CERT_ISSUED (lib/crypto/issue.ts
+       intentionally doesn't; book says owner-side flip needed) — cert row + badge are the demo
+       truth; smoke asserts PASSED.
+     - Smarpit: public/certificates/lookup matches certId/serial EXACTLY (no contains) — fine
+       per contract, just don't demo it with a partial serial.
+  4. UI polish (K15 gap): app/admin/dashboard/page.tsx — dashboard fetch no longer silently
+     swallows errors: amber error sentence ("Couldn't load the dashboard — sign in as an ADMIN
+     and reload the page.") + "Loading KPIs…" state. Everything else already had loading +
+     empty states (officer queue, trader lists, notification bell, verify pages, export
+     buttons, login/register/apply/officer-job submit buttons).
+  5. README: added "Architecture in one paragraph" section, force-reset command, and
+     "Demo walkthrough (PRD §14) and end-to-end tests" runbook (fresh DB → npm run dev →
+     npm test; what each suite asserts).
+  6. VALIDATION: npm run typecheck 0 errors repo-wide; eslint clean on touched files; vitest
+     26/26 (18 pre-existing + 8 new); /verify/PRM-CERT-2026-00001 renders 200; register +
+     admin KPIs nonzero (verifiedThisMonth 1, officerProductivity LMO Guntur 2) verified live
+     on the fresh DB. Tampered-paste TAMPERED verdict is client-side offline verify — covered
+     by components/offline-verify.test.ts + lib/crypto tamper selftests.
 - S6-FIX (Smarpit, branch smarpit): repo-wide typecheck restored to 0 errors (2026-09-03).
   Root cause: corrupted .prisma client in local node_modules — generated types
   collapsed (keyof Prisma.TransactionClient was never; findMany results decayed

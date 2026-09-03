@@ -38,6 +38,19 @@ Trader                  PRAMANAM                        LMO / GATC             P
 4. On PASS, a certificate hook issues a signed certificate and notifies the trader. Traders and
    the public verify certificates by ID, QR, or sticker — the signature check runs in the browser.
 
+## Architecture in one paragraph
+
+PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: React client pages in
+`app/**/page.tsx` talk to versioned REST route handlers under `app/api/v1`, all answering one JSON
+envelope (`{ ok, data | error }`, closed error-code set). Route handlers share server libraries —
+`lib/auth` (JWT sessions, RBAC, jurisdiction guards, state-machine transitions, audit log),
+`lib/uploads` (MinIO multipart with magic-byte sniffing), `lib/crypto` (Ed25519 JWS signing, QR
+envelopes, certificate issuance), and `lib/pdf` — over PostgreSQL via Prisma (`prisma/schema.prisma`
+is frozen). Cross-cutting reactions go through the frozen `emitInspectionPass` hook into the worker
+registry (`workers/`), which also runs the nightly BullMQ expiry ladder; frozen shared contracts
+(`packages/shared`) keep UI, API, and seed in lock-step, with an OpenAPI drift guard failing the
+build when they diverge.
+
 ---
 ## Tech stack
 
@@ -108,6 +121,33 @@ All passwords are `Passw0rd!demo`.
 | `npm run db:push` | Push Prisma schema to the database |
 | `npm run db:seed` | Idempotent seed, prints `seeded already` on rerun |
 | `npm run openapi:check` | Drift guard: OpenAPI path count must equal live route file count |
+
+To reset to a pristine demo state (wipes all data):
+
+```bash
+npx prisma db push --force-reset && npm run db:seed
+```
+
+### Demo walkthrough (PRD §14) and end-to-end tests
+
+The demo-critical path is covered by HTTP-level vitest suites — plain `fetch`, deterministic
+(no sleeps; bounded polling). They run against a **live dev server** on `http://localhost:3000`
+(override with `PRAMANAM_TEST_URL`):
+
+```bash
+npx prisma db push --force-reset && npm run db:seed   # fresh DB
+npm run dev                                            # terminal 1
+npm test                                               # terminal 2
+```
+
+- `tests/smoke.spec.ts` — the PRD §14 happy path: login seeded trader → create instrument with a
+  photo proof → apply NEW → pay → submit (auto-allocates) → officer check-in → inspection PASS →
+  asserts the Certificate DB row is ACTIVE with a 3-segment JWS → asserts the public badge verdict
+  is VALID with a passing signature and exactly 5 anchors.
+- `tests/negative.spec.ts` — the negative battery, asserting exact error envelopes: cross-district
+  LMO fetch → `JURISDICTION_FORBIDDEN`, forced issue on a not-PASSED application →
+  `INVALID_STATE_TRANSITION { from, to: "CERT_ISSUED" }`, and a text file renamed `.jpg` →
+  `UNSUPPORTED_MEDIA_TYPE` (magic-byte sniff).
 
 ---
 ## Application state machine
