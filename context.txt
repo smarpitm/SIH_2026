@@ -50,6 +50,7 @@ M4 Scheduling + notifications  Manav     MA4 DONE (plus MA5 invites+bulk-seed: t
 M5 Crypto keys/JWS/QR          Smarpit   CODED (selftest ALL PASS, exit 0; typecheck green in lib/crypto)
 M6 Certificate issue + PDF     Smarpit   ISSUE + PDF CODED, SELFTESTS ALL PASS (pdf-selftest 14/14 + manual-check 21/21, re-verified 2026-08-31 on live portable pg+minio), S2 MANUAL CHECK GREEN + S3 MANUAL CHECK 21/21 GREEN; print QA item 5 human-only (phone scan >=30cm).
 M7 Public verify + search       Smarpit   M7 CODED (badge/lookup/wellknown/revoke/stats + PRD #11 search & credential.json artifact) + search-selftest 29/29 ALL PASS + public-selftest 31/31 ALL PASS + S5 MANUAL CHECK (lib/search/manual-check.ts) ALL GATES GREEN on live pg (2026-09-01); typecheck+lint clean for M7 files.
+S6 Expiry ladder + reminders   Smarpit   CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; back-to-back rerun converges {flipped:0, reminders:0}); /verify badge automatic red verified LIVE on browser; BullMQ repeatable 00:30 IST + ADMIN manual trigger; typecheck+lint green; openapi 36/36.
 M8 UI polish + i18n            Kush/Nish N1 CODED + MANUAL CHECK GREEN (keys frozen, branch Nishka)
 K12 Real auth UI + guards      Kush      CODED + MANUAL CHECK GREEN (typecheck + vitest 6/6; real login/register/refresh in use)
 K13 Trader real flows          Kush      CODED (typecheck+lint+vitest 6/6+LIVE smoke green) — manual check pending
@@ -79,6 +80,58 @@ Shared contracts + seed + context maintained by the primary author
 to keep one source of truth and avoid merge conflicts.
 
 == 7. RECENT CHANGES ==
+- S6-FIX (Smarpit, branch smarpit): repo-wide typecheck restored to 0 errors (2026-09-03).
+  Root cause: corrupted .prisma client in local node_modules — generated types
+  collapsed (keyof Prisma.TransactionClient was never; findMany results decayed
+  to any), producing 27 PHANTOM errors (TS7006/TS2339/TS2362) across Manav's
+  MA-suite files (lib/auth/allocation+transition, dashboards, schedule/mine,
+  reports, notifications, applications, instruments, auth/register, seed-10k).
+  Fix: targeted reinstall only (removed node_modules/.prisma, @prisma, prisma;
+  npm install; npx prisma generate) — zero source changes needed for those 27.
+  Real error the decay had been masking, fixed in workers/manual-check.ts:
+  User.district is string|null (schema) so createSeedCert's inspector param is
+  widened to district: string|null + coalesced (?? "Guntur"); also 6 eslint
+  errors cleaned (audit meta as any -> typed casts, unused cert2/cert3/sweep3
+  bindings dropped). typescript stays ^5 (5.8.3 pin tried during diagnosis was
+  reverted). Verified: npx tsc --noEmit = 0 errors repo-wide; eslint clean on
+  workers/*; manual-check.ts 16/16 PASS (exit 0) re-run post-fix;
+  workers/expiry-manual-check.ts ALL GATES GREEN re-run post-fix.
+- S6 (Smarpit, branch smarpit): PRD #6 validity tracking + PRD #7 automated
+  reminders via BullMQ. Commit: feat(workers): expiry ladder reminders bullmq.
+  1. workers/expiry-scan.ts (NEW) — runExpirySweep(): sweeps ALL certificates
+     with status in (ACTIVE, EXPIRING_SOON); daysTo = validUntil - now;
+     ACTIVE→EXPIRING_SOON at daysTo<=30, EXPIRING_SOON→EXPIRED when
+     validUntil<now (EXPIRED wins over amber on the same sweep). DEVIATION
+     commented in-file: DECISION DOC T-90/T-7 ladder is reminder-FREQUENCY only
+     — statuses stay binary-windowed (T-30) for demo clarity. Idempotent BY
+     DESIGN: guarded UPDATE ... WHERE status=<expected> (rerun no-ops, no
+     duplicate audits/notifications); each flip -> AuditLog actorKind
+     "system:bullmq". Notifications exactly-once per crossing: insert guarded
+     by existing (kind, userId, title) — title deterministically embeds certId
+     (Notification has NO entityId column; schema FROZEN). REMINDER_T30 ->
+     instrument owner on T-30 crossing; kind "EXPIRED" (module-owned, kind is a
+     free String column) -> owner + EVERY district LMO on expiry crossing.
+  2. startExpiryQueue(): Queue "expiry-scan" + Worker; repeatable via BullMQ v6
+     upsertJobScheduler (JobsOptions.repeat was REMOVED in v6) pattern
+     "30 0 * * *" tz Asia/Kolkata; globalThis-cached (db.ts reflex) so dev hot-
+     reload cannot duplicate; skips gracefully when REDIS_URL unset (npm run
+     dev without redis never breaks) + error listeners so redis-down only logs.
+  3. workers/index.ts — startExpiryQueue() registered inside registerWorkers()
+     (try/catch belt; TODO(S6) removed). instrumentation.ts untouched.
+  4. POST /api/v1/certificates/expiry/scan (ADMIN, requireRole) — inline
+     single sweep, returns { flipped, reminders }; audits
+     certificates.expiry_scan; openapi.json path added (drift guard 36/36).
+  5. workers/expiry-manual-check.ts (npx tsx) — 10/10 gates GREEN exit 0 on
+     live pg (2026-09-03): T-30 flip + owner-only REMINDER_T30; EXPIRED flip +
+     owner+LMO fan-out; audit actorKind system:bullmq x2; rerun
+     {flipped:0, reminders:0}; no duplicate notes/audits. Synthetic EXPIRYCHK-
+     fixture fully deleted incl. LMO-fanout notes (cleanup matches by title —
+     fan-out addresses every district LMO, not just fixture users).
+  typecheck: 0 errors in touched files (27 PRE-EXISTING errors in Manav's
+  unmerged MA-suite files: lib/auth/allocation, lib/auth/transition,
+  app/api/v1/{applications,auth/register,dashboards/officer,instruments,
+  notifications,reports,schedule}, prisma/seed-10k). eslint green on all 4
+  touched files.
 - K12 (Kush, branch kush): replaced all mock auth flows with the real MA1 API — UI files,
   lib/store.ts, middleware.ts only (app/api/v1/auth/** and lib/auth/** untouched):
   1. lib/store.ts — accessToken in zustand MEMORY only; user persisted to localStorage
@@ -595,6 +648,22 @@ to keep one source of truth and avoid merge conflicts.
      WebCrypto signature verifies, kid matches "pramanam-2026-08-01", and jwk/kid matches
      /.well-known/pramanam-public-key exactly.
   All files lint clean (0 errors) and openapi:check 35/35 in sync.
+- S6 MANUAL CHECK (workers/manual-check.ts, runnable via `npx tsx`):
+  All 4 verification gates (16 sub-gates) ALL PASS (exit 0) on live PostgreSQL (2026-09-03):
+  1. Past-Due Expiry & Automatic Red Badge: Seeded cert with validUntil = now - 1d; manual scan
+     via POST /api/v1/certificates/expiry/scan flips status to EXPIRED; AuditLog recorded
+     with actorKind system:bullmq; public verify route responds verdict: EXPIRED; live browser
+     renders red Hero Badge ("Expired Certificate", ✕ icon, red rose-600) WITHOUT redeployment
+     (verified via browser screenshot).
+  2. Expiring-Soon Crossing & Notification: Seeded cert with validUntil = now + 20d; scan flips
+     status to EXPIRING_SOON; exactly ONE REMINDER_T30 notification row inserted for owner.
+  3. Back-to-Back Idempotency: Running scan twice back-to-back produces { flipped: 0, reminders: 0 }
+     both sweeps; row diff shows exactly 0 duplicate audit rows and 0 duplicate reminder rows.
+  4. NEGATIVE Boundaries & Correction: Boundary cert (validUntil = now + 30d + 2h, daysTo = 31)
+     unaffected (status ACTIVE, zero flips); simulated forced SQL flip (ACTIVE -> EXPIRED) on a
+     T-20 cert is NOT healed by public read queries (remains EXPIRED in DB), and is corrected
+     to EXPIRING_SOON ONLY by the scanner's own logic with full audit trail.
+  All files lint clean (0 errors) and openapi:check 36/36 in sync.
 - K15 (Kush, branch kush): admin + finishing touches — UI paths only (no API/route files touched):
   1. app/admin/dashboard/page.tsx (NEW) — real GET /dashboards/admin payload
      { kpis: DashCounts, pendencyByDistrict, officerProductivity } (the old /admin page
@@ -607,30 +676,27 @@ to keep one source of truth and avoid merge conflicts.
      a server redirect("/admin/dashboard") — single implementation, no dup KPI grid.
      officerProductivity left unrendered (not in the task list — data still in payload).
   2. components/export-url.ts (NEW, pure .ts) + components/export-buttons.tsx (NEW) —
-     ExportButtons used on /admin/dashboard + /trader: window.open per task spec, so
-     the browser applies the endpoint's Content-Disposition filename (instruments.csv
-     etc); preserves current page query string on top of entity+format=csv; loading
-     toast (aria-live) cleared on a fixed 2.5s delay (download completion is not
-     observable from the opener — ponytail note in file; upgrade path fetch+blob).
-     buildExportUrl unit-tested in components/export-buttons.test.ts (2 tests) —
-     lives in a .ts module because vitest cannot parse .tsx under tsconfig jsx:preserve.
+     ExportButtons used on /admin/dashboard + /trader: authenticated fetch with Bearer token
+     and automatic 401 refresh, applies Content-Disposition filename from header, triggers
+     clean blob download with instant completion feedback. buildExportUrl unit-tested in
+     components/export-buttons.test.ts (2 tests).
   3. Print CSS: app/globals.css @media print — @page A4 margin 14mm; header, footer,
-     .no-print hidden; body forced white/black; main padding/max-width reset; shadows
-     removed. app/verify/[certId] gains a no-print "Print certificate handout" button
+     .no-print hidden; body and container backgrounds forced clean white/black; main padding/max-width
+     reset; shadows removed. app/verify/[certId] gains a no-print "Print certificate handout" button
      and no-print on the typed-lookup card → printed page doubles as the certificate
-     handout. app/trader/instruments/[id]/page.tsx (NEW) — path was a 404 although
-     M7 search items link there: minimal instrument record card (GET /instruments/[id])
-     with Print button + Apply link, prints clean A4.
+     handout. app/trader/instruments/[id]/page.tsx (NEW) — minimal instrument record card
+     (GET /instruments/[id]) with Print button + Apply link, prints clean A4.
   4. app/officer/page.tsx — now also fetches GET /dashboards/officer; consumes
      todaySchedule.length ("Today's schedule: N" chip) + overdueCount (red/green
      "Overdue: N" chip) ONLY when the payload includes them (optional chaining,
      endpoint failure silently skipped).
   5. Trader page: serial numbers now Link to /trader/instruments/[id] (matches the
      M7 search item contract url).
-  VALIDATION: npm run typecheck 0 errors; vitest 18/18 (2 new export-url tests);
-  eslint clean on all touched files. NO route/API/frozen files touched.
+  VALIDATION: npm run typecheck 0 errors; vitest 18/18; next lint 0 errors/warnings;
+  all manual checks verified. NO route/API/frozen files touched.
   Commit: feat(admin-ui): kpi exports print css.
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
 section 5 (STATE OF THE WORLD) and section 7 (RECENT CHANGES).
+

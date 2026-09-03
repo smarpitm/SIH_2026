@@ -91,6 +91,9 @@
     "/certificates/issue": {
       "post": { "tags": ["certificates"], "summary": "Issue certificate (admin/manual; hook normally fires on PASS)", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "400": { "$ref": "#/components/responses/BadRequest" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
     },
+    "/certificates/expiry/scan": {
+      "post": { "tags": ["certificates"], "summary": "Manual expiry sweep (ADMIN): inline ladder run, returns { flipped, reminders }", "security": [{ "bearerAuth": [] }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "403": { "$ref": "#/components/responses/Forbidden" } } }
+    },
     "/certificates/{id}": {
       "get": { "tags": ["certificates"], "summary": "Get certificate", "security": [{ "bearerAuth": [] }], "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }], "responses": { "200": { "$ref": "#/components/responses/Ok" }, "401": { "$ref": "#/components/responses/Unauthorized" }, "404": { "$ref": "#/components/responses/NotFound" } } }
     },
