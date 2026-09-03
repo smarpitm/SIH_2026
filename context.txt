@@ -747,7 +747,7 @@ to keep one source of truth and avoid merge conflicts.
   VALIDATION: npm run typecheck 0 errors; vitest 18/18; next lint 0 errors/warnings;
   all manual checks verified. NO route/API/frozen files touched.
   Commit: feat(admin-ui): kpi exports print css.
-- S6 merged to main by Cline (2026-09-03) — MG3 gate COMPLETE (MA4 + S5 + S6).
+- S6 merged to main (2026-09-03) — MG3 gate COMPLETE (MA4 + S5 + S6).
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
