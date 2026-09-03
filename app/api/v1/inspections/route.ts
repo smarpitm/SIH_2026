@@ -9,6 +9,17 @@ import { audit } from "@/lib/auth/audit";
 import { emitInspectionPass } from "@/lib/hooks";
 import { OBSERVATION_CONFIG } from "@/packages/shared/constants";
 import { storeUploads, filesFromForm, UnsupportedMediaTypeError } from "@/lib/uploads/multipart";
+import { registerWorkers } from "@/workers/index";
+
+// DEMO-SWEEP FIX (branch kush): Next.js compiles instrumentation.ts as its OWN
+// server bundle, so the pass handler it registers lives in a different lib/hooks
+// module instance than the one bundled with THIS route — inspection PASS ran with
+// ZERO handlers and silently issued no certificate (found by tests/smoke.spec.ts).
+// registerWorkers() is idempotent and startExpiryQueue() is globalThis-cached, so
+// calling it here (same bundle as emitInspectionPass) is the minimal safe wiring.
+// Deviation from the "routes never import workers directly" note — announced in
+// context.txt §7 for Smarpit/Manav.
+registerWorkers();
 
 // book MA3 item 6 — POST /inspections (assigned officer; app must be CHECKED_IN)
 const DEFAULT_KEYS = OBSERVATION_CONFIG.default.map((o) => o.key);

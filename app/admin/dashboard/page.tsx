@@ -26,6 +26,7 @@ const inputCls =
 
 export default function AdminDashboardPage() {
   const [dash, setDash] = useState<AdminDash | null>(null);
+  const [dashError, setDashError] = useState(false);
 
   // invite-user miniform (MA5 item 1: POST /auth/invite, ADMIN only)
   const [invite, setInvite] = useState<{ name: string; email: string; role: string; district: string; orgName: string }>({
@@ -41,7 +42,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     api<AdminDash>("/api/v1/dashboards/admin")
       .then(setDash)
-      .catch(() => undefined);
+      .catch(() => setDashError(true));
   }, []);
 
   async function submitInvite(e: FormEvent) {
@@ -79,6 +80,21 @@ export default function AdminDashboardPage() {
           State-wide Legal Metrology verification throughput, SLA compliance metrics, and district oversight.
         </p>
       </div>
+
+      {/* Loading / error state for the dashboard fetch (one sentence each) */}
+      {dashError && (
+        <div
+          className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+          role="status"
+        >
+          Couldn&rsquo;t load the dashboard — sign in as an ADMIN and reload the page.
+        </div>
+      )}
+      {!dash && !dashError && (
+        <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
+          Loading KPIs…
+        </div>
+      )}
 
       {/* KPI Metric Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
