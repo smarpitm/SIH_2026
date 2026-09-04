@@ -46,7 +46,7 @@ Phase                           Owner     STATUS     Commands
 M1 Auth + session + RBAC       Manav     CODED + GREEN — merged into kush working tree; every flow runs on it; e2e login/register green (tests/smoke+negative 2026-09-03)
 M2 Instrument/application/upl  Manav     CODED + GREEN — e2e: multipart instrument create with photo proof, apply NEW, pay RCP-xxxx, submit → auto-alloc all green on fresh DB (tests/smoke.spec.ts 2026-09-03)
 M3 Officer queue + inspection  Manav     CODED + GREEN — e2e: /schedule/mine, check-in window, multipart PASS → certificate (tests/smoke.spec.ts); PASS-hook wiring bug fixed by K-sweep (see §7)
-M4 Scheduling + notifications  Manav     CODED + GREEN — e2e: CERT_ISSUED notification row asserted in smoke; MA5 invites+bulk-seed typecheck+lint+openapi:check green; /schedule/allocate still K0 stub (chat issue, non-blocking)
+M4 Scheduling + notifications  Manav     CODED + GREEN — e2e: CERT_ISSUED notification row asserted in smoke; MA5 invites+bulk-seed typecheck+lint+openapi:check green; /schedule/allocate real endpoint live (MAV1 2026-09-04, see §7)
 M5 Crypto keys/JWS/QR          Smarpit   CODED + GREEN — selftest ALL PASS; smoke asserts 3-segment payloadJws + signatureValid:true
 M6 Certificate issue + PDF     Smarpit   CODED + GREEN — issuance now live-verified END-TO-END over HTTP (was only selftested in-process; bundle-isolation bug found+fixed by K-sweep, see §7); pdf-selftest 14/14 + manual-check 21/21; print QA item 5 human-only (phone scan >=30cm)
 M7 Public verify + search       Smarpit   CODED + GREEN — badge verdict VALID + 5 anchors asserted in smoke; search-selftest 29/29 + public-selftest 31/31 + S5 MANUAL CHECK all green (2026-09-01); /verify page renders live
@@ -112,9 +112,9 @@ to keep one source of truth and avoid merge conflicts.
      DEVIATION from the "routes never import workers directly" note — forced by bundle
      isolation; instrumentation.ts registration kept as harmless second belt.
   3. CHAT ISSUES (others' paths, one-liners):
-     - Manav: POST /schedule/allocate is still the K0 stub returning MOCK.schedules[0] — demo
-       path uses auto-allocation inside submit, so non-blocking, but it will return mock data
-       if anyone calls it.
+     - Manav: POST /schedule/allocate is still the K0 stub returning MOCK.schedules[0] —
+       RESOLVED by MAV1 (Manav, 2026-09-04, see §7 log): real allocator endpoint now live,
+       reusing submit's exact allocation logic; no MOCK import remains.
      - Manav: Application status never flips PASSED→CERT_ISSUED — RESOLVED by
        SMV1 (Smarpit, 2026-09-04, see §7 log): workers/index.ts performs the
        flip after successful issuance (applyTransition + app.cert_issued
@@ -794,6 +794,43 @@ to keep one source of truth and avoid merge conflicts.
      INVALID_STATE_TRANSITION); public badge verdict VALID; trader UI detail
      page as ravi@demo.in shows the CERT_ISSUED chip highlighted in the
      STATUS TIMELINE (Playwright screenshot check).
+- MAV1 (Manav, branch manav): replace the /schedule/allocate K0 mock stub with
+  the real allocator endpoint — closes the last K7 chat issue (§7 item 3,
+  above). Commit: fix(api): real schedule allocate endpoint (replaces K0 stub).
+  1. app/api/v1/schedule/allocate/route.ts — no MOCK import remains. REUSES
+     submit's exact allocation logic (no new logic): pickAllocationOfficer(
+     instrument.district), scheduledFor = preferredDate ?? +7d, db.schedule
+     .create with the same field set. Flow: getSession + requireRole(ADMIN,
+     LMO, GATC) -> Zod { applicationId } -> application + instrument district
+     (missing -> NOT_FOUND) -> assertJurisdiction (ADMIN passes anywhere) ->
+     status must be SUBMITTED or SCHEDULED else jsonErr
+     INVALID_STATE_TRANSITION details { from, to: "SCHEDULED" } EXACT shape ->
+     officer null -> jsonErr INTERNAL "no officer in district" (same message
+     as submit). RETURN shape = /schedule/mine's schedule DTO EXACTLY (single
+     item: id, applicationId, assigneeName [real officer name], assigneeKind,
+     scheduledFor ISO, rescheduleCount, status, overdue, instrumentCategory,
+     instrumentSerial, traderName, traderOrg).
+  2. Reassignment path: Schedule.applicationId is UNIQUE, so an existing
+     schedule row is UPDATED in place (assigneeId/assigneeKind/scheduledFor)
+     and the audit action is "schedule.reassigned" — never a duplicate row.
+     Fresh allocation audits "schedule.allocated" (one AuditLog row per call,
+     via lib/auth/audit). SUBMITTED -> SCHEDULED via applyTransition, ONLY
+     when status is SUBMITTED (a SCHEDULED app with a missing schedule row —
+     data-repair case — must not SCHEDULED->SCHEDULED 409; bug caught by the
+     manual check and fixed pre-merge). No changes to lib/auth/allocation.ts,
+     no UI, no schema, no new deps.
+  3. MANUAL CHECK (live dev :3000, fresh DB push --force-reset + db:seed):
+     typecheck 0 errors repo-wide; eslint clean on the route; openapi:check
+     36/36 (route count UNCHANGED — body replaced, not added); npm test 26/26
+     on the branch (re-run after the transition fix). Live HTTP checks (node
+     script, all PASS): admin POST /schedule/allocate on a SUBMITTED app ->
+     200 + REAL schedule (assignee "LMO Guntur" verified in DB as LMO in
+     Guntur), app transitioned to SCHEDULED, one schedule.allocated audit;
+     DTO matches /schedule/mine (trader Ravi Kumar, status ASSIGNED);
+     NEGATIVES: bogus applicationId -> 404 NOT_FOUND, no token -> 401
+     AUTH_REQUIRED, TRADER token -> 403 AUTH_FORBIDDEN; idempotency: allocate
+     called twice per app -> exactly ONE schedule row per application, second
+     call audits schedule.reassigned (totals: 2 schedule rows, 3 audit rows).
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
