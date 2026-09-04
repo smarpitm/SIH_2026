@@ -17,7 +17,7 @@ export function PhotoInput({
   const labelText = label ?? t("ui.photoProof", "Photo proof");
   return (
     <label className="block">
-      <span className="mb-1 block text-sm">{label}</span>
+      <span className="mb-1 block text-sm">{labelText}</span>
       <input
         type="file"
         name={name}

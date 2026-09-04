@@ -49,12 +49,20 @@ export async function rotateFamily(
     return "reused";
   }
   // CAS: guarded update — concurrent presenters of the same generation are
-  // serialized by the row lock; exactly one increment succeeds.
+  // serialized by the row lock; exactly one increment succeeds. The loser of
+  // a race (updateMany count 0) has presented a token that was JUST consumed
+  // by the winner — that is replay of a stolen token, so the whole family
+  // must be revoked, not just reported. A revoked-row loss is also covered:
+  // revokeFamily is idempotent.
   const res = await db.refreshFamily.updateMany({
     where: { id: familyId, gen: presentedGen, revoked: false },
     data: { gen: { increment: 1 } },
   });
-  return res.count === 1 ? "rotated" : "reused";
+  if (res.count !== 1) {
+    await revokeFamily(familyId);
+    return "reused";
+  }
+  return "rotated";
 }
 
 export async function revokeFamily(familyId: string): Promise<void> {

@@ -46,7 +46,7 @@ function JobPageInner() {
     } finally {
       setLoading(false);
     }
-  }, [applicationId]);
+  }, [applicationId, t]);
 
   useEffect(() => {
     load();

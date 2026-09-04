@@ -38,7 +38,7 @@ export default function ApplicationDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   useEffect(() => {
     load();
