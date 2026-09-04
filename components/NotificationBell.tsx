@@ -69,7 +69,7 @@ export function NotificationBell() {
       <button
         type="button"
         onClick={toggle}
-        className="relative flex h-8 w-8 items-center justify-center rounded-md border border-zinc-200 text-sm transition hover:bg-zinc-100 dark:border-zinc-800 dark:hover:bg-zinc-800"
+        className="relative flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-sm transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-800 dark:hover:bg-zinc-800"
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
       >
         🔔

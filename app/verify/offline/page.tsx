@@ -138,11 +138,11 @@ export default function VerifyOfflinePage() {
       <div>
         <Link
           href="/verify/PRM-CERT-2026-00001"
-          className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+          className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300"
         >
           ← Back to Online Verification
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
           {t("verify.offline.title", "Offline Sticker Payload Verifier")}
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
@@ -151,7 +151,7 @@ export default function VerifyOfflinePage() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <label
           htmlFor="offline-payload"
           className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300"
@@ -163,14 +163,14 @@ export default function VerifyOfflinePage() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={6}
-          className="mt-2 w-full rounded-lg border border-zinc-300 bg-zinc-50 p-3 font-mono text-xs text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+          className="mt-2 w-full rounded-lg border border-zinc-300 bg-zinc-50 p-3 font-mono text-xs text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
           placeholder="https://…/verify/offline#pmnm.v1=eyJ2Ijo…  —or—  eyJhbGciOiJFZERTQSJ9.eyJ….<sig>"
         />
 
         <button
           onClick={onVerify}
           disabled={busy || text.trim().length === 0}
-          className="mt-3 w-full rounded-lg bg-zinc-900 py-2.5 text-xs font-semibold text-white shadow hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900"
+          className="mt-3 w-full rounded-full bg-zinc-950 py-2.5 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
         >
           {busy ? "…" : t("verify.offline.button", "Validate Offline Signature & Claims")}
         </button>

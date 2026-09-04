@@ -63,7 +63,7 @@ export default function VerifyPage() {
 
   // shared typed-ID fallback card (not-found branch + badge view) — never printed
   const lookupCard = (
-    <div className="no-print rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="no-print rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
       <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
         {t("verify.typedFallback", "Search Another Certificate by Number")}
       </h2>
@@ -76,11 +76,11 @@ export default function VerifyPage() {
           value={typedId}
           onChange={(e) => setTypedId(e.target.value)}
           placeholder="e.g. PRM-CERT-2026-00001"
-          className="flex-1 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+          className="flex-1 rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-xs text-zinc-900 placeholder-zinc-400 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
         />
         <button
           type="submit"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+          className="rounded-full bg-zinc-950 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
         >
           {t("verify.typedButton", "Check")}
         </button>
@@ -206,13 +206,13 @@ export default function VerifyPage() {
       )}
 
       {/* Certificate Meta Details Card */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
               Certificate Identifier
             </span>
-            <div className="font-mono text-lg font-bold text-zinc-900 dark:text-white">
+            <div className="font-mono text-lg font-bold text-zinc-950 dark:text-white">
               {badge.certId}
             </div>
           </div>

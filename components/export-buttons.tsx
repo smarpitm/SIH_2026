@@ -78,7 +78,7 @@ export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
             type="button"
             onClick={() => download(e)}
             disabled={busy !== null}
-            className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             {busy === e ? "Preparing…" : `⬇ ${EXPORT_LABELS[e]} CSV`}
           </button>

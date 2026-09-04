@@ -145,11 +145,11 @@ function JobPageInner() {
       <div className="mb-6">
         <Link
           href="/officer"
-          className="inline-flex items-center text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white mb-2"
+          className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300 mb-2"
         >
           ← Back to Inspection Queue
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
           On-Site Field Inspection
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
@@ -186,7 +186,7 @@ function JobPageInner() {
               type="button"
               onClick={checkIn}
               disabled={checkingIn}
-              className="mt-3 min-h-[44px] w-full rounded-lg bg-amber-600 py-2.5 text-sm font-bold text-white shadow hover:bg-amber-700 disabled:opacity-50"
+              className="mt-3 min-h-[44px] w-full rounded-full bg-amber-600 py-2.5 text-sm font-bold text-white shadow-md shadow-amber-600/20 transition outline-none hover:bg-amber-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50"
             >
               {checkingIn ? "Checking in…" : "📍 CHECK IN"}
             </button>
@@ -207,7 +207,7 @@ function JobPageInner() {
 
       <form onSubmit={onSubmit} className="space-y-5">
         {/* Verification Observations checklist */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-3">
             Statutory Checklist &amp; Criteria
           </h2>
@@ -220,7 +220,7 @@ function JobPageInner() {
                     <input
                       type="checkbox"
                       disabled={locked}
-                      className="mt-0.5 h-5 w-5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                      className="mt-0.5 h-5 w-5 rounded border-zinc-300 text-accent-600 focus:ring-accent"
                       checked={Boolean(values[f.key])}
                       onChange={(e) =>
                         setValues((v) => ({ ...v, [f.key]: e.target.checked }))
@@ -237,7 +237,7 @@ function JobPageInner() {
                     </label>
                     <textarea
                       disabled={locked}
-                      className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-xs text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-xs text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                       rows={2}
                       placeholder="Enter specific calibration observations or remarks…"
                       value={String(values[f.key])}
@@ -253,7 +253,7 @@ function JobPageInner() {
         </div>
 
         {/* GPS Location Capture */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-2">
             Geo-Location Tagging
           </h2>
@@ -262,7 +262,7 @@ function JobPageInner() {
               type="button"
               onClick={captureGps}
               disabled={gpsLoading || locked}
-              className="min-h-[44px] rounded-lg border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-xs font-semibold text-zinc-700 shadow-sm hover:bg-zinc-100 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+              className="min-h-[44px] rounded-full border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-xs font-semibold text-zinc-700 shadow-sm transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
             >
               {gpsLoading ? "Acquiring Fix…" : "📍 Capture GPS"}
             </button>
@@ -273,7 +273,7 @@ function JobPageInner() {
         </div>
 
         {/* Photo Evidence — multipart field `photos`, multiple files */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-2">
             Verification Photo Proof
           </h2>
@@ -305,7 +305,7 @@ function JobPageInner() {
               value={failReason}
               onChange={(e) => setFailReason(e.target.value)}
               placeholder="State the exact non-compliance clause, broken seal, or error exceeding MPE tolerance…"
-              className="mt-1.5 w-full rounded-lg border border-red-300 bg-white p-2.5 text-xs text-zinc-900 shadow-sm focus:border-red-600 focus:outline-none disabled:opacity-60 dark:border-red-700 dark:bg-zinc-800 dark:text-white"
+              className="mt-1.5 w-full rounded-lg border border-red-300 bg-white p-2.5 text-xs text-zinc-900 shadow-sm transition outline-none focus:border-red-600 focus:ring-2 focus:ring-red-500/30 disabled:opacity-60 dark:border-red-700 dark:bg-zinc-800 dark:text-white"
             />
           </div>
         )}
@@ -318,10 +318,10 @@ function JobPageInner() {
                 type="button"
                 onClick={() => setResult("PASS")}
                 disabled={locked}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold shadow-sm transition disabled:opacity-40 ${
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-full py-2.5 text-sm font-bold shadow-sm transition outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 ${
                   result === "PASS"
                     ? "bg-emerald-600 text-white ring-2 ring-emerald-600 ring-offset-2"
-                    : "border border-zinc-300 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                    : "border border-zinc-300 bg-zinc-50 text-zinc-700 outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                 }`}
               >
                 ✓ PASS
@@ -331,10 +331,10 @@ function JobPageInner() {
                 type="button"
                 onClick={() => setResult("FAIL")}
                 disabled={locked}
-                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold shadow-sm transition disabled:opacity-40 ${
+                className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-full py-2.5 text-sm font-bold shadow-sm transition outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 ${
                   result === "FAIL"
                     ? "bg-rose-600 text-white ring-2 ring-rose-600 ring-offset-2"
-                    : "border border-zinc-300 bg-zinc-50 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
+                    : "border border-zinc-300 bg-zinc-50 text-zinc-700 outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                 }`}
               >
                 ✕ FAIL
@@ -344,7 +344,7 @@ function JobPageInner() {
             <button
               type="submit"
               disabled={loading || submitting || locked || !result}
-              className="min-h-[44px] w-full rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white shadow hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+              className="min-h-[44px] w-full rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
             >
               {submitting ? "Submitting Inspection…" : "Submit Official Inspection Report"}
             </button>
@@ -370,7 +370,7 @@ function JobPageInner() {
           </div>
           <Link
             href="/officer"
-            className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+            className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
             Back to Queue
           </Link>
@@ -397,7 +397,7 @@ function JobPageInner() {
           </div>
           <Link
             href="/officer"
-            className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+            className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
             Back to Queue
           </Link>

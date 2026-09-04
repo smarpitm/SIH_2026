@@ -44,7 +44,7 @@ export default function TraderPage() {
       {/* Top Header */}
       <div className="flex flex-col justify-between gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-center dark:border-zinc-800">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-white">
             Trader Portal
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
@@ -56,7 +56,7 @@ export default function TraderPage() {
           <ExportButtons entities={["instruments", "applications", "certificates"]} />
           <Link
             href="/trader/instruments/new"
-            className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+            className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
             + Add Instrument
           </Link>
@@ -74,7 +74,7 @@ export default function TraderPage() {
             return (
               <div
                 key={ins.id}
-                className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 transition hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20"
               >
                 <div className="flex flex-col gap-1">
                   <span className="font-mono text-base font-bold text-zinc-900 dark:text-white">
@@ -146,7 +146,7 @@ export default function TraderPage() {
       )}
 
       {/* Instruments Table */}
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-950/5 overflow-hidden dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/75 px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-800/50">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
             Registered Instruments
@@ -201,7 +201,7 @@ export default function TraderPage() {
                     <td className="px-5 py-3.5 text-right">
                       <Link
                         href={`/trader/apply/${ins.id}`}
-                        className="inline-flex items-center gap-1 rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                        className="inline-flex items-center gap-1 rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
                       >
                         Apply →
                       </Link>
@@ -222,7 +222,7 @@ export default function TraderPage() {
       </div>
 
       {/* Applications List */}
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-sm overflow-hidden dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-950/5 overflow-hidden dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/75 px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-800/50">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
             Verification Applications

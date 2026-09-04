@@ -60,7 +60,7 @@ export default function OfficerPage() {
     const overdueCard = job.overdue;
     return (
       <div
-        className={`rounded-xl border bg-white p-4 shadow-sm transition dark:bg-zinc-900 ${
+        className={`rounded-xl border bg-white p-4 shadow-md shadow-zinc-950/5 transition dark:bg-zinc-900 dark:shadow-black/20 ${
           overdueCard
             ? "border-red-300 ring-1 ring-red-200 dark:border-red-800 dark:ring-red-900/40"
             : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800 dark:hover:border-zinc-700"
@@ -105,7 +105,7 @@ export default function OfficerPage() {
           </div>
           <Link
             href={`/officer/job/${job.applicationId}?scheduleId=${job.id}`}
-            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-zinc-900 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 sm:w-auto sm:px-4 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:w-auto sm:px-4 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
             Open job →
           </Link>
@@ -120,10 +120,10 @@ export default function OfficerPage() {
       <div className="mb-6 flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center dark:border-zinc-800">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl dark:text-white">
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-white">
               Inspection Queue
             </h1>
-            <span className="rounded-full bg-zinc-900 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-white dark:text-zinc-900">
+            <span className="rounded-full bg-zinc-950 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-white dark:text-zinc-950">
               {active.length}
             </span>
           </div>

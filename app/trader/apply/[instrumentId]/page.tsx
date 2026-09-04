@@ -97,11 +97,11 @@ export default function ApplyPage() {
       <div className="mb-6">
         <Link
           href="/trader"
-          className="inline-flex items-center text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white mb-2"
+          className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300 mb-2"
         >
           ← Back to Trader Portal
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
           Application for Instrument Verification
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -122,7 +122,7 @@ export default function ApplyPage() {
                     isDone
                       ? "bg-emerald-600 text-white"
                       : isCurrent
-                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
                       : "border border-zinc-300 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
                   }`}
                 >
@@ -156,7 +156,7 @@ export default function ApplyPage() {
 
       {/* Step Cards */}
       {!submittedData ? (
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           {/* STEP 1 */}
           {step === 1 && (
             <div className="space-y-5">
@@ -174,7 +174,7 @@ export default function ApplyPage() {
                   onClick={() => setType("NEW")}
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
                     type === "NEW"
-                      ? "border-zinc-900 bg-zinc-50/70 ring-1 ring-zinc-900 dark:border-white dark:bg-zinc-800 dark:ring-white"
+                      ? "border-accent-600 bg-accent-50/70 ring-1 ring-accent dark:border-accent-400 dark:bg-accent-400/10 dark:ring-accent"
                       : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800"
                   }`}
                 >
@@ -199,7 +199,7 @@ export default function ApplyPage() {
                   onClick={() => setType("RE_VERIFICATION")}
                   className={`flex cursor-pointer items-start gap-3 rounded-lg border p-4 transition ${
                     type === "RE_VERIFICATION"
-                      ? "border-zinc-900 bg-zinc-50/70 ring-1 ring-zinc-900 dark:border-white dark:bg-zinc-800 dark:ring-white"
+                      ? "border-accent-600 bg-accent-50/70 ring-1 ring-accent dark:border-accent-400 dark:bg-accent-400/10 dark:ring-accent"
                       : "border-zinc-200 hover:border-zinc-300 dark:border-zinc-800"
                   }`}
                 >
@@ -230,7 +230,7 @@ export default function ApplyPage() {
                     type="text"
                     value={reVerificationReason}
                     onChange={(e) => setReVerificationReason(e.target.value)}
-                    className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                   />
                 </div>
               )}
@@ -244,7 +244,7 @@ export default function ApplyPage() {
                   value={preferredDate}
                   min={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setPreferredDate(e.target.value)}
-                  className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                 />
                 <p className="mt-1 text-[11px] text-zinc-500">
                   Leave empty to use the default slot (+7 days) during auto-allocation.
@@ -255,7 +255,7 @@ export default function ApplyPage() {
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                  className="rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
                 >
                   Next: Declaration →
                 </button>
@@ -285,7 +285,7 @@ export default function ApplyPage() {
                   type="checkbox"
                   checked={declared}
                   onChange={(e) => setDeclared(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900"
+                  className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-accent-600 focus:ring-accent"
                 />
                 <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
                   I accept the statutory terms and confirm the instrument is ready for inspection.
@@ -296,7 +296,7 @@ export default function ApplyPage() {
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300"
+                  className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   ← Back
                 </button>
@@ -304,7 +304,7 @@ export default function ApplyPage() {
                   type="button"
                   disabled={!declared}
                   onClick={() => setStep(3)}
-                  className="rounded-lg bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white shadow hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                  className="rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
                 >
                   Continue to Payment →
                 </button>
@@ -347,7 +347,7 @@ export default function ApplyPage() {
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300"
+                  className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   ← Back
                 </button>
@@ -355,7 +355,7 @@ export default function ApplyPage() {
                   type="button"
                   disabled={loading}
                   onClick={createAndPay}
-                  className="rounded-lg bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700 disabled:opacity-50"
+                  className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition outline-none hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50"
                 >
                   {loading ? "Processing Payment & Submitting…" : "Pay ₹100 & Submit Application"}
                 </button>
@@ -398,13 +398,13 @@ export default function ApplyPage() {
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link
               href={`/trader/applications/${submittedData.applicationId}`}
-              className="flex-1 text-center rounded-lg bg-emerald-600 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700"
+              className="flex-1 text-center rounded-full bg-emerald-600 py-2.5 text-sm font-semibold text-white transition outline-none hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               View Status Timeline →
             </Link>
             <Link
               href="/trader"
-              className="flex-1 text-center rounded-lg bg-zinc-900 py-2.5 text-sm font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
+              className="flex-1 text-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
             >
               Return to Trader Portal
             </Link>

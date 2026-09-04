@@ -22,7 +22,7 @@ const KPIS: { key: keyof DashCounts; label: string; desc: string; color: string 
 ];
 
 const inputCls =
-  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 placeholder-zinc-400 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white";
+  "w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 placeholder-zinc-400 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40";
 
 export default function AdminDashboardPage() {
   const [dash, setDash] = useState<AdminDash | null>(null);
@@ -101,7 +101,7 @@ export default function AdminDashboardPage() {
         {KPIS.map((k) => (
           <div
             key={k.key}
-            className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+            className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20"
           >
             <div className={`text-3xl font-black ${k.color}`}>{dash ? dash.kpis[k.key] : "–"}</div>
             <div className="mt-1 text-sm font-semibold text-zinc-800 dark:text-zinc-200">{k.label}</div>
@@ -112,7 +112,7 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* District Pendency (only when the payload includes it) */}
         {pendency && (
-          <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
             <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/75 px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-800/50">
               <h2 className="text-base font-semibold text-zinc-900 dark:text-white">Pending by District</h2>
               <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
@@ -146,7 +146,7 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Export + public key */}
-        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="mb-2 text-base font-bold text-zinc-900 dark:text-white">Audit Trail &amp; Reports Export</h2>
           <p className="mb-4 text-xs text-zinc-500">
             Download statutory compliance CSV exports and review Ed25519 digital signature keys.
@@ -155,7 +155,7 @@ export default function AdminDashboardPage() {
           <Link
             href="/api/v1/.well-known/pramanam-public-key"
             target="_blank"
-            className="mt-3 flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-xs font-semibold text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            className="mt-3 flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-xs font-semibold text-zinc-800 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
             <span>🔑 View Ed25519 Public Key Certificate</span>
             <span>→</span>
@@ -225,7 +225,7 @@ export default function AdminDashboardPage() {
             <button
               type="submit"
               disabled={inviting}
-              className="inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-zinc-800 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+              className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
             >
               {inviting ? "Inviting…" : "Send invite →"}
             </button>

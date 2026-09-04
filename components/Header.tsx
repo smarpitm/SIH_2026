@@ -45,15 +45,15 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
         {/* Wordmark Logo */}
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 font-bold text-white shadow-sm dark:bg-white dark:text-zinc-900">
+          <Link href="/" className="flex items-center gap-2.5 rounded-full outline-none transition focus-visible:ring-2 focus-visible:ring-accent">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-zinc-950 font-bold text-white shadow-md shadow-zinc-950/20 ring-2 ring-accent/50 transition group-hover:ring-accent dark:bg-white dark:text-zinc-950">
               प्र
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-black tracking-wider text-zinc-900 dark:text-white">
+              <span className="text-xl font-extrabold tracking-tight text-zinc-950 dark:text-white">
                 PRAMANAM
               </span>
-              <span className="hidden text-[10px] font-medium tracking-tight text-zinc-500 sm:inline-block">
+              <span className="hidden text-[10px] font-medium tracking-tight text-zinc-500 sm:inline-block dark:text-zinc-400">
                 Legal Metrology Verification
               </span>
             </div>
@@ -68,10 +68,10 @@ export function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`rounded-full px-3.5 py-1.5 text-sm font-medium tracking-tight transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                   isActive
-                    ? "bg-zinc-100 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                    : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-100"
+                    ? "bg-zinc-950 font-semibold text-white shadow-sm dark:bg-white dark:text-zinc-950"
+                    : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
                 }`}
               >
                 {link.label}
@@ -87,7 +87,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setLang(lang === "en" ? "hi" : "en")}
-            className="flex items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="flex items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
             title="Toggle Language (English / हिन्दी)"
             aria-label="Language Toggle"
           >
@@ -107,7 +107,7 @@ export function Header() {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-md border border-zinc-200 px-2.5 py-1 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition outline-none hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
               >
                 Logout
               </button>
@@ -116,13 +116,13 @@ export function Header() {
             <div className="hidden items-center gap-1 sm:flex">
               <Link
                 href="/login"
-                className="rounded-md px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-full px-3 py-1.5 text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Sign in
               </Link>
               <Link
                 href="/register"
-                className="rounded-md bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white shadow hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                className="rounded-full bg-zinc-950 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
               >
                 Register
               </Link>
@@ -133,7 +133,7 @@ export function Header() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="inline-flex items-center justify-center rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800"
+            className="inline-flex items-center justify-center rounded-full p-1.5 text-zinc-600 transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent md:hidden dark:text-zinc-400 dark:hover:bg-zinc-800"
             aria-label="Toggle navigation menu"
           >
             <svg
@@ -161,7 +161,7 @@ export function Header() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="rounded-md px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 {link.label}
               </Link>
@@ -191,14 +191,14 @@ export function Header() {
                   <Link
                     href="/login"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex-1 text-center rounded-md border border-zinc-200 py-1.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+                    className="flex-1 rounded-full border border-zinc-200 py-1.5 text-center text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-300"
                   >
                     Sign in
                   </Link>
                   <Link
                     href="/register"
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex-1 text-center rounded-md bg-zinc-900 py-1.5 text-xs font-medium text-white dark:bg-white dark:text-zinc-900"
+                    className="flex-1 rounded-full bg-zinc-950 py-1.5 text-center text-xs font-semibold text-white shadow-sm transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent dark:bg-white dark:text-zinc-950"
                   >
                     Register
                   </Link>

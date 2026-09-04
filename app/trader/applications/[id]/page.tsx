@@ -80,7 +80,7 @@ export default function ApplicationDetailPage() {
       <div className="mb-6">
         <Link
           href="/trader"
-          className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+          className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300"
         >
           ← Back to Trader Portal
         </Link>
@@ -109,7 +109,7 @@ export default function ApplicationDetailPage() {
       {app && (
         <>
           {/* Status Timeline */}
-          <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Status Timeline
             </h2>
@@ -122,7 +122,7 @@ export default function ApplicationDetailPage() {
                     <span
                       className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
                         current
-                          ? "bg-zinc-900 text-white ring-2 ring-zinc-900 ring-offset-1 dark:bg-white dark:text-zinc-900 dark:ring-white"
+                          ? "bg-zinc-950 text-white ring-2 ring-accent ring-offset-1 dark:bg-white dark:text-zinc-950 dark:ring-accent"
                           : done
                           ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                           : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
@@ -149,7 +149,7 @@ export default function ApplicationDetailPage() {
             </ol>
           </div>
           {/* Details */}
-          <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               Application Details
             </h2>
@@ -200,7 +200,7 @@ export default function ApplicationDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowReschedule(true)}
-                    className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                    className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800 transition outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                   >
                     Request Reschedule
                   </button>
@@ -217,7 +217,7 @@ export default function ApplicationDetailPage() {
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     placeholder="e.g. Officer unavailable on this date due to prior commitment"
-                    className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                   />
                   <div className="mt-3 flex justify-end gap-2">
                     <button
@@ -226,7 +226,7 @@ export default function ApplicationDetailPage() {
                         setShowReschedule(false);
                         setReason("");
                       }}
-                      className="rounded-lg border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300"
+                      className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
                       Cancel
                     </button>
@@ -234,7 +234,7 @@ export default function ApplicationDetailPage() {
                       type="button"
                       disabled={busy || reason.trim().length < 10}
                       onClick={reschedule}
-                      className="rounded-lg bg-zinc-900 px-5 py-2 text-xs font-semibold text-white shadow hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100"
+                      className="rounded-full bg-zinc-950 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
                     >
                       {busy ? "Requesting…" : "Confirm Reschedule"}
                     </button>
