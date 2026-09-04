@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // server remains authority; middleware is UX.
-// pm_session is a client-set PRESENCE cookie and pm_role a role hint — real
-// auth (JWT Bearer) and RBAC are enforced server-side by the API routes (MA1).
+// pm_ui_session_hint is a client-set PRESENCE hint and pm_ui_role_hint a role
+// hint (AUDIT FINDING #23: renamed from pm_session/pm_role so nobody mistakes
+// this for a security boundary) — real auth (JWT Bearer) and RBAC are enforced
+// server-side by the API routes (MA1).
 const ROLE_PREFIXES: Record<string, string[]> = {
   "/admin": ["ADMIN"],
   "/officer": ["LMO", "GATC"],
@@ -12,8 +14,8 @@ const ROLE_PREFIXES: Record<string, string[]> = {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = Boolean(request.cookies.get("pm_session")?.value);
-  const role = request.cookies.get("pm_role")?.value;
+  const hasSession = Boolean(request.cookies.get("pm_ui_session_hint")?.value);
+  const role = request.cookies.get("pm_ui_role_hint")?.value;
 
   for (const [prefix, allowed] of Object.entries(ROLE_PREFIXES)) {
     const isProtected = pathname === prefix || pathname.startsWith(`${prefix}/`);

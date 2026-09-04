@@ -13,12 +13,18 @@
 // as the badge (we never pre-verify on their behalf, never re-canonicalize).
 import { jsonOk, jsonErr } from "@/packages/shared/api";
 import { db } from "@/lib/db";
-import { clientIp, consumeLookup } from "@/lib/public/badge";
+import { rateLimit, clientIp } from "@/lib/security/ratelimit";
 import { KID, publicKeyJwk } from "@/lib/crypto/keys";
 
 export async function GET(req: Request, { params }: { params: { certId: string } }) {
-  if (!consumeLookup(clientIp(req))) {
+  const ip = clientIp(req);
+  const limit = await rateLimit(`credential:${ip}`, 30, 60);
+  if (!limit.allowed) {
     return jsonErr("RATE_LIMITED", "Too many fetches, try again in a minute");
+  }
+  // AUDIT FINDING #47: public certId only — reject internal cuid-shaped ids.
+  if (/^c[a-z0-9]{24}$/i.test(params.certId)) {
+    return jsonErr("NOT_FOUND", `No certificate matching '${params.certId}'`);
   }
 
   const cert = await db.certificate.findUnique({

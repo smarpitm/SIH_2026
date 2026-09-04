@@ -49,24 +49,39 @@ function sessionExpired(): never {
 }
 
 /**
- * Fetch wrapper for the ApiResponse envelope. Attaches `Authorization: Bearer`,
- * on 401 refreshes ONCE and retries, on second 401 clears the store and
- * redirects to /login. Throws ApiError when the envelope is ok:false.
+ * Shared authenticated fetch (audit finding #55): attaches `Authorization:
+ * Bearer`, and on 401 refreshes ONCE (single-flight) then retries; on a second
+ * 401 it clears the store and redirects to /login. Used by both `api()` for
+ * JSON envelopes and ExportButtons for blob downloads, so token-refresh
+ * behavior can never drift between the two call paths.
+ * Auth endpoints manage their own credentials — a 401 there is a form error,
+ * not an expired session, so they never refresh-and-redirect.
  */
-export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+export async function authorizedRequest(
+  path: string,
+  init?: RequestInit,
+  opts: { isAuthPath?: boolean } = {}
+): Promise<Response> {
   const token = useAuthStore.getState().accessToken;
 
   let res = await fetch(path, { ...init, headers: headers(init, token) });
 
-  // auth endpoints manage their own credentials — a 401 there is a form error,
-  // not an expired session, so never refresh-and-redirect from them.
-  const isAuthPath = path.startsWith("/api/v1/auth/");
+  const isAuthPath = opts.isAuthPath ?? path.startsWith("/api/v1/auth/");
   if (res.status === 401 && !isAuthPath) {
     const fresh = await refreshAccessToken();
     if (!fresh) sessionExpired();
     res = await fetch(path, { ...init, headers: headers(init, fresh) });
     if (res.status === 401) sessionExpired();
   }
+  return res;
+}
+
+/**
+ * Fetch wrapper for the ApiResponse envelope. See authorizedRequest for the
+ * 401-refresh semantics. Throws ApiError when the envelope is ok:false.
+ */
+export async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await authorizedRequest(path, init);
 
   const body = (await res.json().catch(() => null)) as ApiResponse<T> | null;
   if (!body) throw new ApiError("INTERNAL", "Malformed response from server", res.status);

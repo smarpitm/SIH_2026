@@ -1,7 +1,10 @@
 // Keys module. Server functions use node:crypto lazily so that importing
 // the constant KID (e.g. from browser-safe modules) never pulls node:crypto
 // into a client bundle.
-export const KID = "pramanam-2026-08-01";
+// AUDIT FINDING #45: the key id is configurable (ED25519_KID) and travels in
+// every JWS header + QR envelope, so verifiers can select the right key from
+// the JWKS endpoint (app/api/v1/public/jwks/route.ts) during rotation.
+export const KID = process.env.ED25519_KID || "pramanam-2026-08-01";
 
 export function generateKeyPair(): { privateKeyPem: string; publicKeyPem: string } {
   // lazy require is deliberate: keeps node:crypto out of browser bundles (KID import).
@@ -27,6 +30,15 @@ export function loadKeysFromEnv(): { privateKeyPem: string; publicKeyPem: string
       publicKeyPem: Buffer.from(pub, "base64").toString("utf8"),
     };
     return cached;
+  }
+  // AUDIT FINDING #8: ephemeral keys are a dev-only convenience. In production
+  // a generated pair would vanish at restart and every previously issued badge
+  // would stop verifying — fail hard instead (lib/security/env.ts also checks
+  // the env keys are present at boot).
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "[crypto] ED25519_PRIVATE_KEY / ED25519_PUBLIC_KEY required in production — ephemeral key generation is disabled"
+    );
   }
   // dev convenience: generate an ephemeral pair and print once
   cached = generateKeyPair();

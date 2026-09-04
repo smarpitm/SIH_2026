@@ -48,15 +48,22 @@ export async function POST(req: Request) {
     });
   }
 
-  const officer = await pickAllocationOfficer(application.instrument.district);
+  // Schedule.applicationId is UNIQUE — exactly one schedule row per application.
+  const existing = await db.schedule.findUnique({ where: { applicationId: application.id } });
+
+  const officer = await pickAllocationOfficer(
+    application.instrument.district,
+    // AUDIT FINDING #35: on the reassignment path, exclude the current assignee
+    // so a "reallocate" call actually moves the job to a different officer. In a
+    // single-officer district there is no alternative — the route then answers
+    // INTERNAL "no officer in district" instead of performing a no-op update.
+    existing?.assigneeId
+  );
   if (!officer) {
     return jsonErr("INTERNAL", "no officer in district");
   }
 
   const scheduledFor = application.preferredDate ?? new Date(Date.now() + 7 * 86400000);
-
-  // Schedule.applicationId is UNIQUE — exactly one schedule row per application.
-  const existing = await db.schedule.findUnique({ where: { applicationId: application.id } });
   let schedule;
   let action: string;
   if (existing) {

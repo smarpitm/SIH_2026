@@ -8,6 +8,7 @@ import {
   HeadBucketCommand,
   CreateBucketCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -63,17 +64,26 @@ export async function putVersionedPdf(
   meta: { status: string }
 ): Promise<string> {
   await ensureBucket();
-  // find current max version via HeadObject walk. Small N (renders per cert
-  // are tiny) and avoids ListObjectsV2 paging here.
+  // AUDIT FINDING #20: no more hard-coded v1..v50 HeadObject probing. Compute
+  // the next version from a real object listing under the cert prefix, paging
+  // through if needed — any number of prior renders is handled correctly.
   let maxV = 0;
-  for (let v = 1; v <= 50; v++) {
-    try {
-      await s3().send(new HeadObjectCommand({ Bucket: bucket(), Key: `certs/${certId}/v${v}.pdf` }));
-      maxV = v;
-    } catch {
-      break;
+  const prefix = `certs/${certId}/v`;
+  let token: string | undefined;
+  do {
+    const listed = await s3().send(
+      new ListObjectsV2Command({
+        Bucket: bucket(),
+        Prefix: prefix,
+        ...(token ? { ContinuationToken: token } : {}),
+      })
+    );
+    for (const obj of listed.Contents ?? []) {
+      const match = (obj.Key ?? "").match(/v(\d+)\.pdf$/);
+      if (match) maxV = Math.max(maxV, Number(match[1]));
     }
-  }
+    token = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+  } while (token);
   const key = `certs/${certId}/v${maxV + 1}.pdf`;
   await s3().send(
     new PutObjectCommand({

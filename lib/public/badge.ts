@@ -18,7 +18,13 @@ export interface CertForBadge {
   instrument: { serialNumber: string; category: string; owner: { name: string } };
 }
 
-export type PublicBadge = BadgeDTO & { validUntil: string; category: string };
+export type PublicBadge = BadgeDTO & {
+  validUntil: string;
+  category: string;
+  /** true when anchors were assembled from registry fallbacks because the
+   *  signature check failed — display them as unverified (finding #69). */
+  anchorsUntrusted?: boolean;
+};
 
 const AUDIT_LABELS: Record<string, string> = {
   "cert.issued": "Certificate issued and notified to owner",
@@ -87,6 +93,11 @@ export async function buildBadge(cert: CertForBadge): Promise<PublicBadge> {
     certId: cert.certId,
     verdict,
     signatureValid: v.valid,
+    // AUDIT FINDING #69: when the signature check fails, the anchors fall back
+    // to registry values — flag them so no consumer mistakes unverified
+    // fallback data for signed claims. (The renderer's red CHECK FAILED banner
+    // remains the primary signal.)
+    anchorsUntrusted: !v.valid,
     anchors,
     validUntil,
     category: claims.instrumentCategory ?? cert.instrument.category,
@@ -97,38 +108,18 @@ export async function buildBadge(cert: CertForBadge): Promise<PublicBadge> {
   };
 }
 
-// ---- lookup rate limit: in-memory 30 req/min/IP (pony: Redis counter if time allows) ----
-const LOOKUP_WINDOW_MS = 60_000;
-const LOOKUP_LIMIT = 30;
-interface LookupBucket {
-  count: number;
-  reset: number;
-}
-const lookupBuckets = new Map<string, LookupBucket>();
+// ---- lookup rate limiting: DURABLE (audit finding #7) ----
+// Moved to lib/security/ratelimit (Redis INCR/EXPIRE fixed windows, shared
+// across instances/restarts; x-forwarded-for only honored when TRUST_PROXY is
+// explicitly set). The old process-local Map + blind header trust is gone.
 
-export function clientIp(req: Request): string {
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) return xff.split(",")[0].trim();
-  return req.headers.get("x-real-ip") ?? "unknown";
-}
+// ---- public stats cache ----
+// AUDIT FINDING #64 (hardened): primary cache is Redis (shared across
+// instances/restarts) with a 60s TTL; the process-local copy below is ONLY the
+// dev/fallback path and the final read-through when Redis is unavailable. The
+// active-cert math is unchanged (#65: non-revoked AND validUntil > now).
+import { getRedis } from "@/lib/security/redis";
 
-/** Returns true when the IP may proceed, false when rate-limited. */
-export function consumeLookup(ip: string): boolean {
-  // memory hygiene: in-memory buckets are ponytail-simple; drop everything if a
-  // flood of unique IPs grows the map unboundedly (Redis counter if time allows).
-  if (lookupBuckets.size > 5000) lookupBuckets.clear();
-  const now = Date.now();
-  const b = lookupBuckets.get(ip);
-  if (!b || now >= b.reset) {
-    lookupBuckets.set(ip, { count: 1, reset: now + LOOKUP_WINDOW_MS });
-    return true;
-  }
-  if (b.count >= LOOKUP_LIMIT) return false;
-  b.count++;
-  return true;
-}
-
-// ---- public stats cache: 60s in-memory ----
 export interface PublicStats {
   totalInstruments: number;
   activeCerts: number;
@@ -137,24 +128,52 @@ export interface PublicStats {
 }
 let statsCache: { data: PublicStats; ts: number } | null = null;
 const STATS_TTL_MS = 60_000;
+const STATS_REDIS_KEY = "pramanam:stats:v1";
+const STATS_REDIS_TTL_SEC = 60;
 
-export async function getStats(): Promise<PublicStats> {
-  const now = Date.now();
-  if (statsCache && now - statsCache.ts < STATS_TTL_MS) return statsCache.data;
+async function computeStats(): Promise<PublicStats> {
   const [totalInstruments, activeCerts, revokedCerts, last] = await Promise.all([
     db.instrument.count(),
-    // "active" = not revoked/suspended AND not already expired — EXPIRED certs
-    // are historical, not active (status column is scanner-maintained).
-    db.certificate.count({ where: { status: { in: ["ACTIVE", "EXPIRING_SOON"] } } }),
+    // AUDIT FINDING #65: "active" = status not revoked/suspended AND still
+    // within its validity window — a lagging expiry scanner can no longer
+    // inflate the active count with certificates that are factually expired.
+    db.certificate.count({
+      where: { status: { in: ["ACTIVE", "EXPIRING_SOON"] }, validUntil: { gt: new Date() } },
+    }),
     db.certificate.count({ where: { status: "REVOKED" } }),
     db.certificate.findFirst({ orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
   ]);
-  const data: PublicStats = {
+  return {
     totalInstruments,
     activeCerts,
     revokedCerts,
     lastIssuedAt: last ? last.createdAt.toISOString() : null,
   };
+}
+
+export async function getStats(): Promise<PublicStats> {
+  const now = Date.now();
+  if (statsCache && now - statsCache.ts < STATS_TTL_MS) return statsCache.data;
+
+  const r = getRedis();
+  if (r) {
+    try {
+      const cached = await r.get(STATS_REDIS_KEY);
+      if (cached) {
+        const data = JSON.parse(cached) as PublicStats;
+        statsCache = { data, ts: now };
+        return data;
+      }
+      const data = await computeStats();
+      // best-effort write; a failed SET just means the next caller recomputes
+      await r.set(STATS_REDIS_KEY, JSON.stringify(data), "EX", STATS_REDIS_TTL_SEC).catch(() => undefined);
+      statsCache = { data, ts: now };
+      return data;
+    } catch (err) {
+      console.error("[stats] redis cache miss-path failed, using memory fallback:", err);
+    }
+  }
+  const data = await computeStats();
   statsCache = { data, ts: now };
   return data;
 }

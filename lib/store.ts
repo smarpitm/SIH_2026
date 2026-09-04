@@ -27,16 +27,21 @@ export function readStoredUser(): UserDTO | null {
   }
 }
 
-// pm_session (presence) + pm_role exist ONLY for middleware UX.
+// AUDIT FINDING #23: these cookies are renamed to make the intent impossible to
+// miss — pm_ui_session_hint (presence) + pm_ui_role_hint (role hint) are
+// CLIENT-SET UI hints ONLY. The server remains the authority; middleware is UX.
 // server remains authority; middleware is UX.
 function setSessionCookies(role: string) {
   if (typeof document === "undefined") return;
-  document.cookie = "pm_session=1; path=/; max-age=604800; SameSite=Lax";
-  document.cookie = `pm_role=${encodeURIComponent(role)}; path=/; max-age=604800; SameSite=Lax`;
+  document.cookie = "pm_ui_session_hint=1; path=/; max-age=604800; SameSite=Lax";
+  document.cookie = `pm_ui_role_hint=${encodeURIComponent(role)}; path=/; max-age=604800; SameSite=Lax`;
 }
 
 function clearSessionCookies() {
   if (typeof document === "undefined") return;
+  document.cookie = "pm_ui_session_hint=; path=/; max-age=0;";
+  document.cookie = "pm_ui_role_hint=; path=/; max-age=0;";
+  // legacy names (pre-rename) — clear them so stale cookies cannot confuse UX
   document.cookie = "pm_session=; path=/; max-age=0;";
   document.cookie = "pm_role=; path=/; max-age=0;";
 }

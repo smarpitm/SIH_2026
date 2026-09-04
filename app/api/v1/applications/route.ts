@@ -6,29 +6,23 @@ import { getSession, requireRole, type Session } from "@/lib/auth/session";
 import { assertJurisdiction } from "@/lib/auth/rbac";
 import { toApplicationDTO } from "@/lib/auth/dto";
 import { audit } from "@/lib/auth/audit";
+import { startOfBusinessToday } from "@/lib/time";
 
 const bodySchema = z.object({
   instrumentId: z.string().min(1),
   type: z.enum(["NEW", "RE_VERIFICATION"]),
-  // preferredDate is a FUTURE-or-today date. We compare against the start of TODAY
-  // (UTC) so "today" in any timezone passes; known edge: for a few hours in zones
-  // ahead of UTC, local "today" can appear as yesterday in UTC and be flagged —
-  // acceptable for demo.
+  // preferredDate is a FUTURE-or-today date, validated against the start of
+  // "today" in the BUSINESS timezone (Asia/Kolkata) — audit finding #15. This
+  // removes the old UTC edge where local "today" could be flagged as past.
   preferredDate: z
     .string()
     .datetime()
-    .refine((v) => new Date(v).getTime() >= startOfTodayUTC(), {
+    .refine((v) => new Date(v).getTime() >= startOfBusinessToday().getTime(), {
       message: "preferredDate must be today or a future date",
     })
     .optional(),
   reVerificationReason: z.string().min(1).optional(),
 });
-
-/** Start of today in UTC (midnight), used by the preferredDate past-date guard. */
-function startOfTodayUTC(): number {
-  const d = new Date();
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-}
 
 // book MA2 item 6 — POST /applications (TRADER only, must own the instrument)
 export async function POST(req: Request) {
@@ -47,6 +41,20 @@ export async function POST(req: Request) {
   if (!instrument) return jsonErr("NOT_FOUND", "Instrument not found");
   if (instrument.ownerId !== session!.userId) {
     return jsonErr("AUTH_FORBIDDEN", "You do not own this instrument");
+  }
+
+  // AUDIT FINDING (duplicate open applications): at most one non-terminal
+  // application per instrument — a second open application would double-book
+  // the same physical instrument for inspection.
+  const openApplication = await db.application.findFirst({
+    where: {
+      instrumentId: instrument.id,
+      status: { in: ["DRAFT", "SUBMITTED", "SCHEDULED", "CHECKED_IN"] },
+    },
+    select: { id: true },
+  });
+  if (openApplication) {
+    return jsonErr("CONFLICT", "An open application already exists for this instrument");
   }
 
   const application = await db.application.create({

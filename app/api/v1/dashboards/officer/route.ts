@@ -1,6 +1,7 @@
 import { jsonOk } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
+import { startOfBusinessToday, startOfBusinessTomorrow, startOfBusinessMonth, startOfBusinessNextMonth } from "@/lib/time";
 
 // book MA4 item 3 — GET /dashboards/officer (calling LMO/GATC)
 export async function GET(req: Request) {
@@ -9,16 +10,12 @@ export async function GET(req: Request) {
   if (guard) return guard;
   const userId = session!.userId;
 
+  // AUDIT FINDING #36: "today"/"this month" windows use the business timezone.
   const now = Date.now();
-  const dayStart = new Date(now);
-  dayStart.setUTCHours(0, 0, 0, 0);
-  const dayEnd = new Date(dayStart);
-  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
-  const monthStart = new Date(now);
-  monthStart.setUTCDate(1);
-  monthStart.setUTCHours(0, 0, 0, 0);
-  const nextMonth = new Date(monthStart);
-  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  const dayStart = startOfBusinessToday();
+  const dayEnd = startOfBusinessTomorrow();
+  const monthStart = startOfBusinessMonth();
+  const nextMonth = startOfBusinessNextMonth();
 
   const [todayRows, overdueCount, totalSchedules, completedInspections, thisMonthInspections] =
     await Promise.all([

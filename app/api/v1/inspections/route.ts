@@ -6,23 +6,34 @@ import { getSession, requireRole } from "@/lib/auth/session";
 import { assertJurisdiction } from "@/lib/auth/rbac";
 import { applyTransition } from "@/lib/auth/transition";
 import { audit } from "@/lib/auth/audit";
-import { emitInspectionPass } from "@/lib/hooks";
+import { issueCertificate } from "@/lib/crypto/issue";
 import { OBSERVATION_CONFIG } from "@/packages/shared/constants";
-import { storeUploads, filesFromForm, UnsupportedMediaTypeError } from "@/lib/uploads/multipart";
-import { registerWorkers } from "@/workers/index";
-
-// DEMO-SWEEP FIX (branch kush): Next.js compiles instrumentation.ts as its OWN
-// server bundle, so the pass handler it registers lives in a different lib/hooks
-// module instance than the one bundled with THIS route — inspection PASS ran with
-// ZERO handlers and silently issued no certificate (found by tests/smoke.spec.ts).
-// registerWorkers() is idempotent and startExpiryQueue() is globalThis-cached, so
-// calling it here (same bundle as emitInspectionPass) is the minimal safe wiring.
-// Deviation from the "routes never import workers directly" note — announced in
-// context.txt §7 for Smarpit/Manav.
-registerWorkers();
+import {
+  storeUploads,
+  filesFromForm,
+  UnsupportedMediaTypeError,
+  requestBodyTooLarge,
+  requestLimitMessage,
+  DEFAULT_REQUEST_LIMIT_BYTES,
+  PHOTO_POLICY,
+} from "@/lib/uploads/multipart";
 
 // book MA3 item 6 — POST /inspections (assigned officer; app must be CHECKED_IN)
-const DEFAULT_KEYS = OBSERVATION_CONFIG.default.map((o) => o.key);
+// AUDIT FINDING #4: the whole PASS/FAIL workflow is now ONE transaction —
+// report + state transitions + certificate + audits + notification commit or
+// roll back together, so no stranded PASSED / half-issued state is possible.
+// Certificate issuance is inline (same tx), not a detached worker poll.
+
+// Build the Zod schema FROM OBSERVATION_CONFIG (audit finding #18): required
+// keys, expected value types, unknown keys rejected.
+const observationsSchema = (() => {
+  const shape: Record<string, z.ZodTypeAny> = {};
+  for (const o of OBSERVATION_CONFIG.default) {
+    shape[o.key] =
+      o.type === "boolean" ? z.boolean() : o.type === "number" ? z.number() : z.string().min(1);
+  }
+  return z.object(shape).strict();
+})();
 
 const resultSchema = z.enum(["PASS", "FAIL"]);
 
@@ -31,6 +42,10 @@ export async function POST(req: Request) {
   const guard = requireRole(session, "LMO", "GATC");
   if (guard) return guard;
 
+  // AUDIT FINDING #16: hard request cap BEFORE formData() buffers the body
+  if (requestBodyTooLarge(req)) {
+    return jsonErr("VALIDATION_ERROR", requestLimitMessage(DEFAULT_REQUEST_LIMIT_BYTES));
+  }
   const form = await req.formData().catch(() => null);
   if (!form) return jsonErr("VALIDATION_ERROR", "multipart/form-data body required");
 
@@ -71,27 +86,31 @@ export async function POST(req: Request) {
     return jsonErr("VALIDATION_ERROR", "failReason is required when result is FAIL");
   }
 
-  // observations JSON — validate keys against OBSERVATION_CONFIG.default
+  // observations JSON — full schema validation from OBSERVATION_CONFIG
+  // (audit finding #18): required keys present, value types enforced,
+  // unknown keys rejected.
   let observations: unknown = null;
   try {
     observations = observationsRaw ? JSON.parse(String(observationsRaw)) : null;
   } catch {
     return jsonErr("VALIDATION_ERROR", "observations must be valid JSON");
   }
-  if (!observations || typeof observations !== "object" || Array.isArray(observations)) {
-    return jsonErr("VALIDATION_ERROR", "observations must be an object");
-  }
-  const obsKeys = Object.keys(observations);
-  for (const k of obsKeys) {
-    if (!DEFAULT_KEYS.includes(k)) {
-      return jsonErr("VALIDATION_ERROR", `unknown observation key: ${k}`);
-    }
+  const obsParsed = observationsSchema.safeParse(observations);
+  if (!obsParsed.success) {
+    return jsonErr("VALIDATION_ERROR", "observations do not match OBSERVATION_CONFIG", {
+      issues: obsParsed.error.issues,
+    });
   }
 
+  // AUDIT FINDING #17: photos are mandatory evidence — at least one image.
+  // PHOTO_POLICY also restricts this field to image MIME types only (finding #16).
   const photos = filesFromForm(form, "photos");
+  if (photos.length === 0) {
+    return jsonErr("VALIDATION_ERROR", "at least one inspection photo is required");
+  }
   let photoKeys: string[] = [];
   try {
-    const stored = await storeUploads(photos, `inspections/${application.id}`);
+    const stored = await storeUploads(photos, `inspections/${application.id}`, PHOTO_POLICY);
     photoKeys = stored.map((s) => s.key);
   } catch (e) {
     if (e instanceof UnsupportedMediaTypeError) {
@@ -106,52 +125,102 @@ export async function POST(req: Request) {
     return jsonErr("VALIDATION_ERROR", "gpsLat/gpsLng must be numbers");
   }
 
-  const report = await db.inspectionReport.create({
-    data: {
-      applicationId: application.id,
-      inspectorId: session!.userId,
-      result: parsedResult.data,
-      observations: observations as Prisma.InputJsonValue,
-      photoKeys: photoKeys as Prisma.InputJsonValue,
-      ...(gpsLat !== null ? { gpsLat } : {}),
-      ...(gpsLng !== null ? { gpsLng } : {}),
-      checkedInAt: new Date(),
-      ...(parsedResult.data === "FAIL" ? { failReason: String(failReasonRaw) } : {}),
-    },
-  });
+  type TransitionFailure = { response: Response };
+  let reportId: string;
+  try {
+    const result = await db.$transaction(async (tx) => {
+      const report = await tx.inspectionReport.create({
+        data: {
+          applicationId: application.id,
+          inspectorId: session!.userId,
+          result: parsedResult.data,
+          observations: obsParsed.data as Prisma.InputJsonValue,
+          photoKeys: photoKeys as Prisma.InputJsonValue,
+          ...(gpsLat !== null ? { gpsLat } : {}),
+          ...(gpsLng !== null ? { gpsLng } : {}),
+          checkedInAt: new Date(),
+          ...(parsedResult.data === "FAIL" ? { failReason: String(failReasonRaw) } : {}),
+        },
+      });
 
-  // PASS → emitInspectionPass (frozen hook, no-op if unregistered) then PASSED
-  if (parsedResult.data === "PASS") {
-    await emitInspectionPass({
-      applicationId: application.id,
-      instrumentId: application.instrument.id,
-      reportId: report.id,
-      inspectorId: session!.userId,
-      inspectorKind: session!.role as "LMO" | "GATC",
+      if (parsedResult.data === "PASS") {
+        // CHECKED_IN -> PASSED inside the same tx as the report
+        const pass = await applyTransition(application, "PASSED", tx);
+        if (pass instanceof Response) throw { response: pass } as TransitionFailure;
+
+        // Inline, transactional issuance (audit finding #4): certificate +
+        // cert.issued audit + owner notification join THIS transaction. If
+        // issuance fails, everything rolls back (app stays CHECKED_IN) and the
+        // officer can retry — no stranded PASSED, no silent failure.
+        const cert = await issueCertificate(
+          {
+            applicationId: application.id,
+            instrumentId: application.instrument.id,
+            reportId: report.id,
+            inspectorId: session!.userId,
+            inspectorKind: session!.role as "LMO" | "GATC",
+          },
+          tx
+        );
+        if (!cert) throw new Error("certificate issuance failed");
+
+        // complete the lifecycle PASSED -> CERT_ISSUED atomically
+        const issued = await applyTransition(pass.app, "CERT_ISSUED", tx);
+        if (issued instanceof Response) throw { response: issued } as TransitionFailure;
+        await tx.auditLog.create({
+          data: {
+            actorId: null,
+            actorKind: "system",
+            action: "app.cert_issued",
+            entity: "application",
+            entityId: application.id,
+            meta: { certId: cert.certId },
+          },
+        });
+      } else {
+        const fail = await applyTransition(application, "FAILED", tx);
+        if (fail instanceof Response) throw { response: fail } as TransitionFailure;
+      }
+
+      await audit(
+        {
+          actorId: session!.userId,
+          actorKind: session!.role,
+          action: parsedResult.data === "PASS" ? "inspection.pass" : "inspection.fail",
+          entity: "inspectionReport",
+          entityId: report.id,
+          meta: {
+            applicationId: application.id,
+            scheduleId: schedule.id,
+            result: parsedResult.data,
+            photoKeys,
+            ...(gpsLat !== null ? { gpsLat } : {}),
+            ...(gpsLng !== null ? { gpsLng } : {}),
+            ...(parsedResult.data === "FAIL" ? { failReason: String(failReasonRaw) } : {}),
+          },
+        },
+        tx
+      );
+
+      return report;
     });
-    const pass = await applyTransition(application, "PASSED");
-    if (pass instanceof Response) return pass;
-  } else {
-    const fail = await applyTransition(application, "FAILED");
-    if (fail instanceof Response) return fail;
+    reportId = result.id;
+  } catch (e) {
+    if (
+      e &&
+      typeof e === "object" &&
+      "response" in e &&
+      (e as TransitionFailure).response instanceof Response
+    ) {
+      // a state-machine rejection — surface the exact INVALID_STATE_TRANSITION shape
+      return (e as TransitionFailure).response;
+    }
+    console.error("[inspections] workflow transaction rolled back:", e);
+    return jsonErr(
+      "INTERNAL",
+      "Inspection could not be recorded — all writes rolled back, please retry"
+    );
   }
 
-  await audit({
-    actorId: session!.userId,
-    actorKind: session!.role,
-    action: parsedResult.data === "PASS" ? "inspection.pass" : "inspection.fail",
-    entity: "inspectionReport",
-    entityId: report.id,
-    meta: {
-      applicationId: application.id,
-      scheduleId: schedule.id,
-      result: parsedResult.data,
-      photoKeys,
-      ...(gpsLat !== null ? { gpsLat } : {}),
-      ...(gpsLng !== null ? { gpsLng } : {}),
-      ...(parsedResult.data === "FAIL" ? { failReason: String(failReasonRaw) } : {}),
-    },
-  });
-
-  return jsonOk({ id: report.id, applicationId: application.id, result: parsedResult.data });
+  return jsonOk({ id: reportId, applicationId: application.id, result: parsedResult.data });
 }

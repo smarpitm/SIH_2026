@@ -6,7 +6,13 @@ import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 import { toInstrumentDTO } from "@/lib/auth/dto";
 import { audit } from "@/lib/auth/audit";
-import { storeUpload, UnsupportedMediaTypeError } from "@/lib/uploads/multipart";
+import {
+  storeUpload,
+  UnsupportedMediaTypeError,
+  requestBodyTooLarge,
+  requestLimitMessage,
+  PROOF_REQUEST_LIMIT_BYTES,
+} from "@/lib/uploads/multipart";
 
 const querySchema = z.object({
   district: z.enum(DISTRICTS).optional(),
@@ -58,6 +64,10 @@ export async function POST(req: Request) {
   const guard = requireRole(session, "TRADER");
   if (guard) return guard;
 
+  // AUDIT FINDING #16: hard request cap BEFORE formData() buffers the body
+  if (requestBodyTooLarge(req, PROOF_REQUEST_LIMIT_BYTES)) {
+    return jsonErr("VALIDATION_ERROR", requestLimitMessage(PROOF_REQUEST_LIMIT_BYTES));
+  }
   const form = await req.formData().catch(() => null);
   if (!form) return jsonErr("VALIDATION_ERROR", "multipart/form-data body required");
 
@@ -72,6 +82,21 @@ export async function POST(req: Request) {
   });
   if (!parsed.success) {
     return jsonErr("VALIDATION_ERROR", "Invalid instrument payload", parsed.error.flatten());
+  }
+
+  // AUDIT FINDING #57 (policy decision): traders are district-bound. An
+  // instrument is inspected by its district's officers, so it must be
+  // registered in the trader's own home district — otherwise a trader could
+  // trigger allocation (and field work) in a district they have no tie to.
+  if (session!.district && parsed.data.district !== session!.district) {
+    return jsonErr(
+      "JURISDICTION_FORBIDDEN",
+      "Instruments must be registered in your own home district",
+      {
+        required: `district:${parsed.data.district}`,
+        have: `district:${session!.district}`,
+      }
+    );
   }
 
   const proof = form.get("purchaseProof");

@@ -4,7 +4,7 @@ import { signAccessToken, signRefreshToken, verifyRefreshToken } from "@/lib/aut
 import { toUserDTO } from "@/lib/auth/dto";
 import { audit } from "@/lib/auth/audit";
 import { REFRESH_COOKIE, readCookie, refreshCookie } from "@/lib/auth/cookies";
-import { familyUsedCount, recordRotation, revokeFamily } from "@/lib/auth/refresh-store";
+import { rotateFamily } from "@/lib/auth/refresh-store";
 
 export async function POST(req: Request) {
   const token = readCookie(req, REFRESH_COOKIE);
@@ -13,33 +13,32 @@ export async function POST(req: Request) {
   const claims = await verifyRefreshToken(token);
   if (!claims) return jsonErr("AUTH_REQUIRED", "Invalid refresh token");
 
-  const usedCount = familyUsedCount(claims.familyId);
+  // Durable family state (audit finding #2): the CAS rotation lives in
+  // Postgres, so replay detection survives restarts and multi-instance deploys.
+  const outcome = await rotateFamily(claims.familyId, claims.gen);
 
-  // Reuse detection (book MA1 item 5): a verified token from an EARLIER rotation
-  // of a live family => steal/replay => revoke the whole family.
-  if (usedCount !== undefined && claims.gen < usedCount) {
-    revokeFamily(claims.familyId);
+  // Reuse detection (book MA1 item 5): a token from an EARLIER rotation of a
+  // live family => steal/replay => revoke the whole family.
+  if (outcome === "reused") {
     await audit({
       actorId: claims.sub,
       actorKind: "unknown",
       action: "auth.family_revoked",
       entity: "refreshFamily",
       entityId: claims.familyId,
-      meta: { presentedGen: claims.gen, usedCount },
+      meta: { presentedGen: claims.gen, outcome },
     });
     return jsonErr("AUTH_REQUIRED", "Refresh token reuse detected — token family revoked");
   }
 
-  // Unknown family must be gen 0; a known family must present exactly the
-  // newest generation. Anything else is not a live token of this family.
-  if (usedCount === undefined ? claims.gen !== 0 : claims.gen !== usedCount) {
+  // Unknown/expired/future-generation tokens are all just invalid.
+  if (outcome !== "rotated") {
     return jsonErr("AUTH_REQUIRED", "Invalid refresh token");
   }
 
   const user = await db.user.findUnique({ where: { id: claims.sub } });
   if (!user) return jsonErr("AUTH_REQUIRED", "Invalid refresh token");
 
-  recordRotation(claims.familyId); // gen N is now consumed
   const accessToken = await signAccessToken(user);
   const refreshToken = await signRefreshToken(user, claims.familyId, claims.gen + 1);
 
@@ -56,3 +55,4 @@ export async function POST(req: Request) {
     headers: { "set-cookie": refreshCookie(refreshToken) },
   });
 }
+

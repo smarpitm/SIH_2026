@@ -4,9 +4,18 @@ import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 import { audit } from "@/lib/auth/audit";
 import { MAX_RESCHEDULES } from "@/packages/shared/constants";
+import { startOfBusinessToday } from "@/lib/time";
 
 const bodySchema = z.object({
   reason: z.string().min(10),
+  // AUDIT FINDING #14: a reschedule must carry a REAL new date — validated in
+  // the business timezone (today-or-future), applied atomically below.
+  newDate: z
+    .string()
+    .datetime()
+    .refine((v) => new Date(v).getTime() >= startOfBusinessToday().getTime(), {
+      message: "newDate must be today or a future date",
+    }),
 });
 
 // book MA3 item 5 — POST /applications/[id]/reschedule (TRADER owner, while SCHEDULED)
@@ -40,24 +49,38 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return jsonErr("VALIDATION_ERROR", "Invalid reschedule payload", parsed.error.flatten());
   }
 
-  const scheduledFor = application.preferredDate ?? new Date(Date.now() + 7 * 86400000);
-  await db.schedule.update({
-    where: { id: schedule.id },
-    data: {
-      rescheduleCount: { increment: 1 },
-      lastReason: parsed.data.reason,
-      scheduledFor,
-      status: "RESCHEDULED",
-    },
-  });
-
-  await audit({
-    actorId: session!.userId,
-    actorKind: session!.role,
-    action: "application.reschedule",
-    entity: "application",
-    entityId: application.id,
-    meta: { reason: parsed.data.reason, rescheduleCount: schedule.rescheduleCount + 1, scheduledFor: scheduledFor.toISOString() },
+  const scheduledFor = new Date(parsed.data.newDate);
+  // AUDIT FINDING #14: schedule update + audit commit atomically.
+  await db.$transaction(async (tx) => {
+    await tx.schedule.update({
+      where: { id: schedule.id },
+      data: {
+        rescheduleCount: { increment: 1 },
+        lastReason: parsed.data.reason,
+        scheduledFor,
+        status: "RESCHEDULED",
+      },
+    });
+    // keep the trader's preference in sync so downstream re-allocations reuse it
+    await tx.application.update({
+      where: { id: application.id },
+      data: { preferredDate: scheduledFor },
+    });
+    await audit(
+      {
+        actorId: session!.userId,
+        actorKind: session!.role,
+        action: "application.reschedule",
+        entity: "application",
+        entityId: application.id,
+        meta: {
+          reason: parsed.data.reason,
+          rescheduleCount: schedule.rescheduleCount + 1,
+          scheduledFor: scheduledFor.toISOString(),
+        },
+      },
+      tx
+    );
   });
 
   return jsonOk({

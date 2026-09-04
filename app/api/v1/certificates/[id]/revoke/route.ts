@@ -8,13 +8,15 @@ import { z } from "zod";
 import { jsonOk, jsonErr } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
-import { notify } from "@/lib/notify/notifications";
+import { notificationEnabled } from "@/lib/notify/notifications";
 
 const Body = z.object({ reason: z.string().min(20, "Reason must be at least 20 characters") });
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getSession(req);
-  const guard = requireRole(session);
+  // AUDIT FINDING #68: explicit role gate up front (was a bare requireRole()
+  // with a custom check later — same outcome, unclear intent).
+  const guard = requireRole(session, "ADMIN", "LMO", "GATC");
   if (guard) return guard;
 
   const cert = await db.certificate.findFirst({
@@ -48,22 +50,36 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const revokedAt = new Date();
-  await db.certificate.update({
-    where: { id: cert.id },
-    data: { status: "REVOKED", revokedAt, revokedReason: reason },
+  // AUDIT FINDING #19: status update + audit + owner notification commit in ONE
+  // transaction — a revoked certificate can never lack its audit evidence or
+  // owner notice, and a failed notification cannot strand the revocation.
+  await db.$transaction(async (tx) => {
+    await tx.certificate.update({
+      where: { id: cert.id },
+      data: { status: "REVOKED", revokedAt, revokedReason: reason },
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: session!.userId,
+        actorKind: session!.role,
+        action: "cert.revoked",
+        entity: "certificate",
+        entityId: cert.id,
+        meta: { certId: cert.certId, reason },
+      },
+    });
+    // owner notification — skipped only when the owner disabled revocations (#40)
+    if (await notificationEnabled(tx, cert.instrument.ownerId, "REVOKED")) {
+      await tx.notification.create({
+        data: {
+          userId: cert.instrument.ownerId,
+          kind: "REVOKED",
+          title: "Certificate revoked",
+          body: reason,
+        },
+      });
+    }
   });
-
-  await db.auditLog.create({
-    data: {
-      actorId: session!.userId,
-      actorKind: session!.role,
-      action: "cert.revoked",
-      entity: "certificate",
-      entityId: cert.id,
-      meta: { certId: cert.certId, reason },
-    },
-  });
-  await notify(cert.instrument.ownerId, "REVOKED", "Certificate revoked", reason);
 
   return jsonOk({ revoked: true, certId: cert.certId, status: "REVOKED", revokedAt: revokedAt.toISOString() });
 }

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAuthStore } from "@/lib/store";
+import { authorizedRequest } from "@/components/api-client";
 import { buildExportUrl, EXPORT_LABELS, type ExportEntity } from "./export-url";
 
-/** CSV export buttons (MA4 item 6). Fetches with Bearer token, applies the
- *  endpoint's Content-Disposition filename (instruments.csv etc), and triggers
- *  download via blob URL with real completion handling. */
+/** CSV export buttons (MA4 item 6). Downloads via the shared authorizedRequest
+ *  (audit finding #55 — same single-flight Bearer + 401-refresh path as api()),
+ *  applies the endpoint's Content-Disposition filename (instruments.csv etc),
+ *  and triggers the download via blob URL with real completion handling. */
 export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
   const [busy, setBusy] = useState<ExportEntity | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -17,27 +18,8 @@ export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
     const url = buildExportUrl(entity, window.location.search);
 
     try {
-      const token = useAuthStore.getState().accessToken;
-      let res = await fetch(url, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
-
-      // Handle 401 token refresh if needed
-      if (res.status === 401) {
-        const refreshRes = await fetch("/api/v1/auth/refresh", {
-          method: "POST",
-          credentials: "same-origin",
-        });
-        const refreshData = await refreshRes.json().catch(() => null);
-        if (refreshRes.ok && refreshData?.ok && refreshData.data?.accessToken) {
-          const freshToken = refreshData.data.accessToken;
-          const user = useAuthStore.getState().user;
-          if (user) useAuthStore.getState().setAuth(user, freshToken);
-          res = await fetch(url, {
-            headers: { Authorization: `Bearer ${freshToken}` },
-          });
-        }
-      }
+      // shared 401-refresh path — never reimplement refresh here (audit finding #55)
+      const res = await authorizedRequest(url);
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);

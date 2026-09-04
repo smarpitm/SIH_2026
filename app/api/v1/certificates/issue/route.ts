@@ -2,6 +2,7 @@ import { z } from "zod";
 import { jsonOk, jsonErr } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
+import { assertJurisdiction } from "@/lib/auth/rbac";
 import { issueCertificate } from "@/lib/crypto/issue";
 
 const bodySchema = z.object({
@@ -21,11 +22,25 @@ export async function POST(req: Request) {
   const application = await db.application.findUnique({
     where: { id: parsed.data.applicationId },
     include: {
+      instrument: { select: { id: true, district: true } },
       inspection: { select: { id: true, inspectorId: true, result: true } },
       schedules: { select: { assigneeId: true, assigneeKind: true }, take: 1 },
     },
   });
   if (!application) return jsonErr("NOT_FOUND", "Application not found");
+
+  // AUTHORIZATION FIRST (audit findings #1/#28): nothing about this
+  // application — least of all an existing certificate's payloadJws/qrPayload —
+  // may leave the endpoint before the caller is proven to be ADMIN or the
+  // assigned officer in jurisdiction. The idempotent "return existing cert"
+  // branch below therefore only runs AFTER this check.
+  const jurisdiction = assertJurisdiction(session!, application.instrument.district);
+  if (jurisdiction) return jurisdiction;
+  const authorized =
+    session!.role === "ADMIN" || application.schedules[0]?.assigneeId === session!.userId;
+  if (!authorized) {
+    return jsonErr("AUTH_FORBIDDEN", "Not the assigned officer for this application");
+  }
 
   // idempotent: already issued -> return the existing certificate unchanged
   const existing = await db.certificate.findUnique({
@@ -48,12 +63,6 @@ export async function POST(req: Request) {
       from: application.status,
       to: "CERT_ISSUED",
     });
-  }
-
-  const assignedOfficer =
-    session!.role === "ADMIN" || application.schedules[0]?.assigneeId === session!.userId;
-  if (!assignedOfficer) {
-    return jsonErr("AUTH_FORBIDDEN", "Not the assigned officer for this application");
   }
 
   const cert = await issueCertificate({

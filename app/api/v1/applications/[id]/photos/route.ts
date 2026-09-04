@@ -2,7 +2,15 @@ import { jsonOk, jsonErr } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 import { audit } from "@/lib/auth/audit";
-import { storeUploads, filesFromForm, UnsupportedMediaTypeError } from "@/lib/uploads/multipart";
+import {
+  storeUploads,
+  filesFromForm,
+  UnsupportedMediaTypeError,
+  requestBodyTooLarge,
+  requestLimitMessage,
+  DEFAULT_REQUEST_LIMIT_BYTES,
+  PHOTO_POLICY,
+} from "@/lib/uploads/multipart";
 
 // book MA2 item 9 — POST /applications/[id]/photos
 // Access: TRADER owner or assigned officer (Schedule.assigneeId — schedules exist from MA3).
@@ -28,6 +36,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
   if (!allowed) return jsonErr("AUTH_FORBIDDEN", "Not your application");
 
+  // AUDIT FINDING #16: hard request cap BEFORE formData() buffers the body
+  if (requestBodyTooLarge(req)) {
+    return jsonErr("VALIDATION_ERROR", requestLimitMessage(DEFAULT_REQUEST_LIMIT_BYTES));
+  }
   const form = await req.formData().catch(() => null);
   if (!form) return jsonErr("VALIDATION_ERROR", "multipart/form-data body required");
   const photos = filesFromForm(form, "photos");
@@ -36,7 +48,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    const stored = await storeUploads(photos, `applications/${application.id}/photos`);
+    // PHOTO_POLICY: image MIME types only (audit finding #16 — a photo route
+    // must never accept PDFs)
+    const stored = await storeUploads(photos, `applications/${application.id}/photos`, PHOTO_POLICY);
     const keys = stored.map((s) => s.key);
     await audit({
       actorId: session!.userId,

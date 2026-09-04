@@ -25,8 +25,15 @@ import { buildBadge } from "@/lib/public/badge";
 import type { CertForBadge } from "@/lib/public/badge";
 
 export async function GET(_req: Request, { params }: { params: { certId: string } }) {
-  const cert = await db.certificate.findFirst({
-    where: { OR: [{ certId: params.certId }, { id: params.certId }] },
+  // AUDIT FINDING #47: the public surface only speaks the public certId —
+  // internal Prisma ids (cuid) are not part of the public protocol and are
+  // answered with NOT_FOUND without leaking whether an internal row exists.
+  if (/^c[a-z0-9]{24}$/i.test(params.certId)) {
+    return jsonErr("NOT_FOUND", `No certificate matching '${params.certId}'`);
+  }
+
+  const cert = await db.certificate.findUnique({
+    where: { certId: params.certId },
     select: {
       id: true,
       certId: true,

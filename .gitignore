@@ -11,6 +11,7 @@
 
 # next.js
 /.next/
+/.next-build/
 /out/
 
 # production
@@ -33,6 +34,9 @@ yarn-error.log*
 # local infra data
 /pgdata
 /miniodata
+
+# local verification screenshots (Chrome captures, not project assets)
+/screenshots/
 
 # vercel
 .vercel

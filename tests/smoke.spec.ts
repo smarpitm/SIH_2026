@@ -154,6 +154,15 @@ describe("PRD §14 demo-critical path (HTTP)", () => {
       orderBy: { createdAt: "desc" },
     });
     expect(note!.body).toContain(certId);
+
+    // transactional PASS (audit finding #4): exactly one inspection report and
+    // exactly one certificate exist for this application
+    const [reportCount, certCount] = await Promise.all([
+      db.inspectionReport.count({ where: { applicationId } }),
+      db.certificate.count({ where: { applicationId } }),
+    ]);
+    expect(reportCount).toBe(1);
+    expect(certCount).toBe(1);
   });
 
   it("public badge verdict is VALID with a good signature", async () => {

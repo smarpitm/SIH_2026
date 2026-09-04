@@ -2,16 +2,23 @@
   "name": "github_project",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "db:push": "prisma db push",
+    "db:indexes": "prisma db execute --file prisma/search-indexes.sql --schema prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
     "test": "vitest run",
+    "check": "tsc --noEmit",
+    "worker": "tsx workers/worker-entry.ts",
     "dev": "next dev",
     "build": "next build",
     "seed:10k": "tsx prisma/seed-10k.ts",
-    "openapi:check": "node scripts/check-openapi.mjs"
+    "openapi:check": "node scripts/check-openapi.mjs",
+    "i18n:check": "tsx lib/i18n/check-parity.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1120.0",

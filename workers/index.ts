@@ -1,6 +1,8 @@
-// workers registry (S1 — Smarpit). Shared-file addition announced in chat:
-// this is the single consumer entrypoint; routes never import workers directly.
-import { registerInspectionPassHandler } from "@/lib/hooks";
+// workers registry (S1 — Smarpit). AUDIT FINDINGS #4/#5: the web request path
+// no longer emits PASS events through the hook — inspections issue inline and
+// transactionally. This module is now worker-process-only and must be imported
+// exclusively behind ENABLE_WORKERS=true (instrumentation.ts does the gating),
+// so `next build` and worker-less deployments never touch Redis/BullMQ.
 import { issueCertificate } from "@/lib/crypto/issue";
 import { applyTransition } from "@/lib/auth/transition";
 import { db } from "@/lib/db";
@@ -8,79 +10,9 @@ import { startExpiryQueue } from "@/workers/expiry-scan";
 
 let registered = false; // module-level idempotency guard
 
-// SMV1 flip tuning: the /inspections route commits CHECKED_IN -> PASSED only
-// AFTER emitInspectionPass resolves, so the CERT_ISSUED flip cannot run inline
-// in the handler — it would be overwritten by the route's own PASSED update.
-// It therefore runs detached and polls briefly for the PASSED commit.
-const FLIP_POLL_MS = 5;
-const FLIP_TIMEOUT_MS = 5000;
-
-async function flipToCertIssued(applicationId: string, certId: string) {
-  const deadline = Date.now() + FLIP_TIMEOUT_MS;
-  for (;;) {
-    const app = await db.application.findUnique({
-      where: { id: applicationId },
-      select: { id: true, status: true },
-    });
-    if (!app) {
-      console.warn("[workers] app not found for CERT_ISSUED flip:", applicationId);
-      return;
-    }
-    // Idempotency: applyTransition only performs PASSED->CERT_ISSUED from
-    // exactly PASSED, and an already-CERT_ISSUED app exits here — so a
-    // duplicated PASS event is a harmless no-op (never a second audit row).
-    if (app.status === "CERT_ISSUED") return;
-    if (app.status === "PASSED") {
-      const res = await applyTransition(app, "CERT_ISSUED");
-      if (res instanceof Response) {
-        // Illegal move per the state machine — log it and move on.
-        console.warn("[workers] CERT_ISSUED flip skipped for", applicationId);
-        return;
-      }
-      await db.auditLog.create({
-        data: {
-          actorId: null,
-          actorKind: "system",
-          action: "app.cert_issued",
-          entity: "application",
-          entityId: applicationId,
-          meta: { certId },
-        },
-      });
-      return;
-    }
-    if (Date.now() > deadline) {
-      console.warn(
-        "[workers] CERT_ISSUED flip gave up — app never reached PASSED:",
-        applicationId
-      );
-      return;
-    }
-    await new Promise((r) => setTimeout(r, FLIP_POLL_MS));
-  }
-}
-
 export function registerWorkers() {
   if (registered) return;
   registered = true;
-
-  registerInspectionPassHandler(async (event) => {
-    // never throws upward — issueCertificate swallows + audits its own failures,
-    // so an inspection PASS can never fail because issuance failed.
-    const cert = await issueCertificate(event);
-
-    // Issuance failed -> no flip; the application completes CHECKED_IN -> PASSED
-    // via the route and stays there. The cert.issue_failed audit row written by
-    // lib/crypto/issue.ts is the failure signal.
-    if (!cert) return;
-
-    // SMV1: complete the lifecycle PASSED -> CERT_ISSUED after SUCCESSFUL
-    // issuance. Detached (void) + caught so an inspection PASS can never fail
-    // because of post-issuance steps either ("never throws upward").
-    void flipToCertIssued(event.applicationId, cert.certId).catch((err) =>
-      console.error("[workers] post-issuance CERT_ISSUED flip failed (non-fatal):", err)
-    );
-  });
 
   // S6 / PRD #6+#7: nightly expiry ladder (00:30 IST repeatable BullMQ job).
   // startExpiryQueue() skips itself when REDIS_URL is unset, and the try/catch
@@ -90,4 +22,54 @@ export function registerWorkers() {
   } catch (err) {
     console.error("[workers] expiry-scan registration skipped/failed:", err);
   }
+}
+
+// Repair sweep (audit finding #4): flips applications stranded in PASSED
+// without a certificate (rows written by pre-fix deployments, or issuances
+// that failed for transient reasons before the inline-transaction fix).
+// Runs ONLY in the worker process (ENABLE_WORKERS=true) — never in the web
+// request path. Safe to re-run: issuance is idempotent per application and
+// applyTransition only performs PASSED -> CERT_ISSUED from exactly PASSED.
+export async function repairStrandedPasses(): Promise<number> {
+  const stranded = await db.application.findMany({
+    where: { status: "PASSED", certificates: { none: {} } },
+    include: {
+      inspection: { select: { id: true, inspectorId: true } },
+      schedules: { select: { assigneeKind: true }, take: 1 },
+    },
+    take: 50,
+  });
+  let repaired = 0;
+  for (const app of stranded) {
+    if (!app.inspection) continue;
+    try {
+      const cert = await issueCertificate({
+        applicationId: app.id,
+        instrumentId: app.instrumentId,
+        reportId: app.inspection.id,
+        inspectorId: app.inspection.inspectorId,
+        inspectorKind: (app.schedules[0]?.assigneeKind as "LMO" | "GATC") ?? "LMO",
+      });
+      if (!cert) continue;
+      const res = await applyTransition(app, "CERT_ISSUED");
+      if (res instanceof Response) {
+        console.warn("[workers] CERT_ISSUED flip skipped for", app.id);
+        continue;
+      }
+      await db.auditLog.create({
+        data: {
+          actorId: null,
+          actorKind: "system",
+          action: "app.cert_issued",
+          entity: "application",
+          entityId: app.id,
+          meta: { certId: cert.certId, repaired: true },
+        },
+      });
+      repaired++;
+    } catch (err) {
+      console.error("[workers] repair failed for", app.id, err);
+    }
+  }
+  return repaired;
 }

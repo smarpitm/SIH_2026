@@ -26,6 +26,11 @@ const searchQuerySchema = z.object({
 });
 
 const TAKE = 25; // per kind; demo scale — keep responses bounded
+// AUDIT FINDING #31: the instrument status filter is derived in memory, so the
+// candidate window must be larger than the response bound — otherwise a status
+// filter could return visibly incomplete results. 200 candidates keeps this
+// correct for realistic backlogs; documented here per the audit recommendation.
+const INSTRUMENT_CANDIDATES = 200;
 
 export async function GET(req: Request) {
   const session = await getSession(req);
@@ -65,7 +70,7 @@ export async function GET(req: Request) {
         OR: [{ serialNumber: contains }, { make: contains }, { model: contains }],
       },
       orderBy: { createdAt: "desc" },
-      take: TAKE,
+      take: INSTRUMENT_CANDIDATES,
     }),
     db.certificate.findMany({
       where: {
@@ -113,6 +118,16 @@ export async function GET(req: Request) {
     url: string;
   }[] = [];
 
+  // AUDIT FINDING #30: instrument URLs are role-aware. Only TRADERs have an
+  // instrument detail page — officers/admins would be bounced by the middleware
+  // if they were handed /trader/... links, so they get their portal root.
+  const instrumentUrl =
+    s.role === "TRADER"
+      ? (id: string) => `/trader/instruments/${id}`
+      : s.role === "ADMIN"
+        ? () => "/admin/dashboard"
+        : () => "/officer";
+
   for (const i of instruments) {
     const st = latestByInstrument.get(i.id) ?? "UNCERTIFIED";
     // status filter applies to derived instrument status too; instruments with
@@ -125,7 +140,7 @@ export async function GET(req: Request) {
       subtitle: `${i.make} ${i.model} · ${i.category}`,
       district: i.district,
       status: st,
-      url: `/trader/instruments/${i.id}`,
+      url: instrumentUrl(i.id),
     });
   }
   for (const c of certs) {
@@ -136,9 +151,11 @@ export async function GET(req: Request) {
       subtitle: `${c.instrument.serialNumber} · ${c.instrument.category}`,
       district: c.instrument.district,
       status: c.status,
-      url: `/verify/${c.certId}`,
+      url: `/verify/${c.certId}`, // public page — valid for every role
     });
   }
 
-  return jsonOk(items);
+  // bound the derived-status-filtered instruments to the response contract
+  const bounded = items.slice(0, TAKE + TAKE);
+  return jsonOk(bounded);
 }

@@ -8,11 +8,17 @@ import { getSession } from "@/lib/auth/session";
 import { toUserDTO } from "@/lib/auth/dto";
 import { audit } from "@/lib/auth/audit";
 
-// book MA1 item 3
+// book MA1 item 3 — public registration. AUDIT FINDING #56: trader-only.
+// LMO/GATC accounts are created exclusively via admin invite (unique one-time
+// credentials, POST /auth/invite); ADMIN accounts via an existing ADMIN.
 const bodySchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
-  password: z.string().min(8).regex(/\d/, "Password must contain at least one digit"),
+  password: z
+    .string()
+    .min(8)
+    .max(72) // audit finding #9: cap length (long passphrases fine, DoS-length not)
+    .regex(/\d/, "Password must contain at least one digit"),
   role: z.enum(ROLES),
   orgName: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
@@ -25,6 +31,13 @@ export async function POST(req: Request) {
     return jsonErr("VALIDATION_ERROR", "Invalid registration payload", parsed.error.flatten());
   }
   const { name, email, password, role, orgName, phone, district } = parsed.data;
+
+  // AUDIT FINDING #56: officer roles can NEVER be self-registered — role and
+  // district claims drive the whole RBAC/jurisdiction model, so an open path
+  // to LMO/GATC would be a full authorization bypass. Use POST /auth/invite.
+  if (role === "LMO" || role === "GATC") {
+    return jsonErr("AUTH_FORBIDDEN", "Officer accounts are created via admin invite only");
+  }
 
   // role ADMIN rejected with AUTH_FORBIDDEN unless an ADMIN token calls it
   // (admin creates admins via MA5 invite). (book MA1 item 3)

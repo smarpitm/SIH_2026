@@ -52,6 +52,7 @@ model User {
   orgName      String? // business name (TRADER) / centre name (GATC)
   phone        String?
   district     String? // jurisdiction for LMO/GATC; home district for TRADER
+  mustChangePassword Boolean @default(false) // set on admin invite; cleared by /auth/change-password
   createdAt    DateTime       @default(now())
 
   instruments       Instrument[]
@@ -59,6 +60,21 @@ model User {
   inspections       InspectionReport[]
   certificatesIssued Certificate[]
   notifications     Notification[]
+  notificationPreference NotificationPreference?
+}
+
+// Per-user in-app notification preferences (audit finding #40). Rows are lazy:
+// absent row = all kinds enabled (default-on), created on first PUT via upsert.
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id])
+  certIssued     Boolean  @default(true)
+  revocation     Boolean  @default(true)
+  expiryReminder Boolean  @default(true)
+  sla            Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Instrument {
@@ -158,8 +174,11 @@ model Notification {
   kind      String // CERT_ISSUED | REMINDER_T30 | REVOKED | SLA
   title     String
   body      String
+  dedupeKey String? // exactly-once marker for sweeps (e.g. "expiry:<certId>:<kind>"); unique
   readAt    DateTime?
   createdAt DateTime  @default(now())
+
+  @@unique([dedupeKey])
 }
 
 model AuditLog {
@@ -171,6 +190,28 @@ model AuditLog {
   entityId  String
   meta      Json?
   createdAt DateTime @default(now())
+}
+
+// Durable refresh-token family state (audit finding #2): replaces the
+// process-local Map so replay detection survives restarts and works across
+// instances. `gen` = number of rotations consumed; the newest live token of a
+// family presents gen === this value. CAS rotation via guarded updateMany.
+model RefreshFamily {
+  id        String   @id // familyId carried inside the refresh JWT
+  userId    String
+  gen       Int      @default(0)
+  revoked   Boolean  @default(false)
+  expiresAt DateTime // mirrors the refresh-token TTL
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Atomic certificate-number sequence (audit finding #3): rows are never
+// renumbered by application code; issuance increments this counter inside the
+// issuance transaction and derives certId from the returned value.
+model CertCounter {
+  id         String @id @default("cert")
+  lastNumber Int    @default(0)
 }
 
 

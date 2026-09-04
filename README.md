@@ -84,6 +84,15 @@ npm run dev
 The app runs on http://localhost:3000. MinIO console is on http://localhost:9001
 (default `pramanam` / `pramanam123`). The docs page renders the OpenAPI spec.
 
+### Dev/build isolation
+
+`next dev` writes `.next` and `next build` writes `.next-build` (see
+`next.config.mjs`), so running a production build can never corrupt a running
+dev server. Override with `NEXT_DIST_DIR` if a deployment needs a specific
+output directory. Behind a real proxy, also enforce an upload body limit there
+(e.g. nginx `client_max_body_size 25m`) — the API additionally rejects oversized
+requests from the `Content-Length` header before buffering.
+
 ### Environment variables
 
 | Variable | Purpose |
@@ -95,6 +104,9 @@ The app runs on http://localhost:3000. MinIO console is on http://localhost:9001
 | `ED25519_PRIVATE_KEY` / `ED25519_PUBLIC_KEY` | Base64 PKCS8 / SPKI PEM used to sign certificates. If unset, an ephemeral dev pair is generated and printed on boot — paste it into `.env` (never into `.env.example`) |
 | `S3_ENDPOINT`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` | MinIO connection; the bucket is created automatically with versioning |
 | `NEXT_PUBLIC_APP_URL` | Public base URL of the app |
+| `PAYMENT_MODE` | `demo` (default) = explicit mock payment; any other value refuses to record payment until a real gateway is integrated. Production boots fail unless `PAYMENT_MODE=demo` AND `ALLOW_DEMO_PAYMENT=true` |
+| `TRUST_PROXY` | Set `true` only when sitting behind a trusted proxy — enables `x-forwarded-for` for rate-limit keys |
+| `NEXT_PUBLIC_DEMO_MODE` | `true` shows demo-credential presets on the login page |
 
 ### Seeded accounts
 
@@ -119,8 +131,10 @@ All passwords are `Passw0rd!demo`.
 | `npm run lint` | ESLint |
 | `npm run test` | Vitest |
 | `npm run db:push` | Push Prisma schema to the database |
+| `npm run db:indexes` | Apply `prisma/search-indexes.sql` (pg_trgm GIN indexes for `contains` search + FK btree indexes; idempotent) |
 | `npm run db:seed` | Idempotent seed, prints `seeded already` on rerun |
-| `npm run openapi:check` | Drift guard: OpenAPI path count must equal live route file count |
+| `npm run openapi:check` | Drift guard: OpenAPI paths and methods must equal the live route tree |
+| `npm run worker` | Run the expiry worker as a separate process (`ENABLE_WORKERS=true`) |
 
 To reset to a pristine demo state (wipes all data):
 
@@ -185,9 +199,11 @@ Error codes are a closed set: `VALIDATION_ERROR` (400), `AUTH_REQUIRED` (401), `
 
 | Method | Path | Notes |
 |---|---|---|
-| POST | `/auth/register` | Password needs 8+ chars and a digit. Registering an ADMIN requires an ADMIN token. Duplicate email returns CONFLICT |
-| POST | `/auth/login` | Returns `{ accessToken, user }` and sets the `pm_refresh` cookie. Failures are generic |
-| POST | `/auth/refresh` | Rotates the refresh token. Replaying an older token revokes the whole family |
+| POST | `/auth/register` | Public signup is trader-only (8+ chars + a digit, max 72). LMO/GATC/ADMIN accounts come from an ADMIN invite. Duplicate email returns CONFLICT |
+| POST | `/auth/invite` | ADMIN only; creates LMO/GATC with a unique one-time password shown once (user must change it on first login) |
+| POST | `/auth/login` | Returns `{ accessToken, user }` and sets the `pm_refresh` cookie. Failures are generic; failed attempts are rate-limited per account |
+| POST | `/auth/refresh` | Rotates the refresh token against a durable (Postgres) family. Replaying an older token revokes the whole family |
+| POST | `/auth/change-password` | Authenticated rotation; clears `mustChangePassword` for invited officers |
 | POST | `/auth/logout` | Clears the refresh cookie |
 | GET | `/auth/me` | Current user |
 
@@ -198,17 +214,17 @@ Error codes are a closed set: `VALIDATION_ERROR` (400), `AUTH_REQUIRED` (401), `
 | GET | `/instruments` | Traders see their own, LMO/GATC their district, ADMIN everything. Filters: `district`, `category`, `q` (serial contains) |
 | POST | `/instruments` | Trader only, multipart with optional purchase proof. Serial + district must be unique |
 | GET, PATCH | `/instruments/{id}` | Owner, same-district officer, or ADMIN. Only `address` and `capacity` are mutable |
-| GET | `/instruments/{id}/sticker` | Sticker render (not implemented yet) |
+| GET | `/instruments/{id}/sticker` | Renders the A6 sticker for the instrument's ACTIVE certificate and returns a presigned download URL |
 
 ### Applications
 
 | Method | Path | Notes |
 |---|---|---|
-| GET, POST | `/applications` | Trader only; must own the instrument. Starts in DRAFT with `feeAmount = FEE_PAISA` |
+| GET, POST | `/applications` | Trader only; must own the instrument. Starts in DRAFT with `feeAmount = FEE_PAISA`; a second open application per instrument is rejected (CONFLICT) |
 | GET | `/applications/{id}` | Detail |
-| POST | `/applications/{id}/pay` | Demo payment, returns a receipt id |
-| POST | `/applications/{id}/submit` | Requires payment and declaration. Auto-allocates an officer and returns `{ status: "SCHEDULED" }` |
-| POST | `/applications/{id}/reschedule` | Trader, while SCHEDULED, at most 2 times, reason of 10+ chars |
+| POST | `/applications/{id}/pay` | Payment is DRAFT-only, idempotent and audited. `PAYMENT_MODE=demo` (default) runs the explicit demo mock (`demo: true` in the response); any other mode refuses to record payment until a real gateway is integrated |
+| POST | `/applications/{id}/submit` | One transaction: declaration + payment gate, officer pick before any write, auto-allocation → returns `{ status: "SCHEDULED" }`. Rolls back untouched if no officer exists |
+| POST | `/applications/{id}/reschedule` | Trader, while SCHEDULED, at most 2 times; requires `{ reason, newDate }` and commits atomically |
 | POST | `/applications/{id}/photos` | Trader or assigned officer; uploads photos and returns MinIO keys |
 
 ### Scheduling and inspection
@@ -218,7 +234,7 @@ Error codes are a closed set: `VALIDATION_ERROR` (400), `AUTH_REQUIRED` (401), `
 | GET | `/schedule/mine` | Officer's queue, ordered by date, overdue jobs flagged |
 | POST | `/schedule/checkin` | Assigned officer, within `[scheduledFor - 2h, +8h]` |
 | POST | `/schedule/allocate` | Manual re-run of allocation |
-| POST | `/inspections` | Multipart: result, observations (keys validated against `OBSERVATION_CONFIG`), photos, GPS. PASS fires the certificate hook |
+| POST | `/inspections` | Multipart: result, observations (full schema from `OBSERVATION_CONFIG`), ≥1 photo, GPS. PASS issues the certificate in the same transaction → application lands in CERT_ISSUED; FAIL requires a reason. Uploads are capped at the request level (Content-Length) before buffering, and photo fields accept image MIME types only |
 
 ### Notifications
 
@@ -226,6 +242,7 @@ Error codes are a closed set: `VALIDATION_ERROR` (400), `AUTH_REQUIRED` (401), `
 |---|---|---|
 | GET | `/notifications` | Own rows, newest first |
 | PATCH | `/notifications/read` | `{ ids: [...] }` marks rows read |
+| GET, PUT | `/notifications/preferences` | Per-user toggles (`certIssued`, `revocation`, `expiryReminder`, `sla`). Missing row = all enabled; certificate/revoke/expiry writes respect them |
 
 ### Dashboards
 
@@ -244,7 +261,7 @@ Error codes are a closed set: `VALIDATION_ERROR` (400), `AUTH_REQUIRED` (401), `
 | GET | `/public/certificates/lookup` | Lookup by serial |
 | GET | `/public/stats` | Public aggregate stats |
 | GET | `/.well-known/pramanam-public-key` | Verification key |
-| GET | `/openapi.json` | OpenAPI 3.0 document for all 33 paths |
+| GET | `/openapi.json` | OpenAPI 3.0 document for every live route (bundled at build — no runtime file read) |
 
 ---
 ## Repo layout
@@ -288,8 +305,8 @@ npx tsx lib/crypto/selftest.ts
 ```
 
 The OpenAPI document is served at `GET /api/v1/openapi.json` and rendered by the docs page.
-`npm run openapi:check` fails the build if the number of paths in the document ever stops
-matching the number of route files under `app/api/v1`.
+`npm run openapi:check` fails if the document and the live route tree drift apart (path
+counts AND method sets per path are compared).
 
 ## Frozen contracts
 
@@ -308,10 +325,11 @@ them. Ownership and day-to-day status live in `context.txt`.
 | Auth, RBAC (MA1) | Manav | merged |
 | Instruments, applications, uploads (MA2) | Manav | merged |
 | Scheduling, allocation, inspection, PASS hook (MA3) | Manav | merged (MG1 complete) |
-| Dashboards, notifications, exports, OpenAPI (MA4) | Manav | in review |
-| Invites, xlsx, bulk seed (MA5, degradable) | Manav | pending |
+| Dashboards, notifications, exports, OpenAPI (MA4) | Manav | merged |
+| Officer invites + one-time credentials, change-password (MA5) | Manav | merged |
 | Certificate crypto and issuance (S1–S4, MG2) | Smarpit | merged |
 | UI shell, i18n (K1, N1) | Kush, Nishka | merged |
+| Production hardening per PROJECT_AUDIT.md | Manav + Smarpit | see PROJECT_AUDIT.md Fix Status |
 
 Built for Smart India Hackathon 2026 — digitalization of Legal Metrology verification for the
 Department of Consumer Affairs.

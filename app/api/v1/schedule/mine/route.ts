@@ -27,6 +27,14 @@ export async function GET(req: Request) {
     : [];
   const traderBy = new Map(traders.map((t) => [t.id, t]));
 
+  // AUDIT FINDING #29: `assigneeName` now carries the assignee's real name
+  // (batch-fetched), matching what /schedule/allocate returns — no more cuid.
+  const assigneeIds = Array.from(new Set(schedules.map((s) => s.assigneeId)));
+  const assignees = assigneeIds.length
+    ? await db.user.findMany({ where: { id: { in: assigneeIds } }, select: { id: true, name: true } })
+    : [];
+  const assigneeBy = new Map(assignees.map((a) => [a.id, a]));
+
   const now = Date.now();
   return jsonOk(
     schedules.map((s) => {
@@ -34,7 +42,7 @@ export async function GET(req: Request) {
       return {
         id: s.id,
         applicationId: s.applicationId,
-        assigneeName: session!.userId === s.assigneeId ? session!.userId : s.assigneeId,
+        assigneeName: assigneeBy.get(s.assigneeId)?.name ?? s.assigneeId,
         assigneeKind: s.assigneeKind as "LMO" | "GATC",
         scheduledFor: s.scheduledFor.toISOString(),
         rescheduleCount: s.rescheduleCount,

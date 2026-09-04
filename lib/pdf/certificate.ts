@@ -3,7 +3,7 @@
 // variant-A = offline-verifiable pmnm.v1 payload, variant-B = online fallback
 // URL. Both ECC level Q, >= 28mm printed size. The 5 identity anchors come
 // ONLY from the signed JWS claims — never invented.
-import { PDFDocument, StandardFonts, rgb, PDFImage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, PDFImage, type PDFFont } from "pdf-lib";
 import { qrDataUrl } from "../crypto/qr";
 import { KID, publicKeyJwk } from "../crypto/keys";
 import { verifyCredential } from "../crypto/jws";
@@ -31,6 +31,23 @@ function statusColor(w: StatusWord) {
   if (w === "VALID") return GREEN;
   if (w === "EXPIRING SOON") return AMBER;
   return RED;
+}
+
+/** AUDIT FINDING #48: registry values (owner, serial, issued-by, cert id) can be
+ *  arbitrarily long. pdf-lib draws text on a fixed coordinate — no wrapping — so
+ *  truncate with an ellipsis to the available column width instead of letting
+ *  long names/serials run off the sheet. Unit-tested in tests/pdf-fit.test.ts. */
+export function fitValue(font: PDFFont, text: string, size: number, maxWidth: number): string {
+  if (font.widthOfTextAtSize(text, size) <= maxWidth) return text;
+  const ellipsis = "…";
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (font.widthOfTextAtSize(text.slice(0, mid) + ellipsis, size) <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo) + ellipsis;
 }
 
 export interface SheetInput {
@@ -101,16 +118,22 @@ export async function renderCertificateSheet(input: SheetInput): Promise<Uint8Ar
   let y = 660;
   page.drawText("IDENTITY ANCHORS", { x: 48, y, size: 9, font: bold, color: MUTED });
   y -= 24;
+  const valueColumnWidth = W - 48 - 240;
   for (const [label, value] of anchors) {
     page.drawText(label.toUpperCase(), { x: 48, y, size: 8, font, color: MUTED });
-    page.drawText(value, { x: 240, y: y + 1, size: 12, font: bold, color: INK });
+    page.drawText(fitValue(bold, value, 12, valueColumnWidth), { x: 240, y: y + 1, size: 12, font: bold, color: INK });
     y -= 10;
     page.drawLine({ start: { x: 48, y: y - 4 }, end: { x: W - 48, y: y - 4 }, thickness: 0.5, color: RULE });
     y -= 22;
   }
 
   page.drawText(
-    `Valid from ${(claims.validFrom ?? input.validFrom.toISOString()).slice(0, 10)}   ·   District ${claims.district ?? "—"}`,
+    fitValue(
+      font,
+      `Valid from ${(claims.validFrom ?? input.validFrom.toISOString()).slice(0, 10)}   ·   District ${claims.district ?? "—"}`,
+      9,
+      W - 96
+    ),
     { x: 48, y, size: 9, font, color: MUTED }
   );
 
@@ -136,7 +159,9 @@ export async function renderCertificateSheet(input: SheetInput): Promise<Uint8Ar
   // footer
   page.drawLine({ start: { x: 48, y: 92 }, end: { x: W - 48, y: 92 }, thickness: 0.5, color: RULE });
   page.drawText(`${input.certId}  ·  KID ${KID}`, { x: 48, y: 74, size: 8.5, font: bold, color: INK });
-  page.drawText(`Verify: scan QR or ${APP_URL}/verify/${input.certId}`, { x: 48, y: 60, size: 8.5, font, color: MUTED });
+  page.drawText(fitValue(bold, `Verify: scan QR or ${APP_URL}/verify/${input.certId}`, 8.5, W - 96), {
+    x: 48, y: 60, size: 8.5, font, color: MUTED,
+  });
   page.drawText("This certificate is computer-generated and cryptographically signed (Ed25519).", {
     x: 48, y: 46, size: 7.5, font, color: MUTED,
   });
@@ -183,16 +208,19 @@ export async function renderSticker(input: StickerInput): Promise<Uint8Array> {
     ["Cert ID", input.certId],
   ];
   let y = 52 * MM;
+  const stickerValueWidth = W - 6 * MM - 32 * MM;
   for (const [label, value] of rows) {
     page.drawText(label.toUpperCase(), { x: 6 * MM, y, size: 6.5, font, color: MUTED });
-    page.drawText(value, { x: 32 * MM, y: y + 0.5, size: 9.5, font: bold, color: INK });
+    page.drawText(fitValue(bold, value, 9.5, stickerValueWidth), { x: 32 * MM, y: y + 0.5, size: 9.5, font: bold, color: INK });
     y -= 9 * MM;
     page.drawLine({
       start: { x: 6 * MM, y: y + 2.5 * MM }, end: { x: W - 6 * MM, y: y + 2.5 * MM },
       thickness: 0.5, color: RULE,
     });
   }
-  page.drawText(`Verify: ${APP_URL}/verify/${input.certId}`, { x: 6 * MM, y: 8 * MM, size: 6.5, font, color: MUTED });
+  page.drawText(fitValue(font, `Verify: ${APP_URL}/verify/${input.certId}`, 6.5, W - 12 * MM), {
+    x: 6 * MM, y: 8 * MM, size: 6.5, font, color: MUTED,
+  });
 
   return pdf.save();
 }

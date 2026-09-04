@@ -1,4 +1,4 @@
-// TODO(Nishka): export const en: Record<string, string> = { ... }
+// English dictionary (N1 — implemented; keys frozen)
 export const en: Record<string, string> = {
   "verdict.valid": "Certified Valid",
   "verdict.expiring": "Expiring Soon",

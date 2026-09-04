@@ -7,9 +7,13 @@ import { KID } from "./keys";
 
 export function buildQrPayload(jws: string): string {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const host = new URL(appUrl).host;
+  const parsed = new URL(appUrl);
+  // AUDIT FINDING #44: preserve the configured protocol so dev QRs
+  // (http://localhost:3000) actually open on a phone; https stays mandatory in
+  // production — lib/security/env.ts rejects an http:// NEXT_PUBLIC_APP_URL.
+  const origin = (parsed.protocol === "http:" ? "http://" : "https://") + parsed.host;
   const envelope = JSON.stringify({ v: "pmnm.v1", alg: "EdDSA", kid: KID, s: jws });
-  return "https://" + host + "/verify/offline#pmnm.v1=" + b64url(envelope);
+  return origin + "/verify/offline#pmnm.v1=" + b64url(envelope);
 }
 
 // accepts the full pmnm.v1 URL form OR a bare compact JWS.

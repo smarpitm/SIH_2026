@@ -24,19 +24,28 @@
 // (actorId null) per the DECISION DOC §D.4.2 attribution rule.
 import fs from "node:fs";
 
-// .env must load before ./db executes (Prisma reads DATABASE_URL at client init).
-// Same tiny loader as lib/search/manual-check.ts so `npx tsx` runs standalone.
-(function loadEnv() {
-  for (const line of fs.readFileSync(".env", "utf8").split(/\r?\n/)) {
-    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"?(.*?)"?\s*$/);
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+// .env must load before ./db executes (Prisma reads DATABASE_URL at client init)
+// for STANDALONE `npx tsx` runs ONLY (audit finding #41). In the Next runtime the
+// environment is already provided, so this loader becomes a no-op there and can
+// never throw for a missing .env during builds/tests/serverless contexts.
+(function loadEnvStandalone() {
+  if (process.env.DATABASE_URL) return;
+  try {
+    for (const line of fs.readFileSync(".env", "utf8").split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*"?(.*?)"?\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+    }
+  } catch {
+    // no .env file — rely on the process environment (deployment-supplied)
   }
 })();
 
 import IORedis from "ioredis";
+import { Prisma } from "@prisma/client";
 import { Queue, Worker } from "bullmq";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/auth/audit";
+import { notificationEnabled } from "@/lib/notify/notifications";
 
 const DAY_MS = 86_400_000;
 export const EXPIRY_SCAN_QUEUE = "expiry-scan";
@@ -83,6 +92,9 @@ export async function runExpirySweep(now: Date = new Date()): Promise<SweepResul
     // 1. diffMs <= 0 -> EXPIRED (validity past)
     // 2. daysTo <= T30_DAYS -> EXPIRING_SOON (amber window)
     // 3. daysTo > T30_DAYS -> ACTIVE (green window)
+    // AUDIT FINDING #43: expiry is NOT reversible by the sweep — a certificate
+    // already marked EXPIRED never re-activates here even if validUntil moves
+    // forward (manual/SQL repair must be a separate, explicitly audited action).
     const to: "EXPIRING_SOON" | "EXPIRED" | "ACTIVE" =
       isExpired
         ? "EXPIRED"
@@ -91,6 +103,7 @@ export async function runExpirySweep(now: Date = new Date()): Promise<SweepResul
           : "ACTIVE";
 
     if (to === cert.status) continue;
+    if (cert.status === "EXPIRED" && to === "ACTIVE") continue;
 
     // Guarded flip — WHERE status = <expected>: concurrent/rerun sweeps lose
     // the race cleanly (count 0) and skip; exactly one sweeper flips a row.
@@ -155,18 +168,35 @@ async function notifyCrossing(
 
   let inserted = 0;
   for (const r of recipients) {
-    // Exactly-once per crossing: deterministic title embeds the certId and
-    // Notification has no entityId column (schema FROZEN), so
-    // (kind, userId, title) IS the crossing key — a rerun never re-inserts.
-    const dup = await db.notification.findFirst({
-      where: { userId: r.id, kind, title },
-      select: { id: true },
-    });
-    if (dup) continue;
-    await db.notification.create({
-      data: { userId: r.id, kind, title, body },
-    });
-    inserted += 1;
+    // AUDIT FINDING #40: respect the recipient's preference group — a user who
+    // turned off expiry reminders gets no EXPIRING_SOON / EXPIRED notice.
+    const prefKind = to === "EXPIRING_SOON" ? "REMINDER_T30" : "EXPIRED";
+    if (!(await notificationEnabled(db, r.id, prefKind))) continue;
+
+    // AUDIT FINDING #42: race-safe exactly-once inserts. Notification.dedupeKey
+    // is UNIQUE (schema updated) — concurrent sweeps that try the same crossing
+    // collide on the constraint and the loser's insert is a clean no-op, so no
+    // findFirst->create race window exists any more.
+    try {
+      await db.notification.create({
+        data: {
+          userId: r.id,
+          kind,
+          title,
+          body,
+          dedupeKey: `${kind}:${cert.certId}:${r.id}`,
+        },
+      });
+      inserted += 1;
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === "P2002" // unique violation — already notified for this crossing
+      ) {
+        continue;
+      }
+      throw e;
+    }
   }
   return inserted;
 }

@@ -30,44 +30,69 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return jsonErr("VALIDATION_ERROR", "declaration and payment required");
   }
 
-  // DRAFT -> SUBMITTED (second submit hits applyTransition(SUBMITTED -> SUBMITTED),
-  // → INVALID_STATE_TRANSITION { details: { from, to } } EXACT shape)
-  const res = await applyTransition(application, "SUBMITTED");
-  if (res instanceof Response) return res;
-
-  await db.application.update({
-    where: { id: application.id },
-    data: { declarationAccepted: true },
-  });
-
-  // book MA3 item 1: auto-allocation. Pick officer for the instrument's district.
+  // AUDIT FINDING #12/#7: pick the officer BEFORE any write — if no officer
+  // exists in the district, the application stays untouched (no partial
+  // SUBMITTED state) and the caller can retry later.
   const officer = await pickAllocationOfficer(application.instrument.district);
   if (!officer) {
     return jsonErr("INTERNAL", "no officer in district");
   }
 
   const scheduledFor = application.preferredDate ?? new Date(Date.now() + 7 * 86400000);
-  const schedule = await db.schedule.create({
-    data: {
-      applicationId: application.id,
-      assigneeId: officer.id,
-      assigneeKind: officer.role,
-      scheduledFor,
-    },
-  });
 
-  // SUBMITTED -> SCHEDULED via the same transition helper
-  const scheduledRes = await applyTransition({ id: application.id, status: "SUBMITTED" }, "SCHEDULED");
-  if (scheduledRes instanceof Response) return scheduledRes;
+  // AUDIT FINDING #12: the entire submit+allocation workflow is ONE transaction
+  // — DRAFT->SUBMITTED, declaration, schedule creation, SUBMITTED->SCHEDULED and
+  // the audit row commit or roll back together.
+  type TransitionFailure = { response: Response };
+  try {
+    await db.$transaction(async (tx) => {
+      // DRAFT -> SUBMITTED (second submit hits applyTransition(SUBMITTED -> SUBMITTED),
+      // → INVALID_STATE_TRANSITION { details: { from, to } } EXACT shape)
+      const res = await applyTransition(application, "SUBMITTED", tx);
+      if (res instanceof Response) throw { response: res } as TransitionFailure;
 
-  await audit({
-    actorId: session!.userId,
-    actorKind: session!.role,
-    action: "application.allocated",
-    entity: "application",
-    entityId: application.id,
-    meta: { assigneeId: officer.id, assigneeKind: officer.role, scheduleId: schedule.id, scheduledFor: scheduledFor.toISOString() },
-  });
+      await tx.application.update({
+        where: { id: application.id },
+        data: { declarationAccepted: true },
+      });
+
+      // book MA3 item 1: auto-allocation with the officer picked above
+      const schedule = await tx.schedule.create({
+        data: {
+          applicationId: application.id,
+          assigneeId: officer.id,
+          assigneeKind: officer.role,
+          scheduledFor,
+        },
+      });
+
+      // SUBMITTED -> SCHEDULED via the same transition helper
+      const scheduledRes = await applyTransition({ id: application.id, status: "SUBMITTED" }, "SCHEDULED", tx);
+      if (scheduledRes instanceof Response) throw { response: scheduledRes } as TransitionFailure;
+
+      await audit(
+        {
+          actorId: session!.userId,
+          actorKind: session!.role,
+          action: "application.allocated",
+          entity: "application",
+          entityId: application.id,
+          meta: { assigneeId: officer.id, assigneeKind: officer.role, scheduleId: schedule.id, scheduledFor: scheduledFor.toISOString() },
+        },
+        tx
+      );
+    });
+  } catch (e) {
+    if (
+      e &&
+      typeof e === "object" &&
+      "response" in e &&
+      (e as TransitionFailure).response instanceof Response
+    ) {
+      return (e as TransitionFailure).response;
+    }
+    throw e;
+  }
 
   return jsonOk({ status: "SCHEDULED" });
 }

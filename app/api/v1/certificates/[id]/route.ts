@@ -3,6 +3,8 @@ import type { CertificateDTO } from "@/packages/shared/types";
 import type { CertStatus } from "@/packages/shared/constants";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
+import { verifyCredential } from "@/lib/crypto/jws";
+import { publicKeyJwk } from "@/lib/crypto/keys";
 
 // GET /api/v1/certificates/[id] - role-scoped: owner trader / issuing officer /
 // same-district LMO / ADMIN. Returns CertificateDTO incl. payloadJws + qrPayload.
@@ -28,15 +30,19 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return jsonErr("AUTH_FORBIDDEN", "Not permitted to view this certificate");
   }
 
-  // owner/issuer display names come from the JWS claims (single source of truth)
+  // AUDIT FINDING #70: display claims are used only AFTER signature
+  // verification — decoded-but-unverified JWS payloads are never trusted for
+  // display. If verification fails, display fields stay empty (status/validity
+  // continue to come from the DB, which only the revoke route mutates).
   let ownerName = "";
   let issuedBy = "";
   try {
-    const claims = JSON.parse(
-      Buffer.from(cert.payloadJws.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8")
-    );
-    ownerName = claims.ownerName ?? "";
-    issuedBy = claims.issuedBy ?? "";
+    const v = await verifyCredential(cert.payloadJws, publicKeyJwk());
+    if (v.valid && v.payload) {
+      const claims = v.payload as Record<string, unknown>;
+      ownerName = typeof claims.ownerName === "string" ? claims.ownerName : "";
+      issuedBy = typeof claims.issuedBy === "string" ? claims.issuedBy : "";
+    }
   } catch {
     // leave display fields empty rather than failing the fetch
   }

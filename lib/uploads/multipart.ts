@@ -5,6 +5,21 @@ import { putObject, ensureBucket } from "./minio";
 
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
+// AUDIT FINDING #16 (hard cap): hard request-level ceiling enforced from the
+// Content-Length header BEFORE the body is parsed/buffered by req.formData().
+// Chunked requests (no Content-Length) still hit the post-parse file-count and
+// total-byte caps in storeUploads(). Route-level cap = the endpoint's max file
+// payload + headroom for multipart framing and small text fields.
+export const DEFAULT_REQUEST_LIMIT_BYTES = 25 * 1024 * 1024; // 25 MB
+
+/** True when the declared Content-Length exceeds the cap (reject before parse). */
+export function requestBodyTooLarge(req: Request, maxBytes = DEFAULT_REQUEST_LIMIT_BYTES): boolean {
+  const len = req.headers.get("content-length");
+  if (!len) return false; // chunked — the post-parse caps still apply
+  const n = Number(len);
+  return Number.isFinite(n) && n > maxBytes;
+}
+
 export interface StoredUpload {
   key: string;
   filename: string;
@@ -49,8 +64,36 @@ function safeName(name: string): string {
   return (base.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 120) || "file");
 }
 
+/** Endpoint-specific upload policy (audit finding #16/#MIME): photo-only
+ *  endpoints pass `allowedMime` without application/pdf; every endpoint gets
+ *  request-level file-count and total-byte caps. */
+export interface UploadPolicy {
+  allowedMime?: Array<"image/jpeg" | "image/png" | "image/webp" | "application/pdf">;
+  maxFiles?: number;
+  maxTotalBytes?: number;
+}
+
+export const PHOTO_POLICY: UploadPolicy = {
+  allowedMime: ["image/jpeg", "image/png", "image/webp"],
+  maxFiles: 5,
+  maxTotalBytes: 20 * 1024 * 1024, // 20 MB per request
+};
+
+// single optional purchase-proof file (≤10 MB) + small form fields
+const PROOF_REQUEST_LIMIT_BYTES = 12 * 1024 * 1024;
+
+export function requestLimitMessage(maxBytes: number): string {
+  return `request body exceeds the ${Math.round(maxBytes / (1024 * 1024))} MB limit`;
+}
+
+export { PROOF_REQUEST_LIMIT_BYTES };
+
 /** Validates (sniff + size) and stores one file; returns the MinIO object key + metadata. */
-export async function storeUpload(file: File, prefix: string): Promise<StoredUpload> {
+export async function storeUpload(
+  file: File,
+  prefix: string,
+  policy?: UploadPolicy
+): Promise<StoredUpload> {
   const bytes = new Uint8Array(await file.arrayBuffer());
   if (bytes.byteLength === 0) {
     throw new UnsupportedMediaTypeError("empty file");
@@ -64,17 +107,45 @@ export async function storeUpload(file: File, prefix: string): Promise<StoredUpl
       "unsupported file type — only JPEG, PNG, WEBP or PDF are accepted (magic-byte sniff failed)"
     );
   }
+  if (policy?.allowedMime && !policy.allowedMime.includes(contentType)) {
+    throw new UnsupportedMediaTypeError(
+      `file type ${contentType} is not accepted for this field`
+    );
+  }
   await ensureBucket();
   const key = `${prefix}/${randomUUID()}/${safeName(file.name)}`;
   await putObject(key, bytes, contentType);
   return { key, filename: file.name, contentType, bytes: bytes.byteLength };
 }
 
-/** Stores many files; the first bad file rejects (routes map it to 415). */
-export async function storeUploads(files: File[], prefix: string): Promise<StoredUpload[]> {
+/** Stores many files; the first bad file rejects (routes map it to 415).
+ *  Enforces the request-level caps BEFORE reading file content into memory
+ *  where possible (count + declared sizes), then re-checks the running total. */
+export async function storeUploads(
+  files: File[],
+  prefix: string,
+  policy?: UploadPolicy
+): Promise<StoredUpload[]> {
+  if (policy?.maxFiles !== undefined && files.length > policy.maxFiles) {
+    throw new UnsupportedMediaTypeError(`too many files — max ${policy.maxFiles} per request`);
+  }
+  const declaredTotal = files.reduce((sum, f) => sum + f.size, 0);
+  if (policy?.maxTotalBytes !== undefined && declaredTotal > policy.maxTotalBytes) {
+    throw new UnsupportedMediaTypeError(
+      `upload too large — max ${Math.round(policy.maxTotalBytes / (1024 * 1024))} MB per request`
+    );
+  }
   const out: StoredUpload[] = [];
+  let total = 0;
   for (const file of files) {
-    out.push(await storeUpload(file, prefix));
+    const stored = await storeUpload(file, prefix, policy);
+    total += stored.bytes;
+    if (policy?.maxTotalBytes !== undefined && total > policy.maxTotalBytes) {
+      throw new UnsupportedMediaTypeError(
+        `upload too large — max ${Math.round(policy.maxTotalBytes / (1024 * 1024))} MB per request`
+      );
+    }
+    out.push(stored);
   }
   return out;
 }

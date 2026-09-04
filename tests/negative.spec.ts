@@ -11,6 +11,33 @@ let traderToken = "";
 let krishnaLmoToken = "";
 let adminToken = "";
 
+const PNG_1PX = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64"
+);
+
+/** Creates a fresh Guntur instrument owned by the trader, so reruns on a shared
+ *  DB never collide with the duplicate-open-application guard (an instrument may
+ *  have at most one non-terminal application) or leftover rows from past runs. */
+async function createGunturInstrument(serialSuffix: string): Promise<string> {
+  const form = new FormData();
+  form.append("category", "COUNTER_SCALE");
+  form.append("make", "Cas");
+  form.append("model", "Neg-Battery");
+  form.append("serialNumber", `NEG-${Date.now()}-${serialSuffix}`);
+  form.append("capacity", "100kg");
+  form.append("district", "Guntur");
+  form.append("address", "Negative Battery Rd, Guntur");
+  form.append("purchaseProof", new Blob([PNG_1PX], { type: "image/png" }), "proof.png");
+  const { body } = await call<{ id: string }>("/api/v1/instruments", {
+    method: "POST",
+    headers: auth(traderToken),
+    body: form,
+  });
+  if (!body.ok) throw new Error(`instrument create failed: ${JSON.stringify(body)}`);
+  return body.data!.id;
+}
+
 beforeAll(async () => {
   await expectServerUp();
   traderToken = await login("ravi@demo.in");
@@ -26,18 +53,17 @@ describe("negative battery (error envelopes)", () => {
   let gunturApplicationId = "";
 
   it("cross-district LMO fetch → JURISDICTION_FORBIDDEN", async () => {
-    // fresh DB has instruments but zero applications — create one in Guntur first.
+    // Create a fresh Guntur instrument + DRAFT application of our own rather than
+    // reusing a seeded instrument: POST /applications now rejects a second open
+    // application per instrument, and leftover rows from past runs would otherwise
+    // make the create fail with CONFLICT.
     // NOTE: the /applications LIST is district-scoped (WHERE district = mine), so a
     // foreign row can never appear there — the per-row jurisdiction gate fires on the
     // DETAIL fetch, GET /applications/{id} (scopeApplication), which is the demo's
     // cross-district surface.
-    const insts = await call<{ id: string; district: string }[]>("/api/v1/instruments", {
-      headers: auth(traderToken),
-    });
-    const guntur = insts.body.data!.find((i) => i.district === "Guntur");
-    expect(guntur).toBeDefined();
+    const instrumentId = await createGunturInstrument("xdistrict");
     const apply = await call<{ id: string }>("/api/v1/applications", {
-      ...jsonInit(traderToken, "POST", { instrumentId: guntur!.id, type: "NEW" }),
+      ...jsonInit(traderToken, "POST", { instrumentId, type: "NEW" }),
     });
     expect(apply.body.ok).toBe(true);
     gunturApplicationId = apply.body.data!.id;

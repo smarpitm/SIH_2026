@@ -51,6 +51,10 @@ export const FEE_PAISA = 10000; // Rs 100 demo fee
 
 export const MAX_RESCHEDULES = 2;
 
+// AUDIT FINDING #38: single source of truth for the SLA turnaround - the admin
+// dashboard API and the UI copy ("Exceeded N-day turnaround") both render this.
+export const SLA_TURNAROUND_DAYS = 7;
+
 export const ERROR_CODES = [
   "VALIDATION_ERROR",
   "AUTH_REQUIRED",
