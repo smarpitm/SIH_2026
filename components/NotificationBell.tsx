@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/components/api-client";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 
 // GET /notifications shape (MA4) — not in frozen shared types, local to the UI
 interface NotificationItem {
@@ -15,6 +16,7 @@ interface NotificationItem {
 }
 
 export function NotificationBell() {
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<NotificationItem[]>([]);
@@ -70,7 +72,7 @@ export function NotificationBell() {
         type="button"
         onClick={toggle}
         className="relative flex h-8 w-8 items-center justify-center rounded-full border border-zinc-200 text-sm transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-800 dark:hover:bg-zinc-800"
-        aria-label={`Notifications${unread ? ` (${unread} unread)` : ""}`}
+        aria-label={`${t("bell.title")}${unread ? ` (${unread} ${t("bell.unread")})` : ""}`}
       >
         🔔
         {unread > 0 && (
@@ -86,15 +88,15 @@ export function NotificationBell() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
             <div className="border-b border-zinc-200 bg-zinc-50/75 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300">
-              Notifications
+              {t("bell.title")}
             </div>
             <div className="max-h-80 overflow-y-auto">
               {loading && items.length === 0 && (
-                <div className="px-4 py-6 text-center text-xs text-zinc-500">Loading…</div>
+                <div className="px-4 py-6 text-center text-xs text-zinc-500">{t("bell.loading")}</div>
               )}
               {!loading && items.length === 0 && (
                 <div className="px-4 py-6 text-center text-xs text-zinc-500">
-                  Nothing yet — application and certificate updates land here.
+                  {t("bell.empty")}
                 </div>
               )}
               {items.map((n) => (

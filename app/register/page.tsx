@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DISTRICTS, type Role } from "@/packages/shared/constants";
 import { api, ApiError } from "@/components/api-client";
+import { useTranslation } from "@/lib/i18n";
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -49,7 +51,7 @@ export default function RegisterPage() {
     setErrorMessages(null);
 
     if (!passwordValid) {
-      setErrorMessages(["Password must be at least 8 characters and contain at least one digit."]);
+      setErrorMessages([t("reg.passwordError")]);
       return;
     }
 
@@ -70,7 +72,7 @@ export default function RegisterPage() {
         const msgs = readableErrors(err.details);
         setErrorMessages(msgs.length ? msgs : [err.message]);
       } else {
-        setErrorMessages(["Network error. Could not reach registration service."]);
+        setErrorMessages([t("reg.networkError")]);
       }
     } finally {
       setLoading(false);
@@ -82,10 +84,10 @@ export default function RegisterPage() {
       <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
-            Create an Account
+            {t("reg.title")}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Register for Legal Metrology Verification System
+            {t("reg.subtitle")}
           </p>
         </div>
 
@@ -94,7 +96,7 @@ export default function RegisterPage() {
             role="alert"
             className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300"
           >
-            <div className="font-semibold">Registration error</div>
+            <div className="font-semibold">{t("reg.errorHead")}</div>
             {errorMessages.length === 1 ? (
               <div>{errorMessages[0]}</div>
             ) : (
@@ -110,13 +112,13 @@ export default function RegisterPage() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-              Full Name / Officer Name
+              {t("reg.name")}
             </label>
             <input
               type="text"
               value={form.name}
               onChange={(e) => updateField("name", e.target.value)}
-              placeholder="e.g. Ramesh Chandra"
+              placeholder={t("reg.phName")}
               required
               className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
             />
@@ -124,7 +126,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-              Official Email
+              {t("reg.email")}
             </label>
             <input
               type="email"
@@ -138,13 +140,13 @@ export default function RegisterPage() {
 
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-              Password
+              {t("reg.password")}
             </label>
             <input
               type="password"
               value={form.password}
               onChange={(e) => updateField("password", e.target.value)}
-              placeholder="Minimum 8 characters, with a digit"
+              placeholder={t("reg.passwordHint")}
               required
               className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
             />
@@ -156,29 +158,29 @@ export default function RegisterPage() {
                   : "text-zinc-500 dark:text-zinc-400"
               }`}
             >
-              At least 8 characters with at least one digit — e.g. Passw0rd!demo
+              {t("reg.passwordRule")}
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                User Role
+                {t("reg.role")}
               </label>
               <select
                 value={form.role}
                 onChange={(e) => updateField("role", e.target.value as Role)}
                 className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
               >
-                <option value="TRADER">TRADER (Instrument Owner)</option>
-                <option value="LMO">LMO (Legal Metrology Officer)</option>
-                <option value="GATC">GATC (Govt Approved Test Centre)</option>
+                <option value="TRADER">{t("reg.roleTrader")}</option>
+                <option value="LMO">{t("reg.roleLmo")}</option>
+                <option value="GATC">{t("reg.roleGatc")}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                Jurisdiction / District
+                {t("reg.jurisdiction")}
               </label>
               <select
                 value={form.district}
@@ -198,18 +200,18 @@ export default function RegisterPage() {
           {form.role !== "TRADER" && (
             <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                Organisation / Centre Name
+                {t("reg.orgName")}
               </label>
               <input
                 type="text"
                 value={form.orgName}
                 onChange={(e) => updateField("orgName", e.target.value)}
-                placeholder="e.g. Vijayawada Verification Centre / LMO Office"
+                placeholder={t("reg.phOrg")}
                 required
                 className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
               />
               <p className="mt-1 text-[11px] text-zinc-500">
-                Required for accredited officers and test centres.
+                {t("reg.orgRequired")}
               </p>
             </div>
           )}
@@ -219,14 +221,14 @@ export default function RegisterPage() {
             disabled={loading}
             className="mt-2 flex w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
-            {loading ? "Registering…" : "Create Account"}
+            {loading ? t("reg.creating") : t("reg.create")}
           </button>
         </form>
 
         <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
-          Already registered?{" "}
+          {t("reg.already")}{" "}
           <Link href="/login" className="font-semibold text-zinc-950 underline outline-none transition-colors hover:text-accent-700 focus-visible:ring-2 focus-visible:ring-accent dark:text-white dark:hover:text-accent-300">
-            Sign in
+            {t("reg.signIn")}
           </Link>
         </div>
       </div>

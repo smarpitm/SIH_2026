@@ -5,9 +5,11 @@ import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { OBSERVATION_CONFIG } from "@/packages/shared/constants";
 import { api, ApiError } from "@/components/api-client";
+import { useTranslation } from "@/lib/i18n";
 import type { ApplicationDTO, InstrumentDTO } from "@/packages/shared/types";
 
 function JobPageInner() {
+  const { t } = useTranslation();
   const { applicationId } = useParams<{ applicationId: string }>();
   const scheduleId = useSearchParams().get("scheduleId");
   const fields = OBSERVATION_CONFIG.default;
@@ -40,7 +42,7 @@ function JobPageInner() {
         .then((list) => setInst(list.find((i) => i.id === a.instrumentId) ?? null))
         .catch(() => undefined);
     } catch (e) {
-      setErrorMsg(e instanceof ApiError ? e.message : "Failed to load job.");
+      setErrorMsg(e instanceof ApiError ? e.message : t("job.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -61,10 +63,10 @@ function JobPageInner() {
         method: "POST",
         body: JSON.stringify({ scheduleId }),
       });
-      setNotice("Checked in — inspection form unlocked.");
+      setNotice(t("job.checkinNotice"));
       await load();
     } catch (e) {
-      setErrorMsg(e instanceof ApiError ? e.message : "Check-in failed. Please try again.");
+      setErrorMsg(e instanceof ApiError ? e.message : t("job.checkinFailed"));
     } finally {
       setCheckingIn(false);
     }
@@ -101,11 +103,11 @@ function JobPageInner() {
     setErrorMsg(null);
 
     if (!result) {
-      setErrorMsg("Select a verdict (PASS or FAIL) before submitting.");
+      setErrorMsg(t("job.selectVerdict"));
       return;
     }
     if (result === "FAIL" && !failReason.trim()) {
-      setErrorMsg("Mandatory failure reason is required when marking an inspection as FAILED.");
+      setErrorMsg(t("job.failReasonRequired"));
       return;
     }
 
@@ -127,7 +129,7 @@ function JobPageInner() {
       );
       setOutcome(data.result);
     } catch (err) {
-      setErrorMsg(err instanceof ApiError ? err.message : "Failed to submit inspection report.");
+      setErrorMsg(err instanceof ApiError ? err.message : t("job.submitFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -136,7 +138,7 @@ function JobPageInner() {
   const locked = !checkedIn;
 
   if (loading) {
-    return <div className="py-12 text-center text-sm text-zinc-500">Loading job…</div>;
+    return <div className="py-12 text-center text-sm text-zinc-500">{t("job.loading")}</div>;
   }
 
   return (
@@ -147,13 +149,13 @@ function JobPageInner() {
           href="/officer"
           className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300 mb-2"
         >
-          ← Back to Inspection Queue
+          {t("job.back")}
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
-          On-Site Field Inspection
+          {t("job.title")}
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
-          {inst?.serialNumber ?? "Instrument"} · {inst?.district ?? "—"} ·{" "}
+          {inst?.serialNumber ?? t("common.instrument")} · {inst?.district ?? "—"} ·{" "}
           <span className="font-mono">APP-{applicationId.slice(-6).toUpperCase()}</span>
         </p>
       </div>
@@ -163,7 +165,7 @@ function JobPageInner() {
           role="alert"
           className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300"
         >
-          <div className="font-bold">Validation Error</div>
+          <div className="font-bold">{t("job.validationError")}</div>
           <div>{errorMsg}</div>
         </div>
       )}
@@ -178,8 +180,8 @@ function JobPageInner() {
         <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-800/40 dark:bg-amber-950/40">
           <p className="text-xs font-medium text-amber-900 dark:text-amber-300">
             {scheduleId
-              ? "You are on site — check in to unlock the inspection form."
-              : "Open this job from the queue so the schedule is linked before checking in."}
+              ? t("job.onSite")
+              : t("job.openFromQueue")}
           </p>
           {scheduleId && (
             <button
@@ -188,20 +190,19 @@ function JobPageInner() {
               disabled={checkingIn}
               className="mt-3 min-h-[44px] w-full rounded-full bg-amber-600 py-2.5 text-sm font-bold text-white shadow-md shadow-amber-600/20 transition outline-none hover:bg-amber-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50"
             >
-              {checkingIn ? "Checking in…" : "📍 CHECK IN"}
+              {checkingIn ? t("job.checkingIn") : t("job.checkIn")}
             </button>
           )}
         </div>
       )}
       {locked && app?.status !== "SCHEDULED" && (
         <div className="mb-5 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/40 dark:text-zinc-300">
-          Application status: <span className="font-semibold">{app?.status ?? "—"}</span> — the
-          inspection form is only editable while CHECKED_IN.
+          {t("job.lockedPrefix")} <span className="font-semibold">{app?.status ?? "—"}</span> {t("job.lockedSuffix")}
         </div>
       )}
       {gpsDenied && checkedIn && (
         <div className="mb-5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300">
-          ⚠ Location not captured — you can still submit the report.
+          {t("job.gpsWarning")}
         </div>
       )}
 
@@ -209,7 +210,7 @@ function JobPageInner() {
         {/* Verification Observations checklist */}
         <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-3">
-            Statutory Checklist &amp; Criteria
+            {t("job.checklistTitle")}
           </h2>
 
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -227,19 +228,19 @@ function JobPageInner() {
                       }
                     />
                     <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                      {f.label}
+                      {t(`job.obs.${f.key}`, f.label)}
                     </span>
                   </label>
                 ) : (
                   <div>
                     <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      {f.label}
+                      {t(`job.obs.${f.key}`, f.label)}
                     </label>
                     <textarea
                       disabled={locked}
                       className="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white p-2.5 text-xs text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                       rows={2}
-                      placeholder="Enter specific calibration observations or remarks…"
+                      placeholder={t("job.obsPlaceholder")}
                       value={String(values[f.key])}
                       onChange={(e) =>
                         setValues((v) => ({ ...v, [f.key]: e.target.value }))
@@ -255,7 +256,7 @@ function JobPageInner() {
         {/* GPS Location Capture */}
         <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-2">
-            Geo-Location Tagging
+            {t("job.gpsTitle")}
           </h2>
           <div className="flex flex-wrap items-center gap-3">
             <button
@@ -264,10 +265,10 @@ function JobPageInner() {
               disabled={gpsLoading || locked}
               className="min-h-[44px] rounded-full border border-zinc-300 bg-zinc-50 px-3 py-2.5 text-xs font-semibold text-zinc-700 shadow-sm transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
             >
-              {gpsLoading ? "Acquiring Fix…" : "📍 Capture GPS"}
+              {gpsLoading ? t("job.acquiring") : t("job.captureGps")}
             </button>
             <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400">
-              {gps ? `${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}` : gpsDenied ? "Not captured" : "No GPS coordinate tagged"}
+              {gps ? `${gps.lat.toFixed(6)}, ${gps.lng.toFixed(6)}` : gpsDenied ? t("job.notCaptured") : t("job.noGps")}
             </span>
           </div>
         </div>
@@ -275,7 +276,7 @@ function JobPageInner() {
         {/* Photo Evidence — multipart field `photos`, multiple files */}
         <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
           <h2 className="text-sm font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 mb-2">
-            Verification Photo Proof
+            {t("job.photoTitle")}
           </h2>
           <input
             type="file"
@@ -287,7 +288,7 @@ function JobPageInner() {
             className="min-h-[44px] w-full text-sm text-zinc-700 disabled:opacity-60 dark:text-zinc-300"
           />
           <p className="mt-1 text-[11px] text-zinc-500">
-            JPEG / PNG / WEBP — select one or more photos as evidence.
+            {t("job.photoHint")}
           </p>
         </div>
 
@@ -295,7 +296,7 @@ function JobPageInner() {
         {result === "FAIL" && (
           <div className="rounded-xl border border-red-200 bg-red-50/70 p-5 dark:border-red-800/40 dark:bg-red-950/40">
             <label className="block text-xs font-bold uppercase tracking-wider text-red-900 dark:text-red-300">
-              Mandatory Rejection / Failure Reason *
+              {t("job.failReasonTitle")}
             </label>
             <textarea
               required
@@ -304,7 +305,7 @@ function JobPageInner() {
               disabled={locked}
               value={failReason}
               onChange={(e) => setFailReason(e.target.value)}
-              placeholder="State the exact non-compliance clause, broken seal, or error exceeding MPE tolerance…"
+              placeholder={t("job.failReasonPlaceholder")}
               className="mt-1.5 w-full rounded-lg border border-red-300 bg-white p-2.5 text-xs text-zinc-900 shadow-sm transition outline-none focus:border-red-600 focus:ring-2 focus:ring-red-500/30 disabled:opacity-60 dark:border-red-700 dark:bg-zinc-800 dark:text-white"
             />
           </div>
@@ -324,7 +325,7 @@ function JobPageInner() {
                     : "border border-zinc-300 bg-zinc-50 text-zinc-700 outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                 }`}
               >
-                ✓ PASS
+                {t("job.pass")}
               </button>
 
               <button
@@ -337,7 +338,7 @@ function JobPageInner() {
                     : "border border-zinc-300 bg-zinc-50 text-zinc-700 outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200"
                 }`}
               >
-                ✕ FAIL
+                {t("job.fail")}
               </button>
             </div>
 
@@ -346,7 +347,7 @@ function JobPageInner() {
               disabled={loading || submitting || locked || !result}
               className="min-h-[44px] w-full rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
             >
-              {submitting ? "Submitting Inspection…" : "Submit Official Inspection Report"}
+              {submitting ? t("job.submitting") : t("job.submitReport")}
             </button>
           </div>
         </div>
@@ -361,10 +362,10 @@ function JobPageInner() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-emerald-700 dark:text-emerald-400">
-                Inspection PASSED
+                {t("job.passedTitle")}
               </h2>
               <p className="text-xs text-zinc-500">
-                Certificate will be issued automatically for this instrument.
+                {t("job.passedDesc")}
               </p>
             </div>
           </div>
@@ -372,7 +373,7 @@ function JobPageInner() {
             href="/officer"
             className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
-            Back to Queue
+            {t("job.backQueue")}
           </Link>
         </div>
       )}
@@ -384,14 +385,14 @@ function JobPageInner() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-red-700 dark:text-red-400">
-                Inspection FAILED — reason recorded
+                {t("job.failedTitle")}
               </h2>
               <p className="mt-1 text-xs text-zinc-500">
-                <span className="font-semibold text-zinc-700 dark:text-zinc-300">Reason:</span>{" "}
+                <span className="font-semibold text-zinc-700 dark:text-zinc-300">{t("job.reasonLabel")}</span>{" "}
                 {failReason}
               </p>
               <p className="mt-0.5 text-[11px] text-zinc-400">
-                The trader can repair and re-submit for re-verification.
+                {t("job.failedDesc")}
               </p>
             </div>
           </div>
@@ -399,7 +400,7 @@ function JobPageInner() {
             href="/officer"
             className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
-            Back to Queue
+            {t("job.backQueue")}
           </Link>
         </div>
       )}

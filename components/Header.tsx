@@ -11,7 +11,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 export function Header() {
   const pathname = usePathname();
   const router = useRouter();
-  const { lang, setLang } = useTranslation();
+  const { lang, setLang, t } = useTranslation();
   const { user, logout } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -33,11 +33,11 @@ export function Header() {
   }
 
   const navLinks = [
-    { href: "/verify/PRM-CERT-2026-00001", label: "Verify" },
-    { href: "/trader", label: "Trader" },
-    { href: "/officer", label: "Officer" },
-    { href: "/admin", label: "Admin" },
-    { href: "/docs", label: "Docs" },
+    { href: "/verify/PRM-CERT-2026-00001", label: t("header.verify") },
+    { href: "/trader", label: t("header.trader") },
+    { href: "/officer", label: t("header.officer") },
+    { href: "/admin", label: t("header.admin") },
+    { href: "/docs", label: t("header.docs") },
   ];
 
   return (
@@ -54,7 +54,7 @@ export function Header() {
                 PRAMANAM
               </span>
               <span className="hidden text-[10px] font-medium tracking-tight text-zinc-500 sm:inline-block dark:text-zinc-400">
-                Legal Metrology Verification
+                {t("header.tagline")}
               </span>
             </div>
           </Link>
@@ -109,7 +109,7 @@ export function Header() {
                 onClick={handleLogout}
                 className="rounded-full border border-zinc-200 px-3 py-1.5 text-xs font-medium text-zinc-600 transition outline-none hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
               >
-                Logout
+                {t("header.logout")}
               </button>
             </div>
           ) : (
@@ -118,13 +118,13 @@ export function Header() {
                 href="/login"
                 className="rounded-full px-3 py-1.5 text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
-                Sign in
+                {t("header.signIn")}
               </Link>
               <Link
                 href="/register"
                 className="rounded-full bg-zinc-950 px-4 py-1.5 text-xs font-semibold text-white shadow-sm shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
               >
-                Register
+                {t("header.register")}
               </Link>
             </div>
           )}
@@ -183,7 +183,7 @@ export function Header() {
                     }}
                     className="text-xs text-red-600 font-medium"
                   >
-                    Logout
+                    {t("header.logout")}
                   </button>
                 </div>
               ) : (
@@ -193,14 +193,14 @@ export function Header() {
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex-1 rounded-full border border-zinc-200 py-1.5 text-center text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-300"
                   >
-                    Sign in
+                    {t("header.signIn")}
                   </Link>
                   <Link
                     href="/register"
                     onClick={() => setMobileMenuOpen(false)}
                     className="flex-1 rounded-full bg-zinc-950 py-1.5 text-center text-xs font-semibold text-white shadow-sm transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent dark:bg-white dark:text-zinc-950"
                   >
-                    Register
+                    {t("header.register")}
                   </Link>
                 </div>
               )}

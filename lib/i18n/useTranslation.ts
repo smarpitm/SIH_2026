@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { en } from "./en";
-import hiJson from "./hi.json";
+import { hi } from "./hi";
 
 export type Lang = "en" | "hi";
 
 // N1 contract (lib/i18n is Nishka's): key set frozen, English fallback holds while
-// hi.json fills. Hook extended in place for K5 so the Header toggle + ?lang= actually
+// hi.ts fills. Hook extended in place for K5 so the Header toggle + ?lang= actually
 // flip verdict/anchor words — export contract { t, lang, setLang } unchanged.
 const DICTS: Record<Lang, Record<string, string>> = {
   en,
-  hi: hiJson as Record<string, string>,
+  hi,
 };
 
 const LS_KEY = "pm_lang";
@@ -27,6 +27,11 @@ function apply(l: Lang) {
     localStorage.setItem(LS_KEY, l);
   } catch {
     // private mode — language just won't persist
+  }
+  // keep <html lang> in sync for a11y/screen readers (WCAG checkpoint in the
+  // accessibility deck) — client-only module, so document is always available
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = l;
   }
   subscribers.forEach((s) => s(l));
 }

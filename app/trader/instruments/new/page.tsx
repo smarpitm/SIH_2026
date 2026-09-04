@@ -6,9 +6,11 @@ import { useRouter } from "next/navigation";
 import { INSTRUMENT_CATEGORIES, DISTRICTS } from "@/packages/shared/constants";
 import { api, ApiError, zodFieldErrors } from "@/components/api-client";
 import { PhotoInput } from "@/components/PhotoInput";
+import { useTranslation } from "@/lib/i18n";
 import type { InstrumentDTO } from "@/packages/shared/types";
 
 export default function NewInstrumentPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   const [form, setForm] = useState({
@@ -58,9 +60,9 @@ export default function NewInstrumentPage() {
       if (err instanceof ApiError) {
         const fe = zodFieldErrors(err.details);
         setFieldErrors(fe);
-        setErrorMsg(fe ? "Please fix the highlighted fields." : err.message);
+        setErrorMsg(fe ? t("newInst.fixFields") : err.message);
       } else {
-        setErrorMsg("Network error registering instrument.");
+        setErrorMsg(t("newInst.networkError"));
       }
     } finally {
       setLoading(false);
@@ -74,13 +76,13 @@ export default function NewInstrumentPage() {
           href="/trader"
           className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300 mb-2"
         >
-          ← Back to Trader Portal
+          {t("newInst.back")}
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-          Register New Instrument
+          {t("newInst.title")}
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Add an instrument to your commercial inventory for Legal Metrology certification.
+          {t("newInst.subtitle")}
         </p>
       </div>
 
@@ -89,7 +91,7 @@ export default function NewInstrumentPage() {
           role="alert"
           className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300"
         >
-          <div className="font-bold">Error</div>
+          <div className="font-bold">{t("newInst.errorHead")}</div>
           <div>{errorMsg}</div>
         </div>
       )}
@@ -99,7 +101,7 @@ export default function NewInstrumentPage() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                Instrument Category
+                {t("newInst.category")}
               </label>
               <select
                 name="category"
@@ -118,14 +120,14 @@ export default function NewInstrumentPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                  Manufacturer / Make
+                  {t("newInst.make")}
                 </label>
                 <input
                   type="text"
                   name="make"
                   value={form.make}
                   onChange={(e) => set("make", e.target.value)}
-                  placeholder="e.g. Essae / Avery"
+                  placeholder={t("newInst.phMake")}
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                 />
@@ -134,14 +136,14 @@ export default function NewInstrumentPage() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                  Model Identifier
+                  {t("newInst.model")}
                 </label>
                 <input
                   type="text"
                   name="model"
                   value={form.model}
                   onChange={(e) => set("model", e.target.value)}
-                  placeholder="e.g. 40t Heavy / ER-Plus"
+                  placeholder={t("newInst.phModel")}
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                 />
@@ -152,14 +154,14 @@ export default function NewInstrumentPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                  Serial Number (Chassis/Plate)
+                  {t("newInst.serial")}
                 </label>
                 <input
                   type="text"
                   name="serialNumber"
                   value={form.serialNumber}
                   onChange={(e) => set("serialNumber", e.target.value)}
-                  placeholder="e.g. WB-9021"
+                  placeholder={t("newInst.phSerial")}
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 font-mono text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                 />
@@ -168,14 +170,14 @@ export default function NewInstrumentPage() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                  Rated Capacity / Range
+                  {t("newInst.capacity")}
                 </label>
                 <input
                   type="text"
                   name="capacity"
                   value={form.capacity}
                   onChange={(e) => set("capacity", e.target.value)}
-                  placeholder="e.g. 40t / 150kg"
+                  placeholder={t("newInst.phCapacity")}
                   required
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                 />
@@ -185,7 +187,7 @@ export default function NewInstrumentPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                Operating District
+                {t("newInst.district")}
               </label>
               <select
                 name="district"
@@ -203,14 +205,14 @@ export default function NewInstrumentPage() {
 
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                Physical Installation Address
+                {t("newInst.address")}
               </label>
               <textarea
                 rows={2}
                 name="address"
                 value={form.address}
                 onChange={(e) => set("address", e.target.value)}
-                placeholder="Plot/Shop address where instrument is located for inspection"
+                placeholder={t("newInst.phAddress")}
                 required
                 className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
               />
@@ -221,7 +223,7 @@ export default function NewInstrumentPage() {
             <div className="rounded-lg border border-zinc-200 bg-zinc-50/60 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
               <PhotoInput
                 name="purchaseProof"
-                label="Purchase Proof (optional — JPEG / PNG / WEBP / PDF, max 10 MB)"
+                label={t("newInst.purchaseProof")}
                 accept="image/jpeg,image/png,image/webp,application/pdf"
               />
             </div>
@@ -231,7 +233,7 @@ export default function NewInstrumentPage() {
               disabled={loading}
               className="mt-2 flex w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
             >
-              {loading ? "Saving Instrument…" : "Save Instrument Record"}
+              {loading ? t("newInst.saving") : t("newInst.save")}
             </button>
           </form>
         </div>
@@ -243,10 +245,10 @@ export default function NewInstrumentPage() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                Instrument Registered!
+                {t("newInst.successTitle")}
               </h2>
               <p className="text-xs text-zinc-500">
-                The instrument has been registered and is ready for verification application.
+                {t("newInst.successDesc")}
               </p>
             </div>
           </div>
@@ -263,7 +265,7 @@ export default function NewInstrumentPage() {
               onClick={() => router.push("/trader")}
               className="flex-1 rounded-full bg-zinc-950 py-2 text-xs font-semibold text-white transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent dark:bg-white dark:text-zinc-950"
             >
-              Back to Instruments List
+              {t("newInst.backList")}
             </button>
           </div>
         </div>

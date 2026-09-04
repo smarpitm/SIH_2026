@@ -1,5 +1,5 @@
 import { en } from "./en";
-import hi from "./hi.json";
+import { hi } from "./hi";
 
 const enKeys = Object.keys(en);
 const hiKeys = Object.keys(hi);

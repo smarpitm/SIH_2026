@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslation } from "@/lib/i18n";
+
 const COLORS: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-700",
   SUBMITTED: "bg-blue-100 text-blue-700",
@@ -10,10 +14,11 @@ const COLORS: Record<string, string> = {
 };
 
 export function StatusChip({ status }: { status: string }) {
+  const { t } = useTranslation();
   const cls = COLORS[status] ?? "bg-gray-100 text-gray-700";
   return (
     <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
-      {status}
+      {t(`status.${status}`, status)}
     </span>
   );
 }

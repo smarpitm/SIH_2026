@@ -2,13 +2,23 @@
 
 import { useState } from "react";
 import { authorizedRequest } from "@/components/api-client";
-import { buildExportUrl, EXPORT_LABELS, type ExportEntity } from "./export-url";
+import { useTranslation } from "@/lib/i18n";
+import { buildExportUrl, type ExportEntity } from "./export-url";
+
+// i18n keys per export entity — labels render through t() so the EN/HI toggle
+// applies to the CSV buttons (CSV file format marker stays "CSV").
+const LABEL_KEYS: Record<ExportEntity, string> = {
+  instruments: "exp.instruments",
+  applications: "exp.applications",
+  certificates: "exp.certificates",
+};
 
 /** CSV export buttons (MA4 item 6). Downloads via the shared authorizedRequest
  *  (audit finding #55 — same single-flight Bearer + 401-refresh path as api()),
  *  applies the endpoint's Content-Disposition filename (instruments.csv etc),
  *  and triggers the download via blob URL with real completion handling. */
 export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState<ExportEntity | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +33,7 @@ export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
 
       if (!res.ok) {
         const errJson = await res.json().catch(() => null);
-        throw new Error(errJson?.error?.message ?? `Export failed with status ${res.status}`);
+        throw new Error(errJson?.error?.message ?? `${t("exp.failedStatus")} ${res.status}`);
       }
 
       // Extract filename from Content-Disposition
@@ -44,7 +54,7 @@ export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
         window.URL.revokeObjectURL(blobUrl);
       }, 100);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Download failed");
+      setError(err instanceof Error ? err.message : t("exp.downloadFailed"));
       window.setTimeout(() => setError(null), 4000);
     } finally {
       setBusy(null);
@@ -62,14 +72,14 @@ export function ExportButtons({ entities }: { entities: ExportEntity[] }) {
             disabled={busy !== null}
             className="inline-flex items-center rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-800 shadow-sm transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
           >
-            {busy === e ? "Preparing…" : `⬇ ${EXPORT_LABELS[e]} CSV`}
+            {busy === e ? t("exp.preparing") : `⬇ ${t(LABEL_KEYS[e])} CSV`}
           </button>
         ))}
       </div>
       <div aria-live="polite">
         {busy && (
           <div className="no-print fixed bottom-4 right-4 z-50 rounded-lg bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-white shadow-lg dark:bg-white dark:text-zinc-900">
-            Preparing {EXPORT_LABELS[busy]} export…
+            {t("exp.preparingToast")}
           </div>
         )}
         {error && (

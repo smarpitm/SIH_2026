@@ -4,10 +4,12 @@ import { useState, type FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/store";
+import { useTranslation } from "@/lib/i18n";
 import { api, ApiError } from "@/components/api-client";
 import type { UserDTO } from "@/packages/shared/types";
 
 function LoginForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
@@ -23,10 +25,10 @@ function LoginForm() {
 
   // Demo accounts helper
   const demoAccounts = [
-    { label: "Trader (Ravi)", email: "ravi@demo.in", role: "TRADER" },
-    { label: "Officer (LMO)", email: "lmo.guntur@demo.in", role: "LMO" },
-    { label: "GATC Centre", email: "gatc@demo.in", role: "GATC" },
-    { label: "Admin", email: "admin@demo.in", role: "ADMIN" },
+    { k: "auth.demoTrader", label: "Trader (Ravi)", email: "ravi@demo.in", role: "TRADER" },
+    { k: "auth.demoOfficer", label: "Officer (LMO)", email: "lmo.guntur@demo.in", role: "LMO" },
+    { k: "auth.demoGatc", label: "GATC Centre", email: "gatc@demo.in", role: "GATC" },
+    { k: "auth.demoAdmin", label: "Admin", email: "admin@demo.in", role: "ADMIN" },
   ];
 
   async function onSubmit(e: FormEvent) {
@@ -65,7 +67,7 @@ function LoginForm() {
       }
     } catch (e) {
       setErrorMessage(
-        e instanceof ApiError ? e.message : "Network error. Could not connect to authentication service."
+        e instanceof ApiError ? e.message : t("auth.networkError")
       );
     } finally {
       setLoading(false);
@@ -77,17 +79,17 @@ function LoginForm() {
       <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
-            Sign in to PRAMANAM
+            {t("auth.title")}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Legal Metrology Verification Portal
+            {t("auth.subtitle")}
           </p>
         </div>
 
         {/* Registered success banner */}
         {registered && (
           <div className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800/40 dark:bg-green-950/40 dark:text-green-300">
-            ✓ Registered — log in with your credentials.
+            {t("auth.registeredBanner")}
           </div>
         )}
 
@@ -97,7 +99,7 @@ function LoginForm() {
             role="alert"
             className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300"
           >
-            <div className="font-semibold">Sign in failed</div>
+            <div className="font-semibold">{t("auth.failedHead")}</div>
             <div>{errorMessage}</div>
           </div>
         )}
@@ -105,7 +107,7 @@ function LoginForm() {
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-              Email Address
+              {t("auth.email")}
             </label>
             <input
               type="email"
@@ -120,7 +122,7 @@ function LoginForm() {
           <div>
             <div className="flex items-center justify-between">
               <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                Password
+                {t("auth.password")}
               </label>
             </div>
             <input
@@ -138,14 +140,14 @@ function LoginForm() {
             disabled={loading}
             className="mt-2 flex w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
-            {loading ? "Signing in…" : "Sign in"}
+            {loading ? t("auth.signingIn") : t("auth.signIn")}
           </button>
         </form>
 
         {/* Demo Quick Presets */}
         <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
           <span className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400">
-            Quick demo presets:
+            {t("auth.demoPresets")}
           </span>
           <div className="mt-2 grid grid-cols-2 gap-1.5">
             {demoAccounts.map((acc) => (
@@ -158,16 +160,16 @@ function LoginForm() {
                 }}
                 className="truncate rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-left text-xs font-medium text-zinc-700 transition outline-none hover:border-accent-300 hover:bg-accent-50 hover:text-accent-800 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-accent-400/40 dark:hover:bg-accent-400/10 dark:hover:text-accent-300"
               >
-                {acc.label}
+                {t(acc.k, acc.label)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
-          Don&apos;t have an account?{" "}
+          {t("auth.noAccount")}{" "}
           <Link href="/register" className="font-semibold text-zinc-950 underline outline-none transition-colors hover:text-accent-700 focus-visible:ring-2 focus-visible:ring-accent dark:text-white dark:hover:text-accent-300">
-            Register here
+            {t("auth.registerHere")}
           </Link>
         </div>
       </div>

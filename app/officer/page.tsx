@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { api } from "@/components/api-client";
+import { useTranslation } from "@/lib/i18n";
 import type { InstrumentDTO } from "@/packages/shared/types";
 
 // GET /schedule/mine row (MA3) — shape local to the UI
@@ -24,6 +25,7 @@ interface ScheduleJob {
 type OfficerDash = { todaySchedule?: unknown[]; overdueCount?: number } | null;
 
 export default function OfficerPage() {
+  const { t } = useTranslation();
   const [jobs, setJobs] = useState<ScheduleJob[]>([]);
   const [districts, setDistricts] = useState<Record<string, string>>({});
   const [officerDash, setOfficerDash] = useState<OfficerDash>(null);
@@ -77,18 +79,18 @@ export default function OfficerPage() {
               </span>
               {overdueCard && (
                 <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-red-700 dark:bg-red-950/50 dark:text-red-300">
-                  Overdue
+                  {t("officer.overdue")}
                 </span>
               )}
             </div>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              {job.traderName ?? job.traderOrg ?? "Trader"} · {districts[job.instrumentSerial] ?? "—"}
+              {job.traderName ?? job.traderOrg ?? t("officer.traderWord")} · {districts[job.instrumentSerial] ?? "—"}
             </span>
             <span className="text-xs text-zinc-500">
-              Application <span className="font-mono">APP-{job.applicationId.slice(-6).toUpperCase()}</span>
+              {t("common.application")} <span className="font-mono">APP-{job.applicationId.slice(-6).toUpperCase()}</span>
               {job.rescheduleCount > 0 && (
                 <span className="ml-1 text-amber-600 dark:text-amber-400">
-                  · rescheduled ×{job.rescheduleCount}
+                  · {t("officer.rescheduledX")} ×{job.rescheduleCount}
                 </span>
               )}
             </span>
@@ -98,7 +100,7 @@ export default function OfficerPage() {
 
         <div className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
           <div className="text-[11px] text-zinc-500">
-            🕒 Scheduled:{" "}
+            {t("officer.scheduled")}{" "}
             <span className="font-medium text-zinc-700 dark:text-zinc-300">
               {new Date(job.scheduledFor).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
             </span>
@@ -107,7 +109,7 @@ export default function OfficerPage() {
             href={`/officer/job/${job.applicationId}?scheduleId=${job.id}`}
             className="inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:w-auto sm:px-4 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
           >
-            Open job →
+            {t("officer.openJob")}
           </Link>
         </div>
       </div>
@@ -121,22 +123,22 @@ export default function OfficerPage() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-white">
-              Inspection Queue
+              {t("officer.title")}
             </h1>
             <span className="rounded-full bg-zinc-950 px-2.5 py-0.5 text-xs font-bold text-white dark:bg-white dark:text-zinc-950">
               {active.length}
             </span>
           </div>
           <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Your assigned field jobs — overdue pinned first
-            {doneCount > 0 && ` · ${doneCount} completed`}
+            {t("officer.subtitle")}
+            {doneCount > 0 && ` · ${doneCount} ${t("officer.completed")}`}
           </p>
           {/* MA4 dashboard fields, shown only when the payload includes them */}
           {officerDash && (
             <div className="mt-2 flex flex-wrap gap-2 text-xs">
               {officerDash.todaySchedule && (
                 <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  Today&rsquo;s schedule: {officerDash.todaySchedule.length}
+                  {t("officer.todaySchedule")} {officerDash.todaySchedule.length}
                 </span>
               )}
               {typeof officerDash.overdueCount === "number" && (
@@ -147,7 +149,7 @@ export default function OfficerPage() {
                       : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
                   }`}
                 >
-                  Overdue: {officerDash.overdueCount}
+                  {t("officer.overdueLabel")} {officerDash.overdueCount}
                 </span>
               )}
             </div>
@@ -155,11 +157,11 @@ export default function OfficerPage() {
         </div>
       </div>
 
-      {loading && <div className="py-12 text-center text-sm text-zinc-500">Loading queue…</div>}
+      {loading && <div className="py-12 text-center text-sm text-zinc-500">{t("officer.loading")}</div>}
 
       {!loading && active.length === 0 && (
         <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-          No inspection jobs assigned to your queue yet.
+          {t("officer.empty")}
         </div>
       )}
 
@@ -167,7 +169,7 @@ export default function OfficerPage() {
         {overdue.length > 0 && (
           <>
             <h2 className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
-              Overdue — act now
+              {t("officer.overdueAct")}
             </h2>
             {overdue.map((j) => (
               <JobCard key={j.id} job={j} />
@@ -177,7 +179,7 @@ export default function OfficerPage() {
         {today.length > 0 && (
           <>
             <h2 className="pt-2 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Today
+              {t("officer.today")}
             </h2>
             {today.map((j) => (
               <JobCard key={j.id} job={j} />
@@ -187,7 +189,7 @@ export default function OfficerPage() {
         {upcoming.length > 0 && (
           <>
             <h2 className="pt-2 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Upcoming
+              {t("officer.upcoming")}
             </h2>
             {upcoming.map((j) => (
               <JobCard key={j.id} job={j} />

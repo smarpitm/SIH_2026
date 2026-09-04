@@ -68,7 +68,7 @@ export default function VerifyPage() {
         {t("verify.typedFallback", "Search Another Certificate by Number")}
       </h2>
       <p className="mt-0.5 text-xs text-zinc-400">
-        Scan QR or manually type the certificate identifier printed on the physical stamp sticker.
+        {t("verify.typedHint")}
       </p>
       <form onSubmit={onTypedLookup} className="mt-3 flex gap-2">
         <input
@@ -90,7 +90,7 @@ export default function VerifyPage() {
           href="/verify/offline"
           className="text-[11px] text-zinc-500 underline hover:text-zinc-900 dark:hover:text-white"
         >
-          Offline JWS sticker payload verifier →
+          {t("verify.offlineLink")}
         </Link>
       </div>
     </div>
@@ -100,7 +100,7 @@ export default function VerifyPage() {
     return (
       <div className="mx-auto w-full max-w-lg py-12 text-center">
         <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-zinc-300 border-t-zinc-900 dark:border-zinc-700 dark:border-t-white" />
-        <p className="mt-3 text-sm text-zinc-500">Verifying cryptographic certificate…</p>
+        <p className="mt-3 text-sm text-zinc-500">{t("verify.verifying")}</p>
       </div>
     );
   }
@@ -113,19 +113,19 @@ export default function VerifyPage() {
             !
           </div>
           <h1 className="mt-4 text-2xl font-bold text-zinc-900 dark:text-white">
-            Verification temporarily unavailable
+            {t("verify.unavailableTitle")}
           </h1>
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-            The verification service did not respond correctly for{" "}
+            {t("verify.unavailablePrefix")}{" "}
             <span className="font-mono font-bold text-zinc-900 dark:text-white">{certId}</span>.
-            Please try again in a moment.
+            {t("verify.unavailableSuffix")}
           </p>
           <button
             type="button"
             onClick={load}
             className="mt-5 rounded-lg bg-zinc-900 px-4 py-2.5 text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
           >
-            Retry
+            {t("common.retry")}
           </button>
         </div>
         {lookupCard}
@@ -158,13 +158,13 @@ export default function VerifyPage() {
               href="/verify/PRM-CERT-2026-00001"
               className="rounded-lg bg-zinc-900 px-4 py-2.5 text-center text-xs font-semibold text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-900"
             >
-              Try Demo Certificate (PRM-CERT-2026-00001)
+              {t("verify.tryDemo")}
             </Link>
             <Link
               href="/verify/offline"
               className="rounded-lg border border-zinc-200 px-4 py-2 text-center text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300"
             >
-              Verify Offline Sticker Payload
+              {t("verify.offlineSticker")}
             </Link>
           </div>
         </div>
@@ -187,7 +187,7 @@ export default function VerifyPage() {
           onClick={() => window.print()}
           className="text-xs font-semibold text-zinc-500 underline hover:text-zinc-900 dark:hover:text-white"
         >
-          🖨 Print certificate handout
+          {t("verify.printHandout")}
         </button>
       </div>
 
@@ -195,7 +195,7 @@ export default function VerifyPage() {
       <Badge
         verdict={badge.signatureValid ? badge.verdict : "CHECK_FAILED"}
         word={t(view.wordKey)}
-        subtitle={view.subKey ? t(view.subKey, "SIGNATURE VERIFIED") : undefined}
+        subtitle={t(view.subKey ?? "verify.officialCert")}
         size="hero"
       />
 
@@ -210,7 +210,7 @@ export default function VerifyPage() {
         <div className="flex items-center justify-between border-b border-zinc-100 pb-4 dark:border-zinc-800">
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-              Certificate Identifier
+              {t("verify.certIdentifier")}
             </span>
             <div className="font-mono text-lg font-bold text-zinc-950 dark:text-white">
               {badge.certId}
@@ -218,7 +218,7 @@ export default function VerifyPage() {
           </div>
           {badge.signatureValid && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
-              ✓ Ed25519 Signed
+              {t("verify.signedBadge")}
             </span>
           )}
         </div>
@@ -226,7 +226,7 @@ export default function VerifyPage() {
         {/* Anchors as Definition List (<dl>) */}
         <div className="mt-4">
           <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 mb-3">
-            Statutory Certificate Anchors
+            {t("verify.anchorsTitle")}
           </h2>
           <dl className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {/* server guarantees exactly 5 anchors; slice defensively anyway */}

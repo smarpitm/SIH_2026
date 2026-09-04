@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { api, ApiError } from "@/components/api-client";
+import { useTranslation } from "@/lib/i18n";
 import type { ApplicationDTO } from "@/packages/shared/types";
 
 type Step = 1 | 2 | 3;
@@ -17,6 +18,7 @@ interface SubmittedPayload {
 }
 
 export default function ApplyPage() {
+  const { t } = useTranslation();
   const { instrumentId } = useParams<{ instrumentId: string }>();
 
   const [step, setStep] = useState<Step>(1);
@@ -36,7 +38,7 @@ export default function ApplyPage() {
     // only place a past date gets caught — string compare on ISO date parts
     const todayStr = new Date().toISOString().slice(0, 10);
     if (preferredDate && preferredDate < todayStr) {
-      setErrorMsg("Preferred date cannot be in the past — pick today or a future date.");
+      setErrorMsg(t("apply.pastDateError"));
       setLoading(false);
       return;
     }
@@ -78,7 +80,7 @@ export default function ApplyPage() {
       });
     } catch (e) {
       setErrorMsg(
-        e instanceof ApiError ? e.message : "Failed to complete application submission. Please try again."
+        e instanceof ApiError ? e.message : t("apply.submitError")
       );
     } finally {
       setLoading(false);
@@ -86,9 +88,9 @@ export default function ApplyPage() {
   }
 
   const steps = [
-    { num: 1, label: "Verification Type" },
-    { num: 2, label: "Declaration" },
-    { num: 3, label: "Fee & Submit" },
+    { num: 1, label: t("apply.step1") },
+    { num: 2, label: t("apply.step2") },
+    { num: 3, label: t("apply.step3") },
   ];
 
   return (
@@ -99,13 +101,13 @@ export default function ApplyPage() {
           href="/trader"
           className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300 mb-2"
         >
-          ← Back to Trader Portal
+          {t("apply.backToTrader")}
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
-          Application for Instrument Verification
+          {t("apply.title")}
         </h1>
         <p className="mt-1 text-sm text-zinc-500">
-          Target Instrument ID: <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">{instrumentId}</span>
+          {t("apply.targetInstrument")} <span className="font-mono font-semibold text-zinc-800 dark:text-zinc-200">{instrumentId}</span>
         </p>
       </div>
 
@@ -162,10 +164,10 @@ export default function ApplyPage() {
             <div className="space-y-5">
               <div>
                 <h2 className="text-base font-bold text-zinc-900 dark:text-white">
-                  Step 1: Select Verification Type
+                  {t("apply.step1Title")}
                 </h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Choose whether this is a brand new verification or statutory re-verification.
+                  {t("apply.step1Desc")}
                 </p>
               </div>
 
@@ -187,10 +189,10 @@ export default function ApplyPage() {
                   />
                   <div>
                     <div className="font-semibold text-sm text-zinc-900 dark:text-white">
-                      Initial Verification (New Instrument)
+                      {t("apply.initialV")}
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">
-                      For newly installed or purchased instruments not verified previously.
+                      {t("apply.initialDesc")}
                     </div>
                   </div>
                 </label>
@@ -212,10 +214,10 @@ export default function ApplyPage() {
                   />
                   <div>
                     <div className="font-semibold text-sm text-zinc-900 dark:text-white">
-                      Statutory Re-Verification (Renewal)
+                      {t("apply.reV")}
                     </div>
                     <div className="text-xs text-zinc-500 mt-0.5">
-                      For existing instruments approaching statutory expiry (annual/biennial cycle).
+                      {t("apply.reDesc")}
                     </div>
                   </div>
                 </label>
@@ -224,7 +226,7 @@ export default function ApplyPage() {
               {type === "RE_VERIFICATION" && (
                 <div>
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                    Reason / Renewal Type
+                    {t("apply.reason")}
                   </label>
                   <input
                     type="text"
@@ -237,7 +239,7 @@ export default function ApplyPage() {
 
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                  Preferred Inspection Date <span className="normal-case font-normal">(optional)</span>
+                  {t("apply.preferredDate")} <span className="normal-case font-normal">{t("apply.optional")}</span>
                 </label>
                 <input
                   type="date"
@@ -247,7 +249,7 @@ export default function ApplyPage() {
                   className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
                 />
                 <p className="mt-1 text-[11px] text-zinc-500">
-                  Leave empty to use the default slot (+7 days) during auto-allocation.
+                  {t("apply.dateHint")}
                 </p>
               </div>
 
@@ -257,7 +259,7 @@ export default function ApplyPage() {
                   onClick={() => setStep(2)}
                   className="rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
                 >
-                  Next: Declaration →
+                  {t("apply.nextDeclaration")}
                 </button>
               </div>
             </div>
@@ -268,16 +270,16 @@ export default function ApplyPage() {
             <div className="space-y-5">
               <div>
                 <h2 className="text-base font-bold text-zinc-900 dark:text-white">
-                  Step 2: Statutory Declaration &amp; Consent
+                  {t("apply.step2Title")}
                 </h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Legal compliance under the Legal Metrology (General) Rules 2011.
+                  {t("apply.step2Desc")}
                 </p>
               </div>
 
               <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-xs leading-relaxed text-amber-900 dark:border-amber-800/40 dark:bg-amber-950/40 dark:text-amber-300">
-                <div className="font-bold mb-1">Standard Statutory Declaration:</div>
-                I hereby declare that the instrument particulars, serial numbers, and location provided are true, complete, and un-tampered. I consent to scheduled physical inspection, testing, stamping, and digital certificate issuance by an authorized Legal Metrology Officer (LMO) or Govt-Approved Test Centre (GATC).
+                <div className="font-bold mb-1">{t("apply.declarationHead")}</div>
+                {t("apply.declarationBody")}
               </div>
 
               <label className="flex items-start gap-3 rounded-lg border border-zinc-200 p-4 cursor-pointer hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800/50">
@@ -288,7 +290,7 @@ export default function ApplyPage() {
                   className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-accent-600 focus:ring-accent"
                 />
                 <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                  I accept the statutory terms and confirm the instrument is ready for inspection.
+                  {t("apply.acceptDecl")}
                 </span>
               </label>
 
@@ -306,7 +308,7 @@ export default function ApplyPage() {
                   onClick={() => setStep(3)}
                   className="rounded-full bg-zinc-950 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
                 >
-                  Continue to Payment →
+                  {t("apply.toPayment")}
                 </button>
               </div>
             </div>
@@ -317,30 +319,30 @@ export default function ApplyPage() {
             <div className="space-y-5">
               <div>
                 <h2 className="text-base font-bold text-zinc-900 dark:text-white">
-                  Step 3: Verification Fee &amp; Mock Payment
+                  {t("apply.step3Title")}
                 </h2>
                 <p className="text-xs text-zinc-500 mt-0.5">
-                  Statutory fee payment is required before officer allocation.
+                  {t("apply.step3Desc")}
                 </p>
               </div>
 
               <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 divide-y divide-zinc-200 dark:border-zinc-800 dark:bg-zinc-800/50 dark:divide-zinc-700">
                 <div className="flex justify-between py-2 text-xs">
-                  <span className="text-zinc-600 dark:text-zinc-400">Target Instrument</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{t("apply.targetLabel")}</span>
                   <span className="font-mono font-semibold text-zinc-900 dark:text-white">{instrumentId}</span>
                 </div>
                 <div className="flex justify-between py-2 text-xs">
-                  <span className="text-zinc-600 dark:text-zinc-400">Application Type</span>
-                  <span className="font-semibold text-zinc-900 dark:text-white">{type}</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{t("apply.applicationType")}</span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">{t(type === "NEW" ? "apply.typeNew" : "apply.typeRe", type)}</span>
                 </div>
                 <div className="flex justify-between py-2 text-xs">
-                  <span className="text-zinc-600 dark:text-zinc-400">Statutory Fee (Demo)</span>
+                  <span className="text-zinc-600 dark:text-zinc-400">{t("apply.statutoryFee")}</span>
                   <span className="font-bold text-sm text-zinc-900 dark:text-white">₹ 100.00</span>
                 </div>
               </div>
 
               <div className="rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-xs text-blue-800 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-300">
-                ℹ Mock Payment Gateway is active. Clicking &quot;Pay &amp; Submit Application&quot; will process test transaction and submit application.
+                {t("apply.mockInfo")}
               </div>
 
               <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
@@ -357,7 +359,7 @@ export default function ApplyPage() {
                   onClick={createAndPay}
                   className="rounded-full bg-emerald-600 px-6 py-2.5 text-sm font-semibold text-white shadow-md shadow-emerald-600/20 transition outline-none hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50"
                 >
-                  {loading ? "Processing Payment & Submitting…" : "Pay ₹100 & Submit Application"}
+                  {loading ? t("apply.paying") : t("apply.paySubmit")}
                 </button>
               </div>
             </div>
@@ -372,23 +374,23 @@ export default function ApplyPage() {
             </div>
             <div>
               <h2 className="text-lg font-bold text-zinc-900 dark:text-white">
-                Application Successfully Submitted!
+                {t("apply.successTitle")}
               </h2>
               <p className="text-xs text-zinc-500">
-                Fee received and auto-allocated to an officer in your district.
+                {t("apply.successDesc")}
               </p>
             </div>
           </div>
 
           {/* Final status chip — submit returns the real post-allocation status */}
           <div className="mt-4 flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Status</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t("apply.statusWord")}</span>
             <StatusChip status={submittedData.submitted?.status ?? "SUBMITTED"} />
           </div>
 
           <div className="mt-6">
             <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
-              Returned Application Response (JSON):
+              {t("apply.returnedJson")}
             </div>
             <pre className="max-h-72 overflow-auto rounded-lg border border-zinc-200 bg-zinc-950 p-4 font-mono text-[11px] leading-tight text-emerald-400 dark:border-zinc-800">
               {JSON.stringify(submittedData, null, 2)}
@@ -400,13 +402,13 @@ export default function ApplyPage() {
               href={`/trader/applications/${submittedData.applicationId}`}
               className="flex-1 text-center rounded-full bg-emerald-600 py-2.5 text-sm font-semibold text-white transition outline-none hover:bg-emerald-700 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
-              View Status Timeline →
+              {t("apply.viewTimeline")}
             </Link>
             <Link
               href="/trader"
               className="flex-1 text-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
             >
-              Return to Trader Portal
+              {t("apply.returnPortal")}
             </Link>
           </div>
         </div>

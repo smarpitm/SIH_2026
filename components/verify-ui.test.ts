@@ -44,10 +44,9 @@ describe("translate (N1 hook, English fallback)", () => {
     expect(translate("en", "verdict.tampered")).toBe("CHECK FAILED — POSSIBLE FAKE");
   });
 
-  it("missing hi key falls back to English dict, then caller fallback, then key", () => {
-    expect(translate("hi", "verify.reportAction", "Report to your Local Legal Metrology office")).toBe(
-      "Report to your Local Legal Metrology office"
-    );
+  it("full-dict keys resolve in Hindi; unknown keys fall back to caller fallback, then key", () => {
+    expect(translate("hi", "verify.reportAction")).toBe("अपने स्थानीय कानूनी मेट्रोलॉजी कार्यालय को सूचित करें");
+    expect(translate("hi", "no.such.key.anywhere", "Caller fallback text")).toBe("Caller fallback text");
     expect(translate("hi", "no.such.key.anywhere")).toBe("no.such.key.anywhere");
   });
 });

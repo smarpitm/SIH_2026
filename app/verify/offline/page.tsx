@@ -59,9 +59,8 @@ export default function VerifyOfflinePage() {
       if (!parsed) {
         setResult({
           kind: "red",
-          title: t("verify.offline.invalid", "TAMPERED OR UNREADABLE PAYLOAD"),
-          detail:
-            "Not a pmnm.v1 envelope and not a readable 3-segment compact JWS (header.payload.signature).",
+          title: t("verify.offline.invalid"),
+          detail: t("offline.detail.invalid"),
         });
         return;
       }
@@ -70,9 +69,8 @@ export default function VerifyOfflinePage() {
       if (!jwk) {
         setResult({
           kind: "amber",
-          title: t("verify.offline.unknown", "VERIFICATION KEY NOT CACHED"),
-          detail:
-            "Connect to the internet once to fetch the Pramanam public key — after that this page verifies fully offline.",
+          title: t("verify.offline.unknown"),
+          detail: t("offline.detail.noKey"),
         });
         return;
       }
@@ -81,11 +79,11 @@ export default function VerifyOfflinePage() {
       if (!v.valid) {
         setResult({
           kind: "red",
-          title: t("verdict.tampered", "CHECK FAILED — POSSIBLE FAKE"),
+          title: t("verdict.tampered"),
           detail:
             v.reason === "BAD_SIGNATURE"
-              ? "Signature does not match the Pramanam public key — the payload was modified or was not issued by Pramanam. Report to your Local Legal Metrology office."
-              : "The payload could not be decoded as a signed Pramanam certificate.",
+              ? t("offline.detail.badSignature")
+              : t("offline.detail.undecodable"),
         });
         return;
       }
@@ -97,9 +95,8 @@ export default function VerifyOfflinePage() {
       if (!until || Number.isNaN(until.getTime())) {
         setResult({
           kind: "amber",
-          title: t("verify.offline.unknown", "SIGNATURE VERIFIED — VALIDITY UNKNOWN OFFLINE"),
-          detail:
-            "Signature is authentic but the signed claims carry no readable validity date.",
+          title: t("verify.offline.unknown"),
+          detail: t("offline.detail.noValidity"),
           claims,
         });
         return;
@@ -107,16 +104,16 @@ export default function VerifyOfflinePage() {
       if (until <= new Date()) {
         setResult({
           kind: "red",
-          title: t("verdict.expired", "EXPIRED"),
-          detail: `Signature is authentic but the certificate expired on ${until.toLocaleDateString()}.`,
+          title: t("verdict.expired"),
+          detail: `${t("offline.detail.expired")} ${until.toLocaleDateString()}.`,
           claims,
         });
         return;
       }
       setResult({
         kind: "green",
-        title: t("verify.offline.valid", "SIGNATURE VERIFIED (Ed25519)"),
-        detail: `Valid until ${until.toLocaleDateString()}. Revocation status cannot be checked offline — verify online for the registry verdict.`,
+        title: t("verify.offline.valid"),
+        detail: `${t("offline.detail.validPrefix")} ${until.toLocaleDateString()}. ${t("offline.detail.onlineNote")}`,
         claims,
       });
     } finally {
@@ -140,14 +137,13 @@ export default function VerifyOfflinePage() {
           href="/verify/PRM-CERT-2026-00001"
           className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300"
         >
-          ← Back to Online Verification
+          {t("offline.backOnline")}
         </Link>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
-          {t("verify.offline.title", "Offline Sticker Payload Verifier")}
+          {t("verify.offline.title")}
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
-          Ed25519 verification of the signed payload in your browser — after the first
-          key fetch, no network is used.
+          {t("offline.intro")}
         </p>
       </div>
 
@@ -156,7 +152,7 @@ export default function VerifyOfflinePage() {
           htmlFor="offline-payload"
           className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300"
         >
-          {t("verify.offline.placeholder", "Sticker Payload / pmnm.v1 Envelope / JWS")}
+          {t("verify.offline.placeholder")}
         </label>
         <textarea
           id="offline-payload"
@@ -172,7 +168,7 @@ export default function VerifyOfflinePage() {
           disabled={busy || text.trim().length === 0}
           className="mt-3 w-full rounded-full bg-zinc-950 py-2.5 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
         >
-          {busy ? "…" : t("verify.offline.button", "Validate Offline Signature & Claims")}
+          {busy ? "…" : t("verify.offline.button")}
         </button>
 
         <div aria-live="polite">

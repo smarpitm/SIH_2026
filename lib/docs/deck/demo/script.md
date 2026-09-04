@@ -8,7 +8,7 @@
 
 ### 0:45 - 1:30 | i18n Localization Demo
 * Toggle language selector from **English** to **Hindi**.
-* Point out key translations (`verdict.valid` $\rightarrow$ `"प्रमाणित"`) powered by `lib/i18n/hi.json`.
+* Point out key translations (`verdict.valid` $\rightarrow$ `"प्रमाणित"`) powered by `lib/i18n/hi.ts`.
 
 ### 1:30 - 2:30 | Main Verification Flow
 * Upload test artifact to trigger analysis.

@@ -1,17 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n";
 
 export function PhotoInput({
   name = "photo",
-  label = "Photo proof",
+  label,
   accept = "image/*",
 }: {
   name?: string;
   label?: string;
   accept?: string;
 }) {
+  const { t } = useTranslation();
   const [filename, setFilename] = useState("");
+  const labelText = label ?? t("ui.photoProof", "Photo proof");
   return (
     <label className="block">
       <span className="mb-1 block text-sm">{label}</span>

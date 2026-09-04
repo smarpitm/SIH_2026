@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { api, ApiError } from "@/components/api-client";
+import { useTranslation } from "@/lib/i18n";
 import type { ApplicationDTO, InstrumentDTO } from "@/packages/shared/types";
 
 // success path in frozen transition order (packages/shared/constants TRANSITIONS);
@@ -12,6 +13,7 @@ import type { ApplicationDTO, InstrumentDTO } from "@/packages/shared/types";
 const TIMELINE = ["DRAFT", "SUBMITTED", "SCHEDULED", "CHECKED_IN", "PASSED", "CERT_ISSUED"] as const;
 
 export default function ApplicationDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [app, setApp] = useState<ApplicationDTO | null>(null);
   const [serial, setSerial] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export default function ApplicationDetailPage() {
         .then((list) => setSerial(list.find((i) => i.id === a.instrumentId)?.serialNumber ?? null))
         .catch(() => undefined);
     } catch (e) {
-      setErrorMsg(e instanceof ApiError ? e.message : "Failed to load application.");
+      setErrorMsg(e instanceof ApiError ? e.message : t("appd.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -52,16 +54,16 @@ export default function ApplicationDetailPage() {
         { method: "POST", body: JSON.stringify({ reason }) }
       );
       setNotice(
-        `Rescheduled — visit #${res.rescheduleCount} on ${new Date(res.scheduledFor).toLocaleDateString()}.`
+        `${t("appd.rescheduledPrefix")}${res.rescheduleCount} ${t("appd.rescheduledOn")} ${new Date(res.scheduledFor).toLocaleDateString()}.`
       );
       setShowReschedule(false);
       setReason("");
       await load();
     } catch (e) {
       if (e instanceof ApiError && e.code === "RESCHEDULE_BUDGET_EXHAUSTED") {
-        setErrorMsg("Reschedule limit reached");
+        setErrorMsg(t("appd.limitReached"));
       } else {
-        setErrorMsg(e instanceof ApiError ? e.message : "Reschedule failed. Please try again.");
+        setErrorMsg(e instanceof ApiError ? e.message : t("common.error"));
       }
     } finally {
       setBusy(false);
@@ -72,7 +74,7 @@ export default function ApplicationDetailPage() {
   const isSideState = app ? app.status === "FAILED" || app.status === "REJECTED" : false;
 
   if (loading) {
-    return <div className="py-12 text-center text-sm text-zinc-500">Loading application…</div>;
+    return <div className="py-12 text-center text-sm text-zinc-500">{t("appd.loading")}</div>;
   }
 
   return (
@@ -82,11 +84,11 @@ export default function ApplicationDetailPage() {
           href="/trader"
           className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300"
         >
-          ← Back to Trader Portal
+          {t("appd.back")}
         </Link>
         <div className="flex items-center gap-3">
           <h1 className="font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            {serial ?? "Application"} · APP-{(app?.id ?? id).slice(-6).toUpperCase()}
+            {serial ?? t("appd.word")} · APP-{(app?.id ?? id).slice(-6).toUpperCase()}
           </h1>
           {app && <StatusChip status={app.status} />}
         </div>
@@ -111,7 +113,7 @@ export default function ApplicationDetailPage() {
           {/* Status Timeline */}
           <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Status Timeline
+              {t("appd.statusTimeline")}
             </h2>
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-3">
               {TIMELINE.map((s, i) => {
@@ -128,7 +130,7 @@ export default function ApplicationDetailPage() {
                           : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
                       }`}
                     >
-                      {s}
+                      {t(`status.${s}`, s)}
                     </span>
                     {i < TIMELINE.length - 1 && (
                       <span aria-hidden className="text-zinc-300 dark:text-zinc-600">
@@ -151,31 +153,31 @@ export default function ApplicationDetailPage() {
           {/* Details */}
           <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-              Application Details
+              {t("appd.details")}
             </h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
               <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-xs text-zinc-500">Instrument</dt>
+                <dt className="text-xs text-zinc-500">{t("common.instrument")}</dt>
                 <dd className="font-mono text-zinc-900 dark:text-white">{serial ?? app.instrumentId}</dd>
               </div>
               <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-xs text-zinc-500">Type</dt>
+                <dt className="text-xs text-zinc-500">{t("appd.type")}</dt>
                 <dd className="text-zinc-900 dark:text-white">{app.type}</dd>
               </div>
               <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-xs text-zinc-500">Preferred Date</dt>
+                <dt className="text-xs text-zinc-500">{t("appd.preferredDate")}</dt>
                 <dd className="text-zinc-900 dark:text-white">
                   {app.preferredDate ? new Date(app.preferredDate).toLocaleDateString() : "—"}
                 </dd>
               </div>
               <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-xs text-zinc-500">Fee Paid</dt>
+                <dt className="text-xs text-zinc-500">{t("appd.feePaid")}</dt>
                 <dd className="text-zinc-900 dark:text-white">
-                  {app.feePaidAt ? new Date(app.feePaidAt).toLocaleString() : "Not yet"}
+                  {app.feePaidAt ? new Date(app.feePaidAt).toLocaleString() : t("common.notYet")}
                 </dd>
               </div>
               <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-xs text-zinc-500">Created</dt>
+                <dt className="text-xs text-zinc-500">{t("appd.created")}</dt>
                 <dd className="text-zinc-900 dark:text-white">{new Date(app.createdAt).toLocaleString()}</dd>
               </div>
             </dl>
@@ -187,13 +189,13 @@ export default function ApplicationDetailPage() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
-                    Can&apos;t make the inspection slot?
+                    {t("appd.rescheduleTitle")}
                   </h2>
                   {/* ponytail: ApplicationDTO carries no rescheduleCount, so the button
                       shows for any SCHEDULED app and the server's budget (max 2) is the
                       authority — RESCHEDULE_BUDGET_EXHAUSTED surfaces as the limit message */}
                   <p className="mt-0.5 text-xs text-zinc-500">
-                    You can reschedule up to 2 times per application.
+                    {t("appd.rescheduleDesc")}
                   </p>
                 </div>
                 {!showReschedule && (
@@ -202,7 +204,7 @@ export default function ApplicationDetailPage() {
                     onClick={() => setShowReschedule(true)}
                     className="shrink-0 rounded-full border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800 transition outline-none hover:bg-amber-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
                   >
-                    Request Reschedule
+                    {t("appd.requestReschedule")}
                   </button>
                 )}
               </div>
@@ -210,7 +212,7 @@ export default function ApplicationDetailPage() {
               {showReschedule && (
                 <div className="mt-4">
                   <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                    Reason <span className="normal-case font-normal">(min 10 characters)</span>
+                    {t("common.reason")} <span className="normal-case font-normal">{t("appd.minChars")}</span>
                   </label>
                   <textarea
                     rows={2}
@@ -228,7 +230,7 @@ export default function ApplicationDetailPage() {
                       }}
                       className="rounded-full border border-zinc-300 px-4 py-2 text-xs font-medium text-zinc-700 transition outline-none hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                     >
-                      Cancel
+                      {t("common.cancel")}
                     </button>
                     <button
                       type="button"
@@ -236,7 +238,7 @@ export default function ApplicationDetailPage() {
                       onClick={reschedule}
                       className="rounded-full bg-zinc-950 px-5 py-2 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
                     >
-                      {busy ? "Requesting…" : "Confirm Reschedule"}
+                      {busy ? t("appd.requesting") : t("appd.confirm")}
                     </button>
                   </div>
                 </div>

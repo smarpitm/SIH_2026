@@ -1,5 +1,7 @@
 "use client";
 
+import { useTranslation } from "@/lib/i18n";
+
 function computeFraction(validFrom: string | undefined, validUntil: string): number {
   // Countdown = remaining validity / total validity.
   // stroke-dashoffset = circumference * (1 - fraction) so the ring drains as cert ages.
@@ -24,6 +26,7 @@ export function CountdownRing({
   size?: number;
   label?: string;
 }) {
+  const { t } = useTranslation();
   const R = 38;
   const C = 2 * Math.PI * R;
   const fraction =
@@ -51,7 +54,7 @@ export function CountdownRing({
         viewBox="0 0 100 100"
         className={`inline-block ${colorClass}`}
         role="img"
-        aria-label={`${Math.round(fraction * 100)}% validity remaining`}
+        aria-label={`${Math.round(fraction * 100)}% ${t("countdown.remaining")}`}
       >
         <circle
           cx="50"
