@@ -16,6 +16,7 @@
     "worker": "tsx workers/worker-entry.ts",
     "dev": "next dev",
     "build": "next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "seed:10k": "tsx prisma/seed-10k.ts",
     "openapi:check": "node scripts/check-openapi.mjs",
