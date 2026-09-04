@@ -1,8 +1,10 @@
 // Certificate issuance service (S2 — Smarpit). Consumes InspectionPassEvent
 // through the frozen lib/hooks.ts interface. Never throws upward: an
 // inspection PASS must not fail because issuance failed.
-// NOTE: Application status is Manav's state machine — this service flips ONLY
-// Certificate rows (book item: PASSED -> CERT_ISSUED app flip stays with MA-suite).
+// NOTE (updated SMV1): the Application status flip PASSED -> CERT_ISSUED now
+// happens in workers/index.ts AFTER this service returns a non-null certificate
+// (consumer side, Smarpit). If issuance fails here (null return) the application
+// stays PASSED — the cert.issue_failed audit row below is the failure signal.
 import { db } from "../db";
 import { signCredential } from "./jws";
 import { buildQrPayload } from "./qr";

@@ -58,6 +58,7 @@ K14 Officer real flows         Kush      CODED + GREEN — officer check-in + mu
 K5  Verify UI real wiring      Kush      CODED + GREEN (vitest 12/12 incl. G6 grammar + i18n fallback; /verify renders live; tampered-paste verdict covered by components/offline-verify.test.ts)
 K15 Admin + finishing touches  Kush      CODED + GREEN (vitest 18/18 + e2e 8/8; admin dashboard loading/error sentence added by K-sweep; /admin KPIs nonzero verified on fresh DB)
 E2E demo sweep                 Kush      DONE 2026-09-03 — fresh DB (db:push --force-reset + db:seed), PRD §14 path green end-to-end, tests/smoke+negative 26/26 total, see §7
+SMV1 CERT_ISSUED app flip      Smarpit   CODED + GREEN — PASS now completes the lifecycle: workers/index.ts flips PASSED→CERT_ISSUED after successful issuance (detached post-hook poller + applyTransition + app.cert_issued audit); smoke asserts CERT_ISSUED; e2e 26/26 x2 (2026-09-04)
 Run commands: npm run dev | npm run build | npm run test |
 npm run typecheck | npm run lint | npm run db:push |
 npm run db:seed (tsx prisma/seed.ts, idempotent).
@@ -114,9 +115,12 @@ to keep one source of truth and avoid merge conflicts.
      - Manav: POST /schedule/allocate is still the K0 stub returning MOCK.schedules[0] — demo
        path uses auto-allocation inside submit, so non-blocking, but it will return mock data
        if anyone calls it.
-     - Manav: Application status never flips PASSED→CERT_ISSUED (lib/crypto/issue.ts
-       intentionally doesn't; book says owner-side flip needed) — cert row + badge are the demo
-       truth; smoke asserts PASSED.
+     - Manav: Application status never flips PASSED→CERT_ISSUED — RESOLVED by
+       SMV1 (Smarpit, 2026-09-04, see §7 log): workers/index.ts performs the
+       flip after successful issuance (applyTransition + app.cert_issued
+       audit). CROSS-PATH EDIT ANNOUNCED: tests/smoke.spec.ts assertion
+       changed from "stays PASSED" to CERT_ISSUED (Kush-authored file —
+       comment + assertion only, nothing else touched).
      - Smarpit: public/certificates/lookup matches certId/serial EXACTLY (no contains) — fine
        per contract, just don't demo it with a partial serial.
   4. UI polish (K15 gap): app/admin/dashboard/page.tsx — dashboard fetch no longer silently
@@ -748,6 +752,48 @@ to keep one source of truth and avoid merge conflicts.
   all manual checks verified. NO route/API/frozen files touched.
   Commit: feat(admin-ui): kpi exports print css.
 - S6 merged to main (2026-09-03) — MG3 gate COMPLETE (MA4 + S5 + S6).
+- SMV1 (Smarpit, branch smarpit): flip Application PASSED -> CERT_ISSUED after
+  successful issuance — closes the LAST K7 chat issue (§7 item 3, above).
+  Commit: fix(workers): flip application PASSED to CERT_ISSUED after successful issuance.
+  1. workers/index.ts — after issueCertificate(event) resolves to a non-null
+     certificate, the lifecycle is completed via applyTransition (lib/auth/
+     transition consumed, not redefined) + one AuditLog row: action
+     "app.cert_issued", entity "application", entityId = applicationId,
+     meta { certId }. CRITICAL ORDERING FINDING: the /inspections route
+     commits CHECKED_IN -> PASSED only AFTER emitInspectionPass resolves, and
+     its PASSED update is unconditional (built from a stale CHECKED_IN object)
+     — so an INLINE flip inside the handler would be overwritten back to
+     PASSED (and while the handler runs the app is still CHECKED_IN, so
+     PASSED->CERT_ISSUED is refused). The flip therefore runs DETACHED
+     (void + .catch — the "never throws upward" hook contract is preserved):
+     it polls every 5ms (5s cap) until the route's PASSED commit lands, then
+     does PASSED -> CERT_ISSUED + the audit row. Idempotency: applyTransition
+     only allows the move from exactly PASSED, and an already-CERT_ISSUED app
+     exits early — a duplicated PASS event is a harmless no-op (never a second
+     audit row). issueCertificate null (issuance failed) -> no flip; the app
+     ends at PASSED and the cert.issue_failed audit row is the failure signal.
+  2. lib/crypto/issue.ts — stale header NOTE updated: the flip now happens in
+     workers/index.ts after successful issuance (was "stays with MA-suite").
+  3. CROSS-PATH EDIT ANNOUNCED (Kush-authored tests/smoke.spec.ts — announced
+     here per the ownership rules): the assertion at ~142-145 changed from
+     "app stays PASSED" to polling for CERT_ISSUED (until() + status-filtered
+     findFirst; comment + assertion only — NOTHING else in the tests touched).
+     The poll is needed because the flip lands moments AFTER the route's
+     PASSED commit, so a single read races the detached poller.
+  4. MANUAL CHECK (live dev :3000, fresh DB via prisma db push --force-reset
+     --skip-generate + db:seed; MinIO had to be restarted with the .env root
+     creds pramanam/pramanam123 — a start without them broke instrument
+     uploads with InvalidAccessKeyId -> 500, unrelated to this fix):
+     npm run typecheck 0 errors repo-wide; eslint clean on touched files;
+     npm test 26/26 TWICE — the second run on the shared DB doubles as the
+     double-event/rerun convergence check (new PRM-CERT-2026-00002 created,
+     exactly one app.cert_issued audit per application, no duplicate
+     schedules/certs/audit errors); DB spot-check: PRM-CERT-2026-00001 cert
+     ACTIVE + app CERT_ISSUED + app.cert_issued {certId} audit; negative
+     battery intact (forced issue on a SCHEDULED app still 409
+     INVALID_STATE_TRANSITION); public badge verdict VALID; trader UI detail
+     page as ravi@demo.in shows the CERT_ISSUED chip highlighted in the
+     STATUS TIMELINE (Playwright screenshot check).
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating

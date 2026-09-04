@@ -139,10 +139,14 @@ describe("PRD §14 demo-critical path (HTTP)", () => {
     expect(cert.payloadJws.split(".")).toHaveLength(3);
     certId = cert.certId;
 
-    // The issuance service deliberately does NOT flip Application status
-    // (PASSED→CERT_ISSUED flip is Manav's book item) — app stays PASSED here.
-    const app = await db.application.findUnique({ where: { id: applicationId } });
-    expect(app!.status).toBe("PASSED");
+    // SMV1: workers/index.ts completes the lifecycle PASSED→CERT_ISSUED moments
+    // after the route commits PASSED (detached post-hook poller), so poll the DB
+    // instead of racing a single read.
+    const issuedApp = await until(
+      () => db.application.findFirst({ where: { id: applicationId, status: "CERT_ISSUED" } }),
+      { label: "Application status CERT_ISSUED after PASS" }
+    );
+    expect(issuedApp.status).toBe("CERT_ISSUED");
 
     // owner notification row written directly by lib/crypto/issue.ts
     const note = await db.notification.findFirst({
