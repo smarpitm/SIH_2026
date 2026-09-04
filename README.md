@@ -318,6 +318,67 @@ them. Ownership and day-to-day status live in `context.txt`.
 - `lib/db.ts`, `lib/hooks.ts`, `lib/hash.ts`
 - `.env.example`, `docker-compose.yml`
 
+## Deployment (Render)
+
+The app is built to run on **Render** as a classic long-running Node deployment, not on a
+serverless host like Vercel — the app needs a persistent Postgres, Redis, MinIO (strictly
+required: there is no filesystem upload fallback), and a separate long-running worker process.
+Everything is defined in one infra-as-code file:
+
+- `render.yaml` — Render Blueprint: the web service, the worker, MinIO, Postgres, and Redis.
+- `prestart.sh` — boot sequence for the web service: applies `prisma db push`, the search
+  indexes (`db:indexes`), the idempotent demo seed, then `next start`.
+
+### Architecture
+
+| Service | How it runs |
+|---|---|
+| **pramanam-web** | Next.js (`npm run build` → `npm start`). Serves the UI + all `/api/v1` routes |
+| **pramanam-worker** | `npm run worker` — separate BullMQ process: nightly expiry ladder (00:30 IST) + one-shot repair sweep for applications stranded in `PASSED` |
+| **pramanam-minio** | MinIO S3-compatible server on a persistent disk; all uploads/stickers/PDFs |
+| **pramanam-postgres** | managed Render Postgres (free tier) |
+| **pramanam-redis** | managed Render Redis (free tier) |
+
+### Required production env vars
+
+`lib/security/env.ts` **refuses to boot** in `NODE_ENV=production` unless all of these are set —
+with real, non-demo values:
+
+| Env | Required for | Notes |
+|---|---|---|
+| `DATABASE_URL` | Postgres | wired from the Blueprint Postgres |
+| `REDIS_URL` | Redis (rate limiting + BullMQ) | wired from the Blueprint Redis |
+| `JWT_SECRET` | access-token signing | ≥32 chars, no demo markers |
+| `JWT_REFRESH_SECRET` | refresh tokens | ≥32 chars |
+| `ED25519_PRIVATE_KEY`| certificate signing | base64 PKCS8; ephemeral gen is DISABLED in prod |
+| `ED25519_PUBLIC_KEY` | public verify key | base64 SPKI |
+| `S3_ENDPOINT`| MinIO | `http://pramanam-minio:9000` |
+| `S3_ACCESS_KEY`/`S3_SECRET_KEY`| MinIO creds| must NOT be demo `pramanam`/`pramanam123` |
+| `S3_BUCKET` | MinIO bucket | `pramanam-docs` |
+| `NEXT_PUBLIC_APP_URL`| QR/badge/links | must be `https://` |
+| `PAYMENT_MODE=demo` | demo payment path | + `ALLOW_DEMO_PAYMENT=true` |
+
+Secrets marked `sync: false` in `render.yaml` (all of the above) are filled in the Render
+dashboard after the Blueprint first provisions — or left blank for Render to generate. Only the
+worker needs `ENABLE_WORKERS=true`; the web service sets it `false` per the audit isolation rule.
+
+### One-click deploy
+
+1. Push `main` (this file is already committed).
+2. On https://dashboard.render.com: **New → Blueprint** → select the repo.
+3. Render parses `render.yaml` and proposes services/add-ons; accept.
+4. In the dashboard, set the `sync:false` secrets on **pramanam-web** (+ the same on the worker and MinIO).
+5. Render deploys. The web's `healthCheckPath: /api/v1/public/stats` turns green when it's ready.
+
+Render wires the internal urls (`http://pramanam-minio:9000`) and the Postgres/Redis
+connection strings automatically. The seed runs only on an empty DB (idempotent), so re-deploys
+never duplicate demo data.
+
+> **Why not Vercel?** The app is a long-running server: BullMQ worker process, Prisma's binary
+> engine (needs OpenSSL at runtime), persistent Redis/Postgres/MinIO, and background jobs.
+> Vercel's serverless model has none of these. Render fits the "one long-lived process" model natively.
+
+---
 ## Status
 
 | Phase | Owner | State |

@@ -23,6 +23,7 @@ echo "[prestart] seeding demo data (idempotent)..."
 npm run db:seed
 
 echo "[prestart] boot sequence complete — starting Next.js"
-# npm start runs `next start` (package.json "start": implied by build) with the
-# production dist dir (next.config.mjs: NEXT_DIST_DIR=.next-build when prod).
+# `npm start` runs `next start` (package.json "start": "next start"). On Render
+# both build and start run with NODE_ENV=production, so next.config.mjs resolves
+# distDir to ".next-build" — the same dir the build produced.
 exec npm start
