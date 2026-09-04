@@ -5,6 +5,11 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  // Render's build image is Debian 12 / Node 20 with no system libssl.
+  // The library engine needs OpenSSL 3.0 shared libs and fails to load there;
+  // pinning the binary engine makes the Prisma query engine self-contained
+  // (native binary, no runtime OpenSSL dependency).
+  binaryTargets = ["debian-openssl-3.0.x", "native"]
 }
 
 enum Role {

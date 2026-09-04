@@ -1,0 +1,121 @@
+# Render Blueprint — PRAMANAM (legal metrology verification, SIH 2026)
+#
+# Two long-running app services + three supporting services, provisioned from
+# this one file:
+#   1. web      — Next.js web service (npm run build -> npm start)
+#   2. worker   — separate background process (npm run worker): BullMQ expiry
+#                 ladder at 00:30 IST + one-shot repair sweep for PASSED apps
+#                 without certificates
+#   3. minio    — S3-compatible object storage (strictly required by the app)
+#                 on a persistent disk
+#   4. postgres — PostgreSQL (Render managed, free tier)
+#   5. redis    — Redis (Render managed, free tier)
+#
+# One-click plumbing: https://dashboard.render.com -> New -> Blueprint ->
+# select this repo. Render wires internal service URLs across the blueprint
+# (e.g. http://pramanam-minio:9000) and you fill in the secrets marked
+# `sync: false` in the dashboard (or leave them blank to have Render generate
+# them).
+
+services:
+  # ------------------------------------------------------------------ WEB
+  - type: web
+    name: pramanam-web
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: bash prestart.sh && npm start
+    healthCheckPath: /api/v1/public/stats
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: ENABLE_WORKERS
+        value: "false"          # web service never starts worker code
+      - key: NEXT_PUBLIC_APP_URL
+        value: https://pramanam.onrender.com
+      # JWT + signing keys: set real values (>=32 chars, no demo markers) in the
+      # dashboard. The production boot gate (lib/security/env.ts) refuses to
+      # start with demo/predictable secrets.
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      - key: ED25519_PRIVATE_KEY
+        sync: false            # base64 PKCS8
+      - key: ED25519_PUBLIC_KEY
+        sync: false            # base64 SPKI
+      # MinIO (internal service below). Credentials must NOT be the demo
+      # pramanam/pramanam123 — the boot gate rejects them.
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_ENDPOINT
+        value: http://pramanam-minio:9000
+      - key: S3_BUCKET
+        value: pramanam-docs
+      # Add-ons
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pramanam-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: pramanam-redis
+          property: connectionString
+      # payment is demo-only until a real gateway is integrated (audit #13)
+      - key: PAYMENT_MODE
+        value: demo
+      - key: ALLOW_DEMO_PAYMENT
+        value: "true"
+
+  # ------------------------------------------------------------ WORKER
+  - type: worker
+    name: pramanam-worker
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run worker
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.0
+      - key: ENABLE_WORKERS
+        value: "true"
+      # The worker is a separate long-running process. It issues repair certs
+      # (DB + signing only — no S3), runs the BullMQ expiry queue (Redis).
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pramanam-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromDatabase:
+          name: pramanam-redis
+          property: connectionString
+
+  # -------------------------------------------------------------- MINIO
+  - type: web                # runs the S3 server itself
+    name: pramanam-minio
+    runtime: docker          # official MinIO image
+    plan: standard
+    docker:
+      image: minio/minio
+      command: server /data --console-address ":9001"
+    disk:
+      name: minio-data
+      mountPath: /data
+      sizeGB: 1
+    healthCheckPath: /minio/health/live
+    envVars:
+      - key: MINIO_ROOT_USER
+        sync: false
+      - key: MINIO_ROOT_PASSWORD
+        sync: false
+
+databases:
+  - name: pramanam-postgres
+    plan: free
+  - name: pramanam-redis
+    databaseType: redis
+    plan: free
