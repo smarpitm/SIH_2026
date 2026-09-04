@@ -148,11 +148,19 @@ describe("PRD §14 demo-critical path (HTTP)", () => {
     );
     expect(issuedApp.status).toBe("CERT_ISSUED");
 
-    // owner notification row written directly by lib/crypto/issue.ts
-    const note = await db.notification.findFirst({
-      where: { kind: "CERT_ISSUED", title: "Certificate issued" },
-      orderBy: { createdAt: "desc" },
-    });
+    // owner notification row written directly by lib/crypto/issue.ts.
+    // NOTE: scoped to THIS certId — tests/audit.spec.ts runs in parallel against
+    // the same live server+DB and writes its own CERT_ISSUED notifications, so an
+    // unscoped "newest row" lookup is racy (picks the audit suite's cert). The
+    // notification body always embeds the certId, so filter on it.
+    const note = await until(
+      () =>
+        db.notification.findFirst({
+          where: { kind: "CERT_ISSUED", body: { contains: certId } },
+          orderBy: { createdAt: "desc" },
+        }),
+      { label: `owner CERT_ISSUED notification for ${certId}` },
+    );
     expect(note!.body).toContain(certId);
 
     // transactional PASS (audit finding #4): exactly one inspection report and
