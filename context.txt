@@ -51,7 +51,7 @@ M5 Crypto keys/JWS/QR          Smarpit   CODED + GREEN — selftest ALL PASS; sm
 M6 Certificate issue + PDF     Smarpit   CODED + GREEN — issuance now live-verified END-TO-END over HTTP (was only selftested in-process; bundle-isolation bug found+fixed by K-sweep, see §7); pdf-selftest 14/14 + manual-check 21/21; print QA item 5 human-only (phone scan >=30cm)
 M7 Public verify + search       Smarpit   CODED + GREEN — badge verdict VALID + 5 anchors asserted in smoke; search-selftest 29/29 + public-selftest 31/31 + S5 MANUAL CHECK all green (2026-09-01); /verify page renders live
 S6 Expiry ladder + reminders   Smarpit   MERGED to main — CODED + MANUAL CHECK 16/16 GREEN (workers/manual-check.ts ALL PASS, exit 0, live pg 2026-09-03; rerun converges {flipped:0, reminders:0}); BullMQ repeatable 00:30 IST + ADMIN trigger; openapi 36/36
-M8 UI polish + i18n/docs      Kush/Nish N2 CODED + MANUAL CHECK GREEN (docs & wcag ready, branch nishka); 
+M8 UI polish + i18n/docs      Kush/Nish N2 N3 CODED + MANUAL CHECK GREEN (deployment ready, branch nishka); 
 admin dashboard loading/error sentence added (K-sweep 2026-09-03); i18n parity green
 K12 Real auth UI + guards      Kush      CODED + GREEN (real login/register/refresh in use; e2e green)
 K13 Trader real flows          Kush      CODED + GREEN — full trader write chain now covered by tests/smoke.spec.ts (fresh DB, 2026-09-03)
@@ -833,6 +833,7 @@ to keep one source of truth and avoid merge conflicts.
      called twice per app -> exactly ONE schedule row per application, second
      call audits schedule.reassigned (totals: 2 schedule rows, 3 audit rows).
 - docs: added pitch deck, demo script, and WCAG accessibility basics (N2 complete)
+- docs(n3): added deployment guide, verification checklist, and final audit docs (N3 complete)
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating
