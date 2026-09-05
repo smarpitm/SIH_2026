@@ -35,8 +35,8 @@ yarn-error.log*
 /pgdata
 /miniodata
 
-# local verification screenshots (Chrome captures, not project assets)
-/screenshots/
+# verification screenshots are tracked; keep the archive out
+/screenshots.zip
 
 # vercel
 .vercel
