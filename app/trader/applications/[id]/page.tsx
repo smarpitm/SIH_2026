@@ -73,6 +73,72 @@ export default function ApplicationDetailPage() {
   const currentIndex = app ? TIMELINE.indexOf(app.status as (typeof TIMELINE)[number]) : -1;
   const isSideState = app ? app.status === "FAILED" || app.status === "REJECTED" : false;
 
+  // "What happens now" (P0#3) — every state tells the trader the current
+  // status, the next step, who is responsible, and what action is expected.
+  type NowPanel = {
+    tone: "amber" | "blue" | "emerald" | "rose";
+    next: string;
+    party: string;
+    action: string;
+  };
+  const NOW_PANELS: Record<string, NowPanel> = {
+    DRAFT: {
+      tone: "amber",
+      next: t("appd.now.draft.step", "Submit your application"),
+      party: t("appd.now.draft.party", "You (Trader)"),
+      action: t("appd.now.draft.action", "Complete the form and pay the statutory fee to enter the queue."),
+    },
+    SUBMITTED: {
+      tone: "blue",
+      next: t("appd.now.submitted.step", "Document review"),
+      party: t("appd.now.submitted.party", "District LMO / GATC officer"),
+      action: t("appd.now.submitted.action", "The officer verifies your application details and schedules the inspection."),
+    },
+    SCHEDULED: {
+      tone: "blue",
+      next: t("appd.now.scheduled.step", "Physical inspection"),
+      party: t("appd.now.scheduled.party", "Assigned LMO / GATC officer"),
+      action: t("appd.now.scheduled.action", "Keep the instrument ready and be present at the scheduled slot."),
+    },
+    CHECKED_IN: {
+      tone: "blue",
+      next: t("appd.now.checkedIn.step", "Inspection in progress"),
+      party: t("appd.now.checkedIn.party", "Assigned LMO / GATC officer"),
+      action: t("appd.now.checkedIn.action", "The officer records observations, photos and GPS evidence on site."),
+    },
+    PASSED: {
+      tone: "emerald",
+      next: t("appd.now.passed.step", "Certificate issuance"),
+      party: t("appd.now.passed.party", "PRAMANAM system"),
+      action: t("appd.now.passed.action", "A digitally signed certificate is generated for this instrument."),
+    },
+    CERT_ISSUED: {
+      tone: "emerald",
+      next: t("appd.now.certIssued.step", "Validity tracking"),
+      party: t("appd.now.certIssued.party", "You (Trader)"),
+      action: t("appd.now.certIssued.action", "View or print the certificate and re-verify before statutory expiry."),
+    },
+    FAILED: {
+      tone: "rose",
+      next: t("appd.now.failed.step", "Repair and re-verify"),
+      party: t("appd.now.failed.party", "You (Trader)"),
+      action: t("appd.now.failed.action", "Fix the reported non-compliance and submit a fresh application."),
+    },
+    REJECTED: {
+      tone: "rose",
+      next: t("appd.now.rejected.step", "Reapply"),
+      party: t("appd.now.rejected.party", "You (Trader)"),
+      action: t("appd.now.rejected.action", "Review the rejection reason and submit a corrected application."),
+    },
+  };
+  const nowPanel: NowPanel | null = app ? (NOW_PANELS[app.status] ?? null) : null;
+  const nowToneCls = {
+    amber: "border-amber-300 bg-amber-50/70 dark:border-amber-800/50 dark:bg-amber-950/30",
+    blue: "border-blue-200 bg-blue-50/60 dark:border-blue-800/40 dark:bg-blue-950/30",
+    emerald: "border-emerald-200 bg-emerald-50/60 dark:border-emerald-800/40 dark:bg-emerald-950/30",
+    rose: "border-rose-200 bg-rose-50/60 dark:border-rose-800/40 dark:bg-rose-950/30",
+  }[nowPanel?.tone ?? "blue"];
+
   if (loading) {
     return <div className="py-12 text-center text-sm text-zinc-500">{t("appd.loading")}</div>;
   }
@@ -110,6 +176,41 @@ export default function ApplicationDetailPage() {
 
       {app && (
         <>
+          {/* What happens now — current status, next step, responsible party, expected action */}
+          {nowPanel && (
+            <section
+              aria-label={t("appd.nowTitle", "What happens now")}
+              className={`mb-4 rounded-xl border p-5 ${nowToneCls}`}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-bold text-zinc-950 dark:text-white">
+                  {t("appd.nowTitle", "What happens now")}
+                </h2>
+                <StatusChip status={app.status} />
+              </div>
+              <dl className="mt-3 grid grid-cols-1 gap-x-6 gap-y-2.5 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    {t("appd.nowNext", "Next step")}
+                  </dt>
+                  <dd className="mt-0.5 font-semibold text-zinc-900 dark:text-white">{nowPanel.next}</dd>
+                </div>
+                <div>
+                  <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    {t("appd.nowParty", "Responsible party")}
+                  </dt>
+                  <dd className="mt-0.5 font-medium text-zinc-800 dark:text-zinc-200">{nowPanel.party}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                    {t("appd.nowAction", "Expected action")}
+                  </dt>
+                  <dd className="mt-0.5 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{nowPanel.action}</dd>
+                </div>
+              </dl>
+            </section>
+          )}
+
           {/* Status Timeline */}
           <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
             <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
@@ -119,6 +220,8 @@ export default function ApplicationDetailPage() {
               {TIMELINE.map((s, i) => {
                 const current = s === app.status;
                 const done = !isSideState && i < currentIndex;
+                // review: explicit stage markers — ✓ done · ● current · ○ ahead
+                const marker = done ? "✓" : current ? "●" : "○";
                 return (
                   <li key={s} className="flex items-center gap-2">
                     <span
@@ -130,6 +233,7 @@ export default function ApplicationDetailPage() {
                           : "bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500"
                       }`}
                     >
+                      <span aria-hidden="true" className="mr-1">{marker}</span>
                       {t(`status.${s}`, s)}
                     </span>
                     {i < TIMELINE.length - 1 && (

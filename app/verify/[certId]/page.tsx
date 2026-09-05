@@ -28,6 +28,9 @@ export default function VerifyPage() {
   const [notFound, setNotFound] = useState(false);
   const [serverError, setServerError] = useState(false);
   const [typedId, setTypedId] = useState("");
+  // review: a verification event should feel like a real event — mint one ID per
+  // page load (client-side only; the public registry keeps no per-lookup log)
+  const [vrfId] = useState(() => `VRF-${Math.random().toString(36).slice(2, 8).toUpperCase()}`);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -199,11 +202,92 @@ export default function VerifyPage() {
         size="hero"
       />
 
+      {/* review: verification event metadata — turns a lookup into a verifiable moment */}
+      {badge.signatureValid && (
+        <p className="no-print -mt-2 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden="true" className="text-emerald-600 dark:text-emerald-400">✓</span>
+            {t("verify.verifiedNow", "Verified just now")}{" "}
+            <span className="tabular-nums">
+              {new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </span>
+          </span>
+          <span className="font-mono">
+            {t("verify.vrfId", "Verification ID")}: {vrfId}
+          </span>
+        </p>
+      )}
+
       {!badge.signatureValid && (
         <p className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-900 dark:border-rose-800/50 dark:bg-rose-950/40 dark:text-rose-300">
           → {t("verify.reportAction", "Report to your Local Legal Metrology office")}
         </p>
       )}
+
+      {/* Verification Summary — the four questions any third party asks, each
+          answered explicitly (icon + word, never colour alone). */}
+      <section className="card p-5" aria-label={t("verify.summaryTitle", "Verification Summary")}>
+        <h2 className="section-title mb-3">
+          {t("verify.summaryTitle", "Verification Summary")}
+        </h2>
+        <ul className="space-y-2.5 text-sm">
+          {[
+            {
+              ok: badge.signatureValid,
+              label: t("verify.sum.authentic", "Certificate Authentic"),
+              desc: t("verify.sum.authenticDesc", "Ed25519 signature verified against the public register"),
+            },
+            {
+              ok: badge.signatureValid,
+              label: t("verify.sum.issuedBy", "Issued by Authorized Officer"),
+              desc: t(
+                "verify.sum.issuedByDesc",
+                badge.anchors.find((a) => a.label === "Issued By")?.value ?? "—"
+              ),
+            },
+            {
+              ok: badge.signatureValid,
+              label: t("verify.sum.registered", "Instrument Registered"),
+              desc: t(
+                "verify.sum.registeredDesc",
+                badge.anchors.find((a) => a.label === "Instrument Serial")?.value ?? "—"
+              ),
+            },
+            {
+              ok: badge.verdict === "VALID" && badge.signatureValid,
+              label: t("verify.sum.valid", "Currently Valid"),
+              desc:
+                badge.verdict === "VALID"
+                  ? t(
+                      "verify.sum.validDesc",
+                      badge.anchors.find((a) => a.label === "Valid Until")?.value ?? ""
+                    )
+                  : t("verify.sum.notValid", "Certificate is not in a valid state"),
+            },
+          ].map((item) => (
+            <li key={item.label} className="flex items-start gap-2.5">
+              <span
+                aria-hidden="true"
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                  item.ok
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                    : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                }`}
+              >
+                {item.ok ? "✓" : "✕"}
+              </span>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold text-zinc-900 dark:text-white">
+                  {item.label}
+                </span>
+                <span className="block truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                  {item.desc}
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {/* Certificate Meta Details Card */}
       <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">

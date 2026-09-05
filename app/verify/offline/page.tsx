@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { parseQrPayload } from "@/lib/crypto/qr";
 import { verifyCredential } from "@/lib/crypto/jws";
+import { ConnectionBadge } from "@/components/ui";
 import { useTranslation } from "@/lib/i18n";
 
 // The pubkey is fetched ONCE from /.well-known/pramanam-public-key and cached in
 // localStorage — after that the verify path makes ZERO network calls (PRD M5.4).
 // ponytail: cache never expires; key rotation (DECISION DOC G.4) bumps this key.
 const LS_PUBKEY = "pm_pubkey_jwk";
+// review: "OFFLINE MODE · LAST SYNCED 2 MIN AGO" — persist when the key cache
+// was last refreshed so offline readiness is a visible, intentional state.
+const LS_PUBKEY_SYNCED_AT = "pm_pubkey_synced_at";
 
 interface PubKeyJwk {
   kty: string;
@@ -36,6 +40,7 @@ async function getPubKeyJwk(): Promise<PubKeyJwk | null> {
     const j = await r.json();
     if (j?.ok && j.data?.kty === "OKP" && j.data?.x) {
       localStorage.setItem(LS_PUBKEY, JSON.stringify(j.data));
+      localStorage.setItem(LS_PUBKEY_SYNCED_AT, String(Date.now()));
       return j.data as PubKeyJwk;
     }
   } catch {
@@ -49,6 +54,39 @@ export default function VerifyOfflinePage() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<OfflineVerdict | null>(null);
+  // Offline mode is a first-class operating mode, not an error state: show the
+  // connection mode + whether the verification key is already cached locally.
+  const [online, setOnline] = useState(true);
+  const [keyReady, setKeyReady] = useState<boolean | null>(null);
+  const [syncedAt, setSyncedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    const sync = () => setOnline(navigator.onLine);
+    sync();
+    window.addEventListener("online", sync);
+    window.addEventListener("offline", sync);
+    try {
+      setKeyReady(Boolean(localStorage.getItem(LS_PUBKEY)));
+      const raw = localStorage.getItem(LS_PUBKEY_SYNCED_AT);
+      setSyncedAt(raw ? Number(raw) : null);
+    } catch {
+      setKeyReady(false);
+    }
+    return () => {
+      window.removeEventListener("online", sync);
+      window.removeEventListener("offline", sync);
+    };
+  }, []);
+
+  // relative freshness, e.g. "2 min ago" / "3 hr ago" — for the mode strip
+  const lastSyncedLabel = (() => {
+    if (!syncedAt) return null;
+    const mins = Math.floor((Date.now() - syncedAt) / 60000);
+    if (mins < 1) return t("offline.justNow", "just now");
+    if (mins < 60) return t("offline.minAgo", "{n} min ago").replace("{n}", String(mins));
+    const hrs = Math.floor(mins / 60);
+    return t("offline.hrAgo", "{n} hr ago").replace("{n}", String(hrs));
+  })();
 
   async function onVerify() {
     setBusy(true);
@@ -133,18 +171,61 @@ export default function VerifyOfflinePage() {
   return (
     <div className="mx-auto w-full max-w-lg space-y-6">
       <div>
-        <Link
-          href="/verify/PRM-CERT-2026-00001"
-          className="mb-2 inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300"
-        >
-          {t("offline.backOnline")}
-        </Link>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <Link
+            href="/verify/PRM-CERT-2026-00001"
+            className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300"
+          >
+            {t("offline.backOnline")}
+          </Link>
+          <ConnectionBadge online={online} />
+        </div>
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
-          {t("verify.offline.title")}
+          {t("offline.modeTitle", "Offline Verification Mode")}
         </h1>
         <p className="mt-0.5 text-xs text-zinc-500">
           {t("offline.intro")}
         </p>
+        {/* review: OFFLINE MODE · LAST SYNCED 2 MIN AGO — offline readiness is a
+            feature, not a fallback. Amber/blue pill mirrors the ConnectionBadge. */}
+        <p
+          className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ring-1 ring-inset ${
+            online
+              ? "bg-emerald-50 text-emerald-700 ring-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:ring-emerald-700"
+              : "bg-blue-50 text-blue-700 ring-blue-300 dark:bg-blue-950/60 dark:text-blue-300 dark:ring-blue-700"
+          }`}
+        >
+          {online ? t("offline.onlineMode", "ONLINE MODE") : t("offline.offlineMode", "OFFLINE MODE")}
+          <span aria-hidden="true" className="opacity-50">·</span>
+          {t("offline.lastSynced", "LAST SYNCED")}{" "}
+          <span className="normal-case">
+            {lastSyncedLabel ?? t("offline.never", "never")}
+          </span>
+        </p>
+        <p className="mt-2 rounded-lg border border-blue-200 bg-blue-50/70 px-3 py-2 text-[11px] leading-snug text-blue-800 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-300">
+          {t(
+            "offline.explain",
+            "No internet connection is required to validate previously downloaded verification data. Cryptographic checks run entirely on this device."
+          )}
+        </p>
+        {/* Key cache status — tells the officer whether offline use will work */}
+        {keyReady !== null && (
+          <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-zinc-600 dark:text-zinc-400">
+            <span
+              aria-hidden="true"
+              className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold ${
+                keyReady
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"
+                  : "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+              }`}
+            >
+              {keyReady ? "✓" : "!"}
+            </span>
+            {keyReady
+              ? t("offline.keyReady", "Verification key downloaded — ready for offline use")
+              : t("offline.keyMissing", "Connect once to download the verification key")}
+          </p>
+        )}
       </div>
 
       <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
@@ -163,12 +244,8 @@ export default function VerifyOfflinePage() {
           placeholder="https://…/verify/offline#pmnm.v1=eyJ2Ijo…  —or—  eyJhbGciOiJFZERTQSJ9.eyJ….<sig>"
         />
 
-        <button
-          onClick={onVerify}
-          disabled={busy || text.trim().length === 0}
-          className="mt-3 w-full rounded-full bg-zinc-950 py-2.5 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
-        >
-          {busy ? "…" : t("verify.offline.button")}
+        <button onClick={onVerify} disabled={busy || text.trim().length === 0} className="btn btn-primary mt-3 w-full">
+          {busy ? t("offline.verifying", "Verifying…") : t("verify.offline.button")}
         </button>
 
         <div aria-live="polite">

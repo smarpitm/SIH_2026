@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslation } from "@/lib/i18n";
+import { useTheme } from "@/lib/theme";
 import { useAuthStore } from "@/lib/store";
 import { api } from "@/components/api-client";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -12,6 +13,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { lang, setLang, t } = useTranslation();
+  const { theme, setTheme, mounted } = useTheme();
   const { user, logout } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -32,13 +34,19 @@ export function Header() {
     router.push("/login");
   }
 
-  const navLinks = [
+  // Role-aware navigation: traders see their portal, officers theirs, admins
+  // theirs; public links (Verify, Docs) stay for everyone. This mirrors how a
+  // deployed government portal scopes chrome to the authenticated role.
+  const allLinks: { href: string; label: string; roles?: string[] }[] = [
     { href: "/verify/PRM-CERT-2026-00001", label: t("header.verify") },
-    { href: "/trader", label: t("header.trader") },
-    { href: "/officer", label: t("header.officer") },
-    { href: "/admin", label: t("header.admin") },
+    { href: "/trader", label: t("header.trader"), roles: ["TRADER"] },
+    { href: "/officer", label: t("header.officer"), roles: ["LMO", "GATC"] },
+    { href: "/admin", label: t("header.admin"), roles: ["ADMIN"] },
     { href: "/docs", label: t("header.docs") },
   ];
+  const navLinks = allLinks.filter(
+    (l) => !l.roles || (user && l.roles.includes(user.role))
+  );
 
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:border-zinc-800 dark:bg-zinc-950/90">
@@ -83,6 +91,17 @@ export function Header() {
         {/* Language switcher & Auth CTAs */}
         <div className="flex items-center gap-2">
           {user && <NotificationBell />}
+          {/* Theme Toggle (light / dark) */}
+          <button
+            type="button"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="flex items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 py-1 text-xs font-semibold text-zinc-700 transition outline-none hover:bg-zinc-100 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            title="Toggle light / dark theme"
+            aria-label="Toggle light or dark theme"
+          >
+            {/* neutral glyph until mounted so SSR markup never mismatches */}
+            <span aria-hidden="true">{mounted ? (theme === "dark" ? "☀️" : "🌙") : "◐"}</span>
+          </button>
           {/* Language Toggle Placeholder */}
           <button
             type="button"

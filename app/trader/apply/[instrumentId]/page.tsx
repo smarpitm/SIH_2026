@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { StatusChip } from "@/components/StatusChip";
+import { Stepper, Breadcrumbs, StatusBadge } from "@/components/ui";
 import { api, ApiError } from "@/components/api-client";
 import { useTranslation } from "@/lib/i18n";
 import type { ApplicationDTO } from "@/packages/shared/types";
@@ -97,12 +97,12 @@ export default function ApplyPage() {
     <div className="mx-auto w-full max-w-xl">
       {/* Header */}
       <div className="mb-6">
-        <Link
-          href="/trader"
-          className="inline-flex items-center text-xs font-medium text-zinc-500 transition-colors hover:text-accent-700 dark:hover:text-accent-300 mb-2"
-        >
-          {t("apply.backToTrader")}
-        </Link>
+        <Breadcrumbs
+          items={[
+            { label: t("trader.title"), href: "/trader" },
+            { label: t("apply.title") },
+          ]}
+        />
         <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
           {t("apply.title")}
         </h1>
@@ -111,44 +111,12 @@ export default function ApplyPage() {
         </p>
       </div>
 
-      {/* Step Indicator 1-2-3 */}
-      <div className="mb-8 flex items-center justify-between">
-        {steps.map((s, idx) => {
-          const isCurrent = step === s.num;
-          const isDone = step > s.num || Boolean(submittedData);
-          return (
-            <div key={s.num} className="flex items-center flex-1">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
-                    isDone
-                      ? "bg-emerald-600 text-white"
-                      : isCurrent
-                      ? "bg-zinc-950 text-white dark:bg-white dark:text-zinc-950"
-                      : "border border-zinc-300 bg-zinc-100 text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800"
-                  }`}
-                >
-                  {isDone ? "✓" : s.num}
-                </div>
-                <span
-                  className={`text-xs font-medium hidden sm:inline ${
-                    isCurrent ? "font-bold text-zinc-900 dark:text-white" : "text-zinc-500"
-                  }`}
-                >
-                  {s.label}
-                </span>
-              </div>
-              {idx < steps.length - 1 && (
-                <div
-                  className={`mx-3 h-0.5 flex-1 ${
-                    step > s.num ? "bg-emerald-600" : "bg-zinc-200 dark:bg-zinc-800"
-                  }`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
+      {/* Step Indicator — shared design-system stepper (Instrument → Details → Review) */}
+      <Stepper
+        className="mb-8"
+        current={submittedData ? steps.length : step - 1}
+        steps={steps.map((s) => ({ key: String(s.num), label: s.label }))}
+      />
 
       {errorMsg && (
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-800/40 dark:bg-red-950/40 dark:text-red-300">
@@ -382,20 +350,43 @@ export default function ApplyPage() {
             </div>
           </div>
 
-          {/* Final status chip — submit returns the real post-allocation status */}
-          <div className="mt-4 flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t("apply.statusWord")}</span>
-            <StatusChip status={submittedData.submitted?.status ?? "SUBMITTED"} />
+          {/* Success = informative, not just green: ID + status + next step */}
+          <div className="mt-4 rounded-lg border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-800/40">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">
+                  {t("apply.appIdLabel", "Application ID")}
+                </span>
+                <span className="font-mono text-sm font-bold text-zinc-950 dark:text-white">
+                  APP-{submittedData.applicationId.slice(-6).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t("apply.statusWord")}</span>
+                <StatusBadge status={submittedData.submitted?.status ?? "SUBMITTED"} />
+              </div>
+            </div>
           </div>
 
-          <div className="mt-6">
-            <div className="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-2">
-              {t("apply.returnedJson")}
-            </div>
-            <pre className="max-h-72 overflow-auto rounded-lg border border-zinc-200 bg-zinc-950 p-4 font-mono text-[11px] leading-tight text-emerald-400 dark:border-zinc-800">
+          <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-3 text-xs leading-relaxed text-blue-800 dark:border-blue-800/40 dark:bg-blue-950/40 dark:text-blue-300">
+            <span className="font-bold">{t("apply.nextTitle", "What happens next")}</span>
+            <span className="mt-0.5 block">
+              {t(
+                "apply.nextBody",
+                "An authorized officer will review your application. You will be notified when the inspection is scheduled — track every step from the application timeline."
+              )}
+            </span>
+          </div>
+
+          {/* Technical audit view — progressive disclosure, secondary by default */}
+          <details className="mt-4">
+            <summary className="cursor-pointer select-none text-xs font-semibold text-zinc-500 transition-colors hover:text-zinc-800 dark:hover:text-zinc-300">
+              ▸ {t("apply.returnedJson")}
+            </summary>
+            <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-zinc-200 bg-zinc-950 p-4 font-mono text-[11px] leading-tight text-emerald-400 dark:border-zinc-800">
               {JSON.stringify(submittedData, null, 2)}
             </pre>
-          </div>
+          </details>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link

@@ -25,7 +25,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${figtree.variable} h-full`}>
+    <html lang="en" className={`${figtree.variable} h-full`} suppressHydrationWarning>
+      <head>
+        {/* Anti-flash theme bootstrap: set the `dark` class BEFORE first paint
+         * so a dark-mode visitor never sees a white flash and SSR HTML (always
+         * light) never fights the persisted choice. Must mirror lib/theme.ts. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("pm_theme");if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}var d=document.documentElement;if(t==="dark")d.classList.add("dark");d.style.colorScheme=t;}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="flex min-h-full flex-col bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100">
         <Header />
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-8 sm:px-6 lg:px-8">

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { StatusChip } from "@/components/StatusChip";
+import { StatusBadge, EmptyState, SkeletonCardRow } from "@/components/ui";
 import { api } from "@/components/api-client";
 import { useTranslation } from "@/lib/i18n";
 import type { InstrumentDTO } from "@/packages/shared/types";
@@ -21,25 +21,19 @@ interface ScheduleJob {
   traderOrg: string | null;
 }
 
-// GET /dashboards/officer (MA4) — consumed if present, never required
-type OfficerDash = { todaySchedule?: unknown[]; overdueCount?: number } | null;
-
 export default function OfficerPage() {
   const { t } = useTranslation();
   const [jobs, setJobs] = useState<ScheduleJob[]>([]);
   const [districts, setDistricts] = useState<Record<string, string>>({});
-  const [officerDash, setOfficerDash] = useState<OfficerDash>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     Promise.all([
       api<ScheduleJob[]>("/api/v1/schedule/mine"),
       api<InstrumentDTO[]>("/api/v1/instruments"),
-      api<NonNullable<OfficerDash>>("/api/v1/dashboards/officer").catch(() => null),
     ])
-      .then(([mine, insts, d]) => {
+      .then(([mine, insts]) => {
         setJobs(mine);
-        setOfficerDash(d);
         // schedule/mine carries no district — resolve it via serial from the
         // jurisdiction-scoped instruments list (both are officer-scoped)
         const map: Record<string, string> = {};
@@ -57,6 +51,29 @@ export default function OfficerPage() {
   const overdue = active.filter((j) => j.overdue);
   const today = active.filter((j) => !j.overdue && isToday(j.scheduledFor));
   const upcoming = active.filter((j) => !j.overdue && !isToday(j.scheduledFor));
+
+  // Search + district filter (kept deliberately simple: one search box, one
+  // select — the full filter matrix would overwhelm a field-officer screen).
+  const [query, setQuery] = useState("");
+  const [districtFilter, setDistrictFilter] = useState("ALL");
+  const districtOptions = Array.from(
+    new Set(jobs.map((j) => districts[j.instrumentSerial]).filter(Boolean))
+  );
+  const matches = (j: ScheduleJob) => {
+    if (districtFilter !== "ALL" && districts[j.instrumentSerial] !== districtFilter) return false;
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      j.instrumentSerial.toLowerCase().includes(q) ||
+      (j.traderName ?? "").toLowerCase().includes(q) ||
+      (j.traderOrg ?? "").toLowerCase().includes(q) ||
+      `app-${j.applicationId.slice(-6).toLowerCase()}`.includes(q)
+    );
+  };
+  const filtered = (list: ScheduleJob[]) => list.filter(matches);
+  const fOverdue = filtered(overdue);
+  const fToday = filtered(today);
+  const fUpcoming = filtered(upcoming);
 
   function JobCard({ job }: { job: ScheduleJob }) {
     const overdueCard = job.overdue;
@@ -95,7 +112,7 @@ export default function OfficerPage() {
               )}
             </span>
           </div>
-          <StatusChip status={job.status} />
+          <StatusBadge status={job.status} />
         </div>
 
         <div className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">
@@ -105,11 +122,13 @@ export default function OfficerPage() {
               {new Date(job.scheduledFor).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
             </span>
           </div>
+          {/* the primary action must dominate the secondary metadata (review): full-height
+              Inspect CTA, monospace serial echoed so the officer confirms the right job */}
           <Link
             href={`/officer/job/${job.applicationId}?scheduleId=${job.id}`}
-            className="inline-flex min-h-[44px] w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 sm:w-auto sm:px-4 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
+            className="btn btn-primary w-full sm:w-auto sm:min-w-36"
           >
-            {t("officer.openJob")}
+            {t("officer.inspect", "Inspect")} →
           </Link>
         </div>
       </div>
@@ -117,7 +136,7 @@ export default function OfficerPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-0 sm:px-2">
+    <div className="mx-auto w-full max-w-7xl px-0 sm:px-2">
       {/* Officer Queue Header */}
       <div className="mb-6 flex flex-col justify-between gap-2 border-b border-zinc-200 pb-4 sm:flex-row sm:items-center dark:border-zinc-800">
         <div>
@@ -133,67 +152,168 @@ export default function OfficerPage() {
             {t("officer.subtitle")}
             {doneCount > 0 && ` · ${doneCount} ${t("officer.completed")}`}
           </p>
-          {/* MA4 dashboard fields, shown only when the payload includes them */}
-          {officerDash && (
-            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-              {officerDash.todaySchedule && (
-                <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                  {t("officer.todaySchedule")} {officerDash.todaySchedule.length}
-                </span>
-              )}
-              {typeof officerDash.overdueCount === "number" && (
-                <span
-                  className={`rounded-full px-2.5 py-1 font-semibold ${
-                    officerDash.overdueCount > 0
-                      ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
-                      : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300"
-                  }`}
-                >
-                  {t("officer.overdueLabel")} {officerDash.overdueCount}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      {loading && <div className="py-12 text-center text-sm text-zinc-500">{t("officer.loading")}</div>}
-
-      {!loading && active.length === 0 && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-          {t("officer.empty")}
+      {/* Today's Work — the officer answers "what do I do now?" in one glance:
+          a big pending count plus the Urgent / Scheduled / Review breakdown. */}
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="card p-4">
+              <div className="skeleton h-8 w-12" />
+              <div className="skeleton mt-1 h-3 w-20" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+              {t("officer.todayWork", "Today's Work")}
+            </div>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-3xl font-bold tabular-nums text-zinc-950 dark:text-white">
+                {active.length}
+              </span>
+              <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                {t("officer.inspectionsPending", "Inspections Pending")}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 ring-1 ring-inset ring-red-200 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-800/60">
+              <span aria-hidden="true">◉</span> {t("officer.urgent", "Urgent")} {overdue.length}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-inset ring-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-800/60">
+              <span aria-hidden="true">●</span> {t("officer.scheduledChip", "Scheduled")} {today.length}
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700 ring-1 ring-inset ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700">
+              <span aria-hidden="true">○</span> {t("officer.review", "Review")} {upcoming.length}
+            </span>
+          </div>
         </div>
       )}
 
+      {/* Inspection Queue — the actionable list itself, after Today's Work */}
+      {!loading && active.length > 0 && (
+        <div className="flex items-baseline justify-between gap-2 pt-1">
+          <h2 className="text-base font-bold tracking-tight text-zinc-900 dark:text-white">
+            {t("officer.queueTitle", "Inspection Queue")}
+          </h2>
+          <span className="text-xs text-zinc-500">
+            {t("officer.filterHint", "Search or filter below")}
+          </span>
+        </div>
+      )}
+
+      {/* Search + district filter */}
+      {!loading && jobs.length > 0 && (
+        <div className="card flex flex-col gap-2 p-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("officer.searchPh", "Search serial no., trader, or APP id…")}
+              aria-label={t("officer.search", "Search inspections")}
+              className="field-input pl-8"
+            />
+          </div>
+          <select
+            value={districtFilter}
+            onChange={(e) => setDistrictFilter(e.target.value)}
+            aria-label={t("officer.filterDistrict", "Filter by district")}
+            className="field-input sm:w-48"
+          >
+            <option value="ALL">{t("officer.allDistricts", "All Districts")}</option>
+            {districtOptions.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {loading && (
+        <div className="space-y-3" aria-hidden="true">
+          <SkeletonCardRow />
+          <SkeletonCardRow />
+          <SkeletonCardRow />
+        </div>
+      )}
+
+      {!loading && active.length === 0 && (
+        <EmptyState
+          icon="◉"
+          title={t("officer.emptyTitle", "No Pending Inspections")}
+          description={t(
+            "officer.emptyDesc",
+            "Inspection jobs assigned to you will appear here as traders submit applications."
+          )}
+        />
+      )}
+
+      {!loading && active.length > 0 && fOverdue.length + fToday.length + fUpcoming.length === 0 && (
+        <EmptyState
+          icon="⌕"
+          title={t("officer.noMatchTitle", "No Matching Inspections")}
+          description={t("officer.noMatchDesc", "Try a different search term or clear the district filter.")}
+          action={
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => {
+                setQuery("");
+                setDistrictFilter("ALL");
+              }}
+            >
+              {t("officer.clearFilters", "Clear Filters")}
+            </button>
+          }
+        />
+      )}
+
       <div className="space-y-3">
-        {overdue.length > 0 && (
+        {fOverdue.length > 0 && (
           <>
             <h2 className="text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400">
               {t("officer.overdueAct")}
             </h2>
-            {overdue.map((j) => (
-              <JobCard key={j.id} job={j} />
-            ))}
+            {/* review: at 1440px two columns halve the vertical pile-up */}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {fOverdue.map((j) => (
+                <JobCard key={j.id} job={j} />
+              ))}
+            </div>
           </>
         )}
-        {today.length > 0 && (
+        {fToday.length > 0 && (
           <>
             <h2 className="pt-2 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               {t("officer.today")}
             </h2>
-            {today.map((j) => (
-              <JobCard key={j.id} job={j} />
-            ))}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {fToday.map((j) => (
+                <JobCard key={j.id} job={j} />
+              ))}
+            </div>
           </>
         )}
-        {upcoming.length > 0 && (
+        {fUpcoming.length > 0 && (
           <>
             <h2 className="pt-2 text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
               {t("officer.upcoming")}
             </h2>
-            {upcoming.map((j) => (
-              <JobCard key={j.id} job={j} />
-            ))}
+            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+              {fUpcoming.map((j) => (
+                <JobCard key={j.id} job={j} />
+              ))}
+            </div>
           </>
         )}
       </div>

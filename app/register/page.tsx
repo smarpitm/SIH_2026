@@ -81,7 +81,7 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto w-full max-w-lg">
-      <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
+      <div className="card p-6 sm:p-8">
         <div className="mb-6 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
             {t("reg.title")}
@@ -111,7 +111,7 @@ export default function RegisterPage() {
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+            <label className="field-label">
               {t("reg.name")}
             </label>
             <input
@@ -120,12 +120,12 @@ export default function RegisterPage() {
               onChange={(e) => updateField("name", e.target.value)}
               placeholder={t("reg.phName")}
               required
-              className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+              className="field-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+            <label className="field-label">
               {t("reg.email")}
             </label>
             <input
@@ -134,12 +134,12 @@ export default function RegisterPage() {
               onChange={(e) => updateField("email", e.target.value)}
               placeholder="e.g. name@domain.in"
               required
-              className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+              className="field-input"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+            <label className="field-label">
               {t("reg.password")}
             </label>
             <input
@@ -148,7 +148,7 @@ export default function RegisterPage() {
               onChange={(e) => updateField("password", e.target.value)}
               placeholder={t("reg.passwordHint")}
               required
-              className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+              className="field-input"
             />
             {/* rule from POST /api/v1/auth/register (MA1): min 8 + at least one digit */}
             <p
@@ -164,13 +164,13 @@ export default function RegisterPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+              <label className="field-label">
                 {t("reg.role")}
               </label>
               <select
                 value={form.role}
                 onChange={(e) => updateField("role", e.target.value as Role)}
-                className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+                className="field-input"
               >
                 <option value="TRADER">{t("reg.roleTrader")}</option>
                 <option value="LMO">{t("reg.roleLmo")}</option>
@@ -179,13 +179,13 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+              <label className="field-label">
                 {t("reg.jurisdiction")}
               </label>
               <select
                 value={form.district}
                 onChange={(e) => updateField("district", e.target.value)}
-                className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+                className="field-input"
               >
                 {DISTRICTS.map((d) => (
                   <option key={d} value={d}>
@@ -199,7 +199,7 @@ export default function RegisterPage() {
           {/* Org / Centre Name: Shown ONLY for non-TRADER (LMO / GATC) */}
           {form.role !== "TRADER" && (
             <div className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3.5 dark:border-zinc-800 dark:bg-zinc-800/40">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+              <label className="field-label">
                 {t("reg.orgName")}
               </label>
               <input
@@ -208,7 +208,7 @@ export default function RegisterPage() {
                 onChange={(e) => updateField("orgName", e.target.value)}
                 placeholder={t("reg.phOrg")}
                 required
-                className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2 text-sm text-zinc-900 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+                className="field-input"
               />
               <p className="mt-1 text-[11px] text-zinc-500">
                 {t("reg.orgRequired")}
@@ -219,7 +219,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
+            className="btn btn-primary mt-2 w-full"
           >
             {loading ? t("reg.creating") : t("reg.create")}
           </button>

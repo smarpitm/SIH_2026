@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent, Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { OBSERVATION_CONFIG } from "@/packages/shared/constants";
 import { api, ApiError } from "@/components/api-client";
+import { ConfirmationModal } from "@/components/ui";
 import { useTranslation } from "@/lib/i18n";
 import type { ApplicationDTO, InstrumentDTO } from "@/packages/shared/types";
 
@@ -31,6 +32,8 @@ function JobPageInner() {
   const [failReason, setFailReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<"PASS" | "FAIL" | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const pendingFormRef = useRef<FormData | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -111,11 +114,19 @@ function JobPageInner() {
       return;
     }
 
+    // Irreversible statutory action → require explicit confirmation with a
+    // summary of what is about to be recorded before anything is sent.
+    pendingFormRef.current = new FormData(e.currentTarget);
+    setConfirmOpen(true);
+  }
+
+  async function performSubmit() {
+    const fd = pendingFormRef.current;
+    if (!fd || !result) return;
     setSubmitting(true);
     try {
       // MA3 contract: multipart with scheduleId, observations JSON, photos[]
       // (field `photos`), gpsLat/gpsLng, result, failReason when FAIL
-      const fd = new FormData(e.currentTarget);
       fd.set("scheduleId", scheduleId ?? "");
       fd.set("result", result);
       fd.set("observations", JSON.stringify(values));
@@ -128,8 +139,10 @@ function JobPageInner() {
         { method: "POST", body: fd }
       );
       setOutcome(data.result);
+      setConfirmOpen(false);
     } catch (err) {
       setErrorMsg(err instanceof ApiError ? err.message : t("job.submitFailed"));
+      setConfirmOpen(false);
     } finally {
       setSubmitting(false);
     }
@@ -217,20 +230,41 @@ function JobPageInner() {
             {fields.map((f) => (
               <div key={f.key} className="py-3 first:pt-0 last:pb-0">
                 {f.type === "boolean" ? (
-                  <label className="flex min-h-[44px] items-start gap-3 py-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      disabled={locked}
-                      className="mt-0.5 h-5 w-5 rounded border-zinc-300 text-accent-600 focus:ring-accent"
-                      checked={Boolean(values[f.key])}
-                      onChange={(e) =>
-                        setValues((v) => ({ ...v, [f.key]: e.target.checked }))
-                      }
-                    />
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
                       {t(`job.obs.${f.key}`, f.label)}
                     </span>
-                  </label>
+                    {/* Explicit tri-visual state: ✓ Pass / ✕ Fail — no ambiguous
+                        checkboxes; the observations payload stays boolean. */}
+                    <div className="flex shrink-0 gap-1.5" role="group" aria-label={t(`job.obs.${f.key}`, f.label)}>
+                      <button
+                        type="button"
+                        disabled={locked}
+                        aria-pressed={Boolean(values[f.key])}
+                        onClick={() => setValues((v) => ({ ...v, [f.key]: true }))}
+                        className={`inline-flex min-h-[36px] items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 ${
+                          Boolean(values[f.key])
+                            ? "bg-emerald-600 text-white ring-2 ring-emerald-600 ring-offset-1 dark:ring-offset-zinc-900"
+                            : "border border-zinc-300 bg-white text-zinc-500 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                        }`}
+                      >
+                        <span aria-hidden="true">✓</span> {t("job.obsPass", "Pass")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={locked}
+                        aria-pressed={!Boolean(values[f.key])}
+                        onClick={() => setValues((v) => ({ ...v, [f.key]: false }))}
+                        className={`inline-flex min-h-[36px] items-center gap-1 rounded-full px-3 py-1.5 text-xs font-bold transition outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-40 ${
+                          !Boolean(values[f.key])
+                            ? "bg-rose-600 text-white ring-2 ring-rose-600 ring-offset-1 dark:ring-offset-zinc-900"
+                            : "border border-zinc-300 bg-white text-zinc-500 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                        }`}
+                      >
+                        <span aria-hidden="true">✕</span> {t("job.obsFail", "Fail")}
+                      </button>
+                    </div>
+                  </div>
                 ) : (
                   <div>
                     <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300">
@@ -352,6 +386,45 @@ function JobPageInner() {
           </div>
         </div>
       </form>
+
+      {/* Explicit confirmation before the irreversible statutory submission */}
+      <ConfirmationModal
+        open={confirmOpen}
+        title={
+          result === "PASS"
+            ? t("job.confirmPassTitle", "Mark this instrument as VERIFIED?")
+            : t("job.confirmFailTitle", "Record a FAILED inspection?")
+        }
+        confirmLabel={submitting ? t("job.submitting") : t("job.confirmSubmit", "Confirm & Submit")}
+        tone={result === "PASS" ? "success" : "danger"}
+        busy={submitting}
+        onConfirm={performSubmit}
+        onCancel={() => !submitting && setConfirmOpen(false)}
+      >
+        {result === "PASS" ? (
+          <>
+            {t(
+              "job.confirmPassBody",
+              "You are about to mark this instrument as VERIFIED. A digitally signed certificate will be generated and this report becomes part of the permanent audit trail."
+            )}
+            <span className="mt-2 block text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+              {t("job.confirmIrreversible", "This action cannot be undone.")}
+            </span>
+          </>
+        ) : (
+          <>
+            {t(
+              "job.confirmFailBody",
+              "You are about to record a FAILED inspection. The trader will be notified and the instrument will not be certified."
+            )}
+            {failReason.trim() && (
+              <span className="mt-2 block text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                {t("job.reasonLabel")}: {failReason}
+              </span>
+            )}
+          </>
+        )}
+      </ConfirmationModal>
 
       {/* Outcome panels */}
       {outcome === "PASS" && (

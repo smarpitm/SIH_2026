@@ -2,6 +2,10 @@ import type { Config } from "tailwindcss";
 import defaultTheme from "tailwindcss/defaultTheme";
 
 const config: Config = {
+  // class-based so the app can offer an explicit light/dark toggle (the html
+  // `dark` class is set by the anti-flash script in app/layout.tsx and
+  // kept in sync by lib/theme.ts) instead of only following the OS.
+  darkMode: "class",
   content: [
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",

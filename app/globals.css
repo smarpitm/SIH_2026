@@ -26,6 +26,69 @@ body {
   }
 }
 
+/* ============================================================
+   PRAMANAM design-system primitives (SIH26036)
+   Reusable, token-based classes so every screen shares one
+   visual grammar: enterprise-neutral, government-grade.
+   All colors live in Tailwind tokens; dark: variants included.
+   ============================================================ */
+@layer components {
+  /* --- Buttons: consistent height (40/44px), radius, states --- */
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-semibold shadow-sm transition outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none dark:focus-visible:ring-offset-zinc-950;
+  }
+  .btn-sm {
+    @apply min-h-[36px] px-3 py-1.5 text-xs;
+  }
+  .btn-primary {
+    @apply bg-zinc-950 text-white shadow-md shadow-zinc-950/20 hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200;
+  }
+  .btn-secondary {
+    @apply border border-zinc-300 bg-white text-zinc-800 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+  }
+  .btn-success {
+    @apply bg-emerald-600 text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600;
+  }
+  .btn-danger {
+    @apply bg-rose-600 text-white shadow-md shadow-rose-600/20 hover:bg-rose-700 dark:bg-rose-500 dark:hover:bg-rose-600;
+  }
+  .btn-ghost {
+    @apply text-zinc-600 shadow-none hover:bg-zinc-100 hover:text-zinc-950 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white;
+  }
+
+  /* --- Cards: white, subtle border, minimal shadow --- */
+  .card {
+    @apply rounded-xl border border-zinc-200 bg-white shadow-sm shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20;
+  }
+
+  /* --- Form fields: visible label + focus + disabled states --- */
+  .field-label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300;
+  }
+  .field-hint {
+    @apply mt-1 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400;
+  }
+  .field-input {
+    @apply block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40;
+  }
+  .field-input-error {
+    @apply border-rose-400 focus:border-rose-600 focus:ring-rose-500/30 dark:border-rose-700;
+  }
+  .field-error {
+    @apply mt-1.5 text-xs font-medium text-rose-600 dark:text-rose-400;
+  }
+
+  /* --- Section titles inside forms/dashboards --- */
+  .section-title {
+    @apply text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400;
+  }
+
+  /* --- Skeleton loading shimmer --- */
+  .skeleton {
+    @apply animate-pulse rounded-md bg-zinc-200/80 dark:bg-zinc-800;
+  }
+}
+
 /* Print (K15): nav/footer hidden, A4 clean output. /verify/[certId] printed
  * doubles as the certificate handout. ponytail: on a dark-OS print the dark:
  * card tokens survive (Tailwind media query) — upgrade path: print-scoped

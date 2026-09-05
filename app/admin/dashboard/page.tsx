@@ -4,6 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { api, ApiError, zodFieldErrors } from "@/components/api-client";
 import { ExportButtons } from "@/components/export-buttons";
+import { MetricCard } from "@/components/ui";
+import type { Tone } from "@/components/ui";
 import { useTranslation } from "@/lib/i18n";
 import { DISTRICTS } from "@/packages/shared/constants";
 import type { DashCounts } from "@/packages/shared/types";
@@ -17,11 +19,11 @@ interface AdminDash {
 
 // i18n: KPIs render labels/descriptions through t() (keys below) so the EN/HI
 // toggle applies; the value stays a plain number.
-const KPIS: { key: keyof DashCounts; labelKey: string; descKey: string; color: string }[] = [
-  { key: "pendingApplications", labelKey: "trader.pendingApplications", descKey: "admin.kpiDesc1", color: "text-zinc-900 dark:text-white" },
-  { key: "verifiedThisMonth", labelKey: "trader.verifiedThisMonth", descKey: "admin.kpiDesc2", color: "text-emerald-600 dark:text-emerald-400" },
-  { key: "expiringIn30d", labelKey: "trader.expiringIn30", descKey: "admin.kpiDesc3", color: "text-amber-500 dark:text-amber-400" },
-  { key: "slaBreaches", labelKey: "trader.slaBreaches", descKey: "admin.kpiDesc4", color: "text-rose-600 dark:text-rose-400" },
+const KPIS: { key: keyof DashCounts; labelKey: string; descKey: string; tone: Tone }[] = [
+  { key: "pendingApplications", labelKey: "trader.pendingApplications", descKey: "admin.kpiDesc1", tone: "neutral" },
+  { key: "verifiedThisMonth", labelKey: "trader.verifiedThisMonth", descKey: "admin.kpiDesc2", tone: "success" },
+  { key: "expiringIn30d", labelKey: "trader.expiringIn30", descKey: "admin.kpiDesc3", tone: "warning" },
+  { key: "slaBreaches", labelKey: "trader.slaBreaches", descKey: "admin.kpiDesc4", tone: "danger" },
 ];
 
 const inputCls =
@@ -94,23 +96,18 @@ export default function AdminDashboardPage() {
           {t("admin.loadError")}
         </div>
       )}
-      {!dash && !dashError && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-          {t("admin.loading")}
-        </div>
-      )}
 
       {/* KPI Metric Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {KPIS.map((k) => (
-          <div
+          <MetricCard
             key={k.key}
-            className="rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20"
-          >
-            <div className={`text-3xl font-black ${k.color}`}>{dash ? dash.kpis[k.key] : "–"}</div>
-            <div className="mt-1 text-sm font-semibold text-zinc-800 dark:text-zinc-200">{t(k.labelKey)}</div>
-            <div className="mt-0.5 text-xs text-zinc-400">{t(k.descKey)}</div>
-          </div>
+            label={t(k.labelKey)}
+            hint={t(k.descKey)}
+            value={dash ? dash.kpis[k.key] : "–"}
+            tone={k.tone}
+            loading={!dash && !dashError}
+          />
         ))}
       </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -131,12 +128,26 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                {pendency.map((p) => (
-                  <tr key={p.district}>
-                    <td className="px-5 py-2.5 font-medium text-zinc-800 dark:text-zinc-200">{p.district}</td>
-                    <td className="px-5 py-2.5 text-right font-bold text-zinc-900 dark:text-white">{p.pending}</td>
-                  </tr>
-                ))}
+                {(() => {
+                  const max = Math.max(1, ...pendency.map((p) => p.pending));
+                  return pendency.map((p) => (
+                    <tr key={p.district}>
+                      <td className="px-5 py-2.5 font-medium text-zinc-800 dark:text-zinc-200">{p.district}</td>
+                      <td className="px-5 py-2.5">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* mini bar: scan-able magnitude, answers "which district is behind?" */}
+                          <span aria-hidden="true" className="hidden h-1.5 w-16 overflow-hidden rounded-full bg-zinc-100 sm:block dark:bg-zinc-800">
+                            <span
+                              className={`block h-full rounded-full ${p.pending > 0 ? "bg-amber-400" : "bg-emerald-400"}`}
+                              style={{ width: `${Math.round((p.pending / max) * 100)}%` }}
+                            />
+                          </span>
+                          <span className="text-right font-bold tabular-nums text-zinc-900 dark:text-white">{p.pending}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ));
+                })()}
                 {pendency.length === 0 && (
                   <tr>
                     <td colSpan={2} className="px-5 py-6 text-center text-zinc-500">
@@ -185,54 +196,76 @@ export default function AdminDashboardPage() {
             </p>
           )}
           <form onSubmit={submitInvite} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <input
-              required
-              placeholder={t("admin.phName")}
-              value={invite.name}
-              onChange={(e) => setInvite({ ...invite, name: e.target.value })}
-              className={inputCls}
-            />
-            <input
-              required
-              type="email"
-              placeholder={t("admin.phEmail")}
-              value={invite.email}
-              onChange={(e) => setInvite({ ...invite, email: e.target.value })}
-              className={inputCls}
-            />
-            <select
-              value={invite.role}
-              onChange={(e) => setInvite({ ...invite, role: e.target.value })}
-              className={inputCls}
-            >
-              <option value="LMO">LMO</option>
-              <option value="GATC">GATC</option>
-            </select>
-            <select
-              value={invite.district}
-              onChange={(e) => setInvite({ ...invite, district: e.target.value })}
-              className={inputCls}
-            >
-              {DISTRICTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-            <input
-              required
-              placeholder={t("admin.phOrg")}
-              value={invite.orgName}
-              onChange={(e) => setInvite({ ...invite, orgName: e.target.value })}
-              className={inputCls}
-            />
-            <button
-              type="submit"
-              disabled={inviting}
-              className="inline-flex items-center justify-center rounded-full bg-zinc-950 px-4 py-2 text-xs font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
-            >
-              {inviting ? t("admin.inviting") : t("admin.sendInvite")}
-            </button>
+            <div>
+              <label htmlFor="inv-name" className="field-label">{t("admin.phName")}</label>
+              <input
+                id="inv-name"
+                required
+                placeholder={t("admin.phName")}
+                value={invite.name}
+                onChange={(e) => setInvite({ ...invite, name: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="inv-email" className="field-label">{t("admin.phEmail")}</label>
+              <input
+                id="inv-email"
+                required
+                type="email"
+                placeholder={t("admin.phEmail")}
+                value={invite.email}
+                onChange={(e) => setInvite({ ...invite, email: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="inv-role" className="field-label">Role</label>
+              <select
+                id="inv-role"
+                value={invite.role}
+                onChange={(e) => setInvite({ ...invite, role: e.target.value })}
+                className={inputCls}
+              >
+                <option value="LMO">LMO</option>
+                <option value="GATC">GATC</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="inv-district" className="field-label">{t("common.district")}</label>
+              <select
+                id="inv-district"
+                value={invite.district}
+                onChange={(e) => setInvite({ ...invite, district: e.target.value })}
+                className={inputCls}
+              >
+                {DISTRICTS.map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="inv-org" className="field-label">{t("admin.phOrg")}</label>
+              <input
+                id="inv-org"
+                required
+                placeholder={t("admin.phOrg")}
+                value={invite.orgName}
+                onChange={(e) => setInvite({ ...invite, orgName: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                type="submit"
+                disabled={inviting}
+                className="btn btn-primary w-full"
+              >
+                {inviting ? t("admin.inviting") : t("admin.sendInvite")}
+              </button>
+            </div>
           </form>
         </div>
       </div>

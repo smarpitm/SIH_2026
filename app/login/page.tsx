@@ -78,10 +78,19 @@ function LoginForm() {
     <div className="mx-auto w-full max-w-md">
       <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-md shadow-zinc-950/5 sm:p-8 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="mb-6 text-center">
+          <span
+            aria-hidden="true"
+            className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-zinc-950 text-base text-white dark:bg-white dark:text-zinc-950"
+          >
+            🔐
+          </span>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-white">
             {t("auth.title")}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            {t("auth.secureSub", "Secure Digital Verification Platform")}
+          </p>
+          <p className="mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">
             {t("auth.subtitle")}
           </p>
         </div>
@@ -106,42 +115,63 @@ function LoginForm() {
 
         <form onSubmit={onSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+            <label htmlFor="login-email" className="field-label">
               {t("auth.email")}
             </label>
             <input
+              id="login-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@domain.com"
               required
-              className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+              className="field-input"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+              <label htmlFor="login-password" className="field-label">
                 {t("auth.password")}
               </label>
             </div>
             <input
+              id="login-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••••••"
               required
-              className="mt-1.5 block w-full rounded-lg border border-zinc-300 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 shadow-sm transition outline-none focus:border-accent-600 focus:ring-2 focus:ring-accent/30 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:border-accent-400 dark:focus:ring-accent/40"
+              className="field-input"
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 flex w-full items-center justify-center rounded-full bg-zinc-950 py-2.5 text-sm font-semibold text-white shadow-md shadow-zinc-950/20 transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-white dark:text-zinc-950 dark:shadow-black/20 dark:hover:bg-zinc-200"
-          >
+          {/* Remember-me / forgot-password row (demo: session semantics fixed —
+              pm_refresh is the durable session; visual affordance only) */}
+          <div className="flex items-center justify-between text-xs">
+            <label className="flex cursor-pointer items-center gap-1.5 text-zinc-600 dark:text-zinc-400">
+              <input
+                type="checkbox"
+                defaultChecked
+                className="h-3.5 w-3.5 rounded border-zinc-300 text-accent-600 focus:ring-accent"
+              />
+              {t("auth.rememberMe", "Remember me")}
+            </label>
+            <span
+              className="cursor-default text-zinc-400 underline decoration-dotted underline-offset-2 dark:text-zinc-500"
+              title={t("auth.forgotHint", "Contact your district Legal Metrology office to reset")}
+            >
+              {t("auth.forgot", "Forgot password?")}
+            </span>
+          </div>
+
+          <button type="submit" disabled={loading} className="btn btn-primary w-full">
             {loading ? t("auth.signingIn") : t("auth.signIn")}
           </button>
+
+          <p className="text-center text-[11px] text-zinc-400 dark:text-zinc-500">
+            🔒 {t("auth.secureNote", "Encrypted connection · Sessions are audited under Legal Metrology Act 2009")}
+          </p>
         </form>
 
         {/* Demo Quick Presets */}

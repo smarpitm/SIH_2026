@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { StatusChip } from "@/components/StatusChip";
 import { CountdownRing } from "@/components/CountdownRing";
+import { StatusBadge, MetricCard, EmptyState } from "@/components/ui";
 import { api } from "@/components/api-client";
 import { ExportButtons } from "@/components/export-buttons";
 import { useTranslation } from "@/lib/i18n";
@@ -22,6 +23,12 @@ export default function TraderPage() {
   const [instruments, setInstruments] = useState<InstrumentWithCert[]>([]);
   const [applications, setApplications] = useState<ApplicationDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  // P0#1 progressive disclosure: the ring grid shows the first N instruments
+  // (full list lives in the searchable table below); applications cap at N.
+  const [instrumentQuery, setInstrumentQuery] = useState("");
+  const [showAllApps, setShowAllApps] = useState(false);
+  const RING_LIMIT = 6;
+  const APP_LIMIT = 5; // review: "Only 4-5 rows" for recent applications
 
   useEffect(() => {
     Promise.all([
@@ -38,19 +45,72 @@ export default function TraderPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  // table search: serial / category / make / model, case-insensitive
+  const q = instrumentQuery.trim().toLowerCase();
+  const visibleInstruments = q
+    ? instruments.filter(
+        (i) =>
+          i.serialNumber.toLowerCase().includes(q) ||
+          i.category.toLowerCase().includes(q) ||
+          i.make.toLowerCase().includes(q) ||
+          i.model.toLowerCase().includes(q)
+      )
+    : instruments;
+  const visibleApplications = showAllApps ? applications : applications.slice(0, APP_LIMIT);
+
   // Validity from the latest certificate when the payload includes one
   const certOf = (ins: InstrumentWithCert) => ins.certificate;
 
+  // "What happens next" — every application row tells the trader the next step
+  // so nobody wonders what happens after submitting.
+  const nextAction = (status: string): { label: string; tone: "muted" | "amber" | "emerald" } => {
+    switch (status) {
+      case "DRAFT":
+        return { label: t("trader.next.draft", "Complete & submit this draft"), tone: "amber" };
+      case "SUBMITTED":
+        return { label: t("trader.next.submitted", "Awaiting officer review"), tone: "muted" };
+      case "SCHEDULED":
+        return { label: t("trader.next.scheduled", "Prepare for the scheduled inspection"), tone: "muted" };
+      case "CHECKED_IN":
+        return { label: t("trader.next.checkedIn", "Inspection in progress"), tone: "muted" };
+      case "PASSED":
+        return { label: t("trader.next.passed", "Certificate being issued"), tone: "emerald" };
+      case "CERT_ISSUED":
+        return { label: t("trader.next.certIssued", "Certificate active — view & print"), tone: "emerald" };
+      case "REJECTED":
+        return { label: t("trader.next.rejected", "View reason and reapply"), tone: "amber" };
+      default:
+        return { label: t("trader.next.default", "Tracking updates will appear here"), tone: "muted" };
+    }
+  };
+
+  // Action Required: drafts to finish + rejected applications to act on
+  const actionRequired = applications.filter((a) => a.status === "DRAFT" || a.status === "REJECTED");
+
+  // 4 compact metrics the review asked for, all derivable from loaded data:
+  // Instruments | Pending | Certified | Action Required
+  const kpiInstruments = instruments.length;
+  const kpiPending = applications.filter((a) =>
+    ["DRAFT", "SUBMITTED", "SCHEDULED", "CHECKED_IN"].includes(a.status)
+  ).length;
+  const kpiCertified = applications.filter((a) => a.status === "CERT_ISSUED").length;
+
+  // time-of-day greeting ("Good morning, Trader") so the first viewport answers
+  // "what is my day?" instead of opening with a data wall
+  const hour = new Date().getHours();
+  const greetKey =
+    hour < 12 ? "trader.greetMorning" : hour < 17 ? "trader.greetAfternoon" : "trader.greetEvening";
+
   return (
     <div className="flex flex-col gap-8">
-      {/* Top Header */}
+      {/* Top Header — greeting first, then the portal actions */}
       <div className="flex flex-col justify-between gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-center dark:border-zinc-800">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 sm:text-3xl dark:text-white">
-            {t("trader.title")}
+            {t(greetKey)} {t("trader.roleWord", "Trader")}
           </h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {t("trader.subtitle")}
+            {t("trader.greetSub", "Here's what's happening with your instruments.")}
           </p>
         </div>
         <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
@@ -65,13 +125,169 @@ export default function TraderPage() {
         </div>
       </div>
 
-      {/* KPI Cards & Instrument Validity Ring Row */}
+      {/* Summary Stat Grid — the "what do I need to know" row, above the fold */}
+      {loading ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-hidden="true">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="card p-4">
+              <div className="skeleton h-8 w-12" />
+              <div className="skeleton mt-1 h-3 w-20" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        dash && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MetricCard label={t("trader.kpiInstruments", "Instruments")} value={kpiInstruments} />
+            <MetricCard label={t("trader.kpiPending", "Pending")} value={kpiPending} tone="warning" />
+            <MetricCard label={t("trader.kpiCertified", "Certified")} value={kpiCertified} tone="success" />
+            <MetricCard label={t("trader.kpiActionRequired", "Action Required")} value={actionRequired.length} tone="danger" />
+          </div>
+        )
+      )}
+
+      {/* Action Required — drafts & rejections that need the trader's attention */}
+      {actionRequired.length > 0 && (
+        <section aria-labelledby="action-required">
+          <h2 id="action-required" className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+            <span aria-hidden="true">⚠</span> {t("trader.actionRequired", "Action Required")}
+            <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+              {actionRequired.length}
+            </span>
+          </h2>
+          <div className="space-y-2">
+            {actionRequired.map((app) => {
+              const serial = instruments.find((i) => i.id === app.instrumentId)?.serialNumber;
+              const na = nextAction(app.status);
+              return (
+                <Link
+                  key={app.id}
+                  href={`/trader/applications/${app.id}`}
+                  className="flex flex-col justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/60 p-4 transition hover:bg-amber-50 sm:flex-row sm:items-center dark:border-amber-800/40 dark:bg-amber-950/20 dark:hover:bg-amber-950/30"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold text-zinc-900 dark:text-white">
+                        APP-{app.id.slice(-6).toUpperCase()}
+                      </span>
+                      <StatusBadge status={app.status} size="sm" />
+                    </div>
+                    <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-300">
+                      {serial ?? app.instrumentId} · <span className="font-medium">{na.label}</span>
+                    </p>
+                  </div>
+                  {/* strong primary CTA per action row — "Renew Certificate →" style */}
+                  <span className="inline-flex shrink-0 items-center rounded-full bg-zinc-950 px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200">
+                    {app.status === "DRAFT"
+                      ? t("trader.ctaContinue", "Continue application")
+                      : t("trader.ctaReapply", "Reapply")}{" "}
+                    →
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Applications — first APP_LIMIT rows; the full list lives behind "Show all" */}
+      <section aria-label={t("trader.recentTitle", "Recent Applications")}>
+        <div className="flex items-center justify-between gap-2 border-b border-zinc-200 pb-2 dark:border-zinc-800">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            {t("trader.recentTitle", "Recent Applications")}
+          </h2>
+          {applications.length > APP_LIMIT && (
+            <button
+              type="button"
+              onClick={() => setShowAllApps((v) => !v)}
+              className="shrink-0 text-xs font-semibold text-accent-700 transition-colors hover:text-accent-800 dark:text-accent-300 dark:hover:text-accent-200"
+            >
+              {showAllApps
+                ? t("trader.showLessApplications", "Show fewer") + " ↑"
+                : t("trader.showAllApplications", "Show all") + " ↓"}
+            </button>
+          )}
+        </div>
+        <div className="mt-1 divide-y divide-zinc-200 dark:divide-zinc-800">
+          {visibleApplications.map((app) => {
+            const serial = instruments.find((i) => i.id === app.instrumentId)?.serialNumber;
+            return (
+              <Link
+                key={app.id}
+                href={`/trader/applications/${app.id}`}
+                className="flex flex-col justify-between gap-3 p-4 transition hover:bg-zinc-50/70 sm:flex-row sm:items-center sm:px-1 sm:py-3 dark:hover:bg-zinc-800/40"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-semibold text-zinc-900 dark:text-white">
+                      {serial ?? app.instrumentId}
+                    </span>
+                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                      {app.type}
+                    </span>
+                  </div>
+                  <span className="text-xs text-zinc-500">
+                    {t("common.application")} <span className="font-mono">APP-{app.id.slice(-6).toUpperCase()}</span>
+                    <span className="mx-1.5 text-zinc-300 dark:text-zinc-700">·</span>
+                    <span
+                      className={
+                        nextAction(app.status).tone === "amber"
+                          ? "font-medium text-amber-600 dark:text-amber-400"
+                          : nextAction(app.status).tone === "emerald"
+                            ? "font-medium text-emerald-600 dark:text-emerald-400"
+                            : ""
+                      }
+                    >
+                      {nextAction(app.status).label}
+                    </span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  {app.preferredDate && (
+                    <span className="text-xs text-zinc-500">
+                      {t("trader.preferred")} {new Date(app.preferredDate).toLocaleDateString()}
+                    </span>
+                  )}
+                  <StatusBadge status={app.status} />
+                </div>
+              </Link>
+            );
+          })}
+          {applications.length === 0 && !loading && (
+            <EmptyState
+              icon="✎"
+              title={t("trader.noApplicationsTitle", "No Applications Yet")}
+              description={t(
+                "trader.noApplicationsDesc",
+                "Your submitted verification applications will appear here."
+              )}
+              action={
+                <Link href="/trader/instruments/new" className="btn btn-primary btn-sm">
+                  {t("trader.noApplicationsCta", "Register an Instrument")}
+                </Link>
+              }
+            />
+          )}
+        </div>
+      </section>
+
+      {/* Instrument Validity Rings — first N only; the searchable table below holds the full list */}
       <div>
-        <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-          {t("trader.validityTitle")}
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+            {t("trader.validityTitle")}
+          </h2>
+          {instruments.length > RING_LIMIT && (
+            <a
+              href="#trader-instruments"
+              className="shrink-0 text-xs font-semibold text-accent-700 transition-colors hover:text-accent-800 dark:text-accent-300 dark:hover:text-accent-200"
+            >
+              {t("trader.viewAllInstruments", "View all")} {instruments.length} →
+            </a>
+          )}
+        </div>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-3">
-          {instruments.map((ins) => {
+          {instruments.slice(0, RING_LIMIT).map((ins) => {
             const cert = certOf(ins);
             return (
               <div
@@ -110,52 +326,50 @@ export default function TraderPage() {
             );
           })}
           {instruments.length === 0 && !loading && (
-            <div className="col-span-full rounded-xl border border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900">
-              {t("trader.noInstrumentsCard")}
+            <div className="col-span-full">
+              <EmptyState
+                icon="▤"
+                title={t("trader.noInstrumentsTitle", "No Instruments Registered Yet")}
+                description={t(
+                  "trader.noInstrumentsDesc",
+                  "Register your weighing or measuring instrument to begin the verification process."
+                )}
+                action={
+                  <Link href="/trader/instruments/new" className="btn btn-primary btn-sm">
+                    {t("trader.addInstrument")}
+                  </Link>
+                }
+              />
             </div>
           )}
         </div>
       </div>
 
-      {/* Summary Stat Grid */}
-      {dash && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="text-2xl font-bold text-zinc-900 dark:text-white">
-              {dash.pendingApplications}
-            </div>
-            <div className="text-xs text-zinc-500">{t("trader.pendingApplications")}</div>
-          </div>
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-              {dash.verifiedThisMonth}
-            </div>
-            <div className="text-xs text-zinc-500">{t("trader.verifiedThisMonth")}</div>
-          </div>
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">
-              {dash.expiringIn30d}
-            </div>
-            <div className="text-xs text-zinc-500">{t("trader.expiringIn30")}</div>
-          </div>
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="text-2xl font-bold text-rose-500 dark:text-rose-400">
-              {dash.slaBreaches}
-            </div>
-            <div className="text-xs text-zinc-500">{t("trader.slaBreaches")}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Instruments Table */}
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-950/5 overflow-hidden dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
+      {/* Instruments Table (id anchors the "View all" ring link) */}
+      <div id="trader-instruments" className="scroll-mt-24 rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-950/5 overflow-hidden dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
         <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/75 px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-800/50">
           <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
             {t("trader.registeredInstruments")}
           </h2>
           <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
-            {instruments.length} {t("common.total")}
+            {visibleInstruments.length} {t("common.total")}
           </span>
+        </div>
+        {/* table search — progressive disclosure over a long instrument list */}
+        <div className="border-b border-zinc-200 bg-zinc-50/50 px-5 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/25">
+          <div className="relative max-w-sm">
+            <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-zinc-400">
+              ⌕
+            </span>
+            <input
+              type="search"
+              value={instrumentQuery}
+              onChange={(e) => setInstrumentQuery(e.target.value)}
+              placeholder={t("trader.searchInstruments", "Search serial, category, make…")}
+              aria-label={t("trader.searchInstruments", "Search instruments")}
+              className="field-input pl-8"
+            />
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -171,7 +385,7 @@ export default function TraderPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {instruments.map((ins) => {
+              {visibleInstruments.map((ins) => {
                 const cert = certOf(ins);
                 return (
                   <tr key={ins.id} className="transition hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
@@ -211,10 +425,12 @@ export default function TraderPage() {
                   </tr>
                 );
               })}
-              {instruments.length === 0 && !loading && (
+              {visibleInstruments.length === 0 && !loading && (
                 <tr>
                   <td colSpan={7} className="px-5 py-8 text-center text-zinc-500">
-                    {t("trader.noInstrumentsRow")}
+                    {q
+                      ? t("trader.noMatchInstruments", "No instruments match your search.")
+                      : t("trader.noInstrumentsRow")}
                   </td>
                 </tr>
               )}
@@ -223,60 +439,6 @@ export default function TraderPage() {
         </div>
       </div>
 
-      {/* Applications List */}
-      <div className="rounded-xl border border-zinc-200 bg-white shadow-md shadow-zinc-950/5 overflow-hidden dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
-        <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/75 px-5 py-3.5 dark:border-zinc-800 dark:bg-zinc-800/50">
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
-            {t("trader.applications")}
-          </h2>
-          <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-700 dark:text-zinc-200">
-            {applications.length} {t("common.submitted")}
-          </span>
-        </div>
-        <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
-          {applications.map((app) => {
-            // human-readable labels: cuids are opaque, so show the instrument serial
-            // (resolved from the already-fetched list) + a short app reference
-            const serial = instruments.find((i) => i.id === app.instrumentId)?.serialNumber;
-            return (
-              <Link
-                key={app.id}
-                href={`/trader/applications/${app.id}`}
-                className="flex flex-col justify-between gap-3 p-4 transition hover:bg-zinc-50/70 sm:flex-row sm:items-center sm:px-5 sm:py-3.5 dark:hover:bg-zinc-800/40"
-              >
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-semibold text-zinc-900 dark:text-white">
-                      {serial ?? app.instrumentId}
-                    </span>
-                    <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                      {app.type}
-                    </span>
-                  </div>
-                  <span className="text-xs text-zinc-500">
-                    {t("common.application")} <span className="font-mono">APP-{app.id.slice(-6).toUpperCase()}</span>
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  {app.preferredDate && (
-                    <span className="text-xs text-zinc-500">
-                      {t("trader.preferred")} {new Date(app.preferredDate).toLocaleDateString()}
-                    </span>
-                  )}
-                  <StatusChip status={app.status} />
-                  <span className="text-xs font-semibold text-zinc-900 dark:text-white">{t("trader.details")}</span>
-                </div>
-              </Link>
-            );
-          })}
-          {applications.length === 0 && !loading && (
-            <div className="p-8 text-center text-sm text-zinc-500">
-              {t("trader.noApplications")}
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 }
