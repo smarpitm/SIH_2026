@@ -51,3 +51,5 @@ next-env.d.ts
 /BOOK_MANAV_API_CORE.pdf
 /PRD.pdf
 /DEPLOYMENT.md
+
+.render-secrets.local.txt
