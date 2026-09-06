@@ -34,7 +34,11 @@ function refreshAccessToken(): Promise<string | null> {
   refreshInFlight ??= fetch("/api/v1/auth/refresh", { method: "POST", credentials: "same-origin" })
     .then(async (res) => {
       const body = (await res.json().catch(() => null)) as ApiResponse<{ accessToken: string }> | null;
-      return res.ok && body?.ok ? body.data.accessToken : null;
+      const token = res.ok && body?.ok ? body.data.accessToken : null;
+      // AUDIT FINDING #71: store the rotated token so the NEXT request reads a
+      // valid token from the store instead of 401-ing and refreshing again.
+      if (token) useAuthStore.getState().setAccessToken(token);
+      return token;
     })
     .finally(() => {
       refreshInFlight = null;

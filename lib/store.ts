@@ -11,6 +11,9 @@ export interface AuthState {
   user: UserDTO | null;
   accessToken: string | null;
   setAuth: (user: UserDTO, token: string) => void;
+  /** AUDIT FINDING #71: persist the rotated access token after a 401 refresh
+   *  so subsequent fetches reuse it instead of re-refreshing on every call. */
+  setAccessToken: (token: string) => void;
   logout: () => void;
   rehydrate: () => void;
 }
@@ -56,6 +59,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     setSessionCookies(user.role);
     set({ user, accessToken });
   },
+  setAccessToken: (accessToken) => set({ accessToken }),
   logout: () => {
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(USER_KEY);

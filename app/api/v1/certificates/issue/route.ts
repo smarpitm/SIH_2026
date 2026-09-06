@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 import { assertJurisdiction } from "@/lib/auth/rbac";
 import { issueCertificate } from "@/lib/crypto/issue";
+import { applyTransition } from "@/lib/auth/transition";
+import { audit } from "@/lib/auth/audit";
 
 const bodySchema = z.object({
   applicationId: z.string().min(1),
@@ -73,6 +75,24 @@ export async function POST(req: Request) {
     inspectorKind: (application.schedules[0]?.assigneeKind as "LMO" | "GATC") ?? "LMO",
   });
   if (!cert) return jsonErr("INTERNAL", "Certificate issuance failed");
+
+  // AUDIT FINDING #107: issuance alone left the application stuck in PASSED —
+  // advance the state machine to CERT_ISSUED and write the audit row, exactly
+  // like the worker repair sweep does. (Re-running for an already-issued app
+  // returns the idempotent existing-cert branch above, so this is safe.)
+  const transition = await applyTransition(
+    { id: application.id, status: application.status },
+    "CERT_ISSUED"
+  );
+  if (transition instanceof Response) return transition;
+  await audit({
+    actorId: session!.userId,
+    actorKind: session!.role,
+    action: "app.cert_issued",
+    entity: "application",
+    entityId: application.id,
+    meta: { certId: cert.certId },
+  });
 
   return jsonOk({
     id: cert.id,

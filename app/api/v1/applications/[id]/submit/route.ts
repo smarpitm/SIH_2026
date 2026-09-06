@@ -56,9 +56,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         data: { declarationAccepted: true },
       });
 
-      // book MA3 item 1: auto-allocation with the officer picked above
-      const schedule = await tx.schedule.create({
-        data: {
+      // book MA3 item 1: auto-allocation with the officer picked above.
+      // AUDIT FINDING #106: Schedule.applicationId is @unique — a FAILED/REJECTED
+      // resubmission already has a schedule row, so `create` crashed with P2002.
+      // Upsert instead: reuse the row, reassign the officer, reset to ASSIGNED
+      // and clear any stale reschedule reason.
+      const schedule = await tx.schedule.upsert({
+        where: { applicationId: application.id },
+        update: {
+          assigneeId: officer.id,
+          assigneeKind: officer.role,
+          scheduledFor,
+          status: "ASSIGNED",
+          lastReason: null,
+        },
+        create: {
           applicationId: application.id,
           assigneeId: officer.id,
           assigneeKind: officer.role,

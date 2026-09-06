@@ -7,7 +7,7 @@ import { verifyCredential } from "@/lib/crypto/jws";
 import { ConnectionBadge } from "@/components/ui";
 import { useTranslation } from "@/lib/i18n";
 
-// The pubkey is fetched ONCE from /.well-known/pramanam-public-key and cached in
+// The pubkey is fetched ONCE from /api/v1/public/jwks (audit finding #91) and cached in
 // localStorage — after that the verify path makes ZERO network calls (PRD M5.4).
 // ponytail: cache never expires; key rotation (DECISION DOC G.4) bumps this key.
 const LS_PUBKEY = "pm_pubkey_jwk";
@@ -36,12 +36,18 @@ async function getPubKeyJwk(): Promise<PubKeyJwk | null> {
     // corrupted cache -> refetch
   }
   try {
-    const r = await fetch("/api/v1/.well-known/pramanam-public-key");
+    // AUDIT FINDING #91: sync from the real JWKS endpoint (kid-aware, rotation
+    // ready). The old /.well-known/pramanam-public-key URL is superseded —
+    // GET /api/v1/public/jwks returns { keys: [{ kid, active, fingerprint, jwk }] }.
+    const r = await fetch("/api/v1/public/jwks");
     const j = await r.json();
-    if (j?.ok && j.data?.kty === "OKP" && j.data?.x) {
-      localStorage.setItem(LS_PUBKEY, JSON.stringify(j.data));
+    const keys = j?.ok && Array.isArray(j.data?.keys) ? j.data.keys : [];
+    const entry = keys.find((k: { active?: boolean }) => k.active) ?? keys[0];
+    const jwk = entry?.jwk;
+    if (jwk?.kty === "OKP" && jwk?.x) {
+      localStorage.setItem(LS_PUBKEY, JSON.stringify(jwk));
       localStorage.setItem(LS_PUBKEY_SYNCED_AT, String(Date.now()));
-      return j.data as PubKeyJwk;
+      return jwk as PubKeyJwk;
     }
   } catch {
     // offline with no cache — nothing we can verify

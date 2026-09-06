@@ -33,7 +33,8 @@ async function nextCertId(tx: Tx): Promise<string> {
   // error 42883 on every PASS workflow.
   await tx.$executeRaw`
     INSERT INTO "CertCounter" ("id", "lastNumber") VALUES ('cert',
-      COALESCE((SELECT MAX(CAST(RIGHT("certId", ${CERT_SEQ_LEN}::int) AS INTEGER)) FROM "Certificate"), 0))
+      COALESCE((SELECT MAX(CAST(RIGHT("certId", ${CERT_SEQ_LEN}::int) AS INTEGER)) FROM "Certificate"
+        WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'), 0))
     ON CONFLICT ("id") DO NOTHING`;
   const rows = await tx.$queryRaw<{ lastNumber: number }[]>`
     UPDATE "CertCounter" SET "lastNumber" = "lastNumber" + 1
