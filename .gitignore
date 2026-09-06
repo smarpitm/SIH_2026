@@ -52,3 +52,10 @@ next-env.d.ts
 /DEPLOYMENT.md
 
 .render-secrets.local.txt
+
+# local runtime data (postgres/minio data dirs, scratch)
+.local-postgres/
+.local-services/
+tmp-*.ts
+tmp-*.txt
+test-output.txt

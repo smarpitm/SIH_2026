@@ -7,16 +7,28 @@ export type VerifyResult =
   | { valid: true; payload: object }
   | { valid: false; reason: "BAD_SIGNATURE" | "MALFORMED" };
 
-export function b64url(input: Buffer | string): string {
-  const b64 = Buffer.isBuffer(input)
-    ? input.toString("base64")
-    : Buffer.from(input, "utf8").toString("base64");
-  return b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+// ISOMORPHIC base64url (audit findings #80/#92/#114): Buffer is undefined in
+// browsers, so every helper here uses only Web-standard globals — atob/btoa
+// (available in browsers AND Node >= 20) and TextEncoder/TextDecoder.
+// Node Buffer never appears in a browser-shared code path again.
+
+function bytesToB64(bytes: Uint8Array): string {
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary);
 }
 
-export function fromB64url(s: string): Buffer {
+export function b64url(input: Uint8Array | string): string {
+  const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
+  return bytesToB64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function fromB64url(s: string): Uint8Array<ArrayBuffer> {
   const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4);
-  return Buffer.from(b64, "base64");
+  const binary = atob(b64);
+  const bytes = new Uint8Array(new ArrayBuffer(binary.length));
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
 }
 
 // deterministic key order → deterministic bytes → exact tamper detection
@@ -81,11 +93,11 @@ export async function verifyCredential(
     const ok = await crypto.subtle.verify(
       alg,
       key,
-      new Uint8Array(fromB64url(s)),
+      fromB64url(s),
       new TextEncoder().encode(signingInput)
     );
     if (!ok) return { valid: false, reason: "BAD_SIGNATURE" };
-    const payload = JSON.parse(Buffer.from(fromB64url(p)).toString("utf8")) as object;
+    const payload = JSON.parse(new TextDecoder().decode(fromB64url(p))) as object;
     return { valid: true, payload };
   } catch {
     return { valid: false, reason: "MALFORMED" };

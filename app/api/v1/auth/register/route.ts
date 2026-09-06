@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { jsonOk, jsonErr } from "@/packages/shared/api";
-import { ROLES } from "@/packages/shared/constants";
+import { ROLES, DISTRICTS } from "@/packages/shared/constants";
 import { db } from "@/lib/db";
 import { hashPassword } from "@/lib/hash";
 import { getSession } from "@/lib/auth/session";
@@ -22,7 +22,19 @@ const bodySchema = z.object({
   role: z.enum(ROLES),
   orgName: z.string().min(1).optional(),
   phone: z.string().min(1).optional(),
-  district: z.string().min(1).optional(),
+  district: z.enum(DISTRICTS).optional(),
+}).superRefine((val, ctx) => {
+  // AUDIT FINDING #94: a TRADER without a district has session.district ===
+  // null, which disables the district-lock check in POST /api/v1/instruments
+  // and lets them register instruments in ANY jurisdiction. District is
+  // therefore mandatory on public trader registration.
+  if (val.role === "TRADER" && !val.district) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["district"],
+      message: "District is required for trader registration",
+    });
+  }
 });
 
 export async function POST(req: Request) {

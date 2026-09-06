@@ -2,7 +2,7 @@
 // buildQrPayload runs server-side (S3 sticker render), parseQrPayload runs
 // client-side on Kush's offline verify page.
 import QRCode from "qrcode";
-import { b64url } from "./jws";
+import { b64url, fromB64url } from "./jws";
 import { KID } from "./keys";
 
 export function buildQrPayload(jws: string): string {
@@ -33,7 +33,9 @@ export function parseQrPayload(text: string): { jws: string } | null {
 
   if (encoded !== null) {
     try {
-      const json = Buffer.from(fromB64urlStr(encoded), "base64").toString("utf8");
+      // AUDIT FINDINGS #92/#114: decode with the isomorphic helper + TextDecoder
+      // (Buffer is undefined in browsers and this runs on /verify/offline).
+      const json = new TextDecoder().decode(fromB64url(encoded));
       const obj = JSON.parse(json);
       if (obj && typeof obj.s === "string" && obj.s.length > 0) return { jws: obj.s };
     } catch {
@@ -47,11 +49,6 @@ export function parseQrPayload(text: string): { jws: string } | null {
     return { jws: trimmed };
   }
   return null;
-}
-
-function fromB64urlStr(s: string): string {
-  const b64 = s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4);
-  return b64;
 }
 
 // PNG data URL, ECC level Q (dense-payload budget per DECISION DOC G.5).
