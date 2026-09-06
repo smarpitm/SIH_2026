@@ -1,7 +1,7 @@
 # PRAMANAM Comprehensive Project Audit & Current Source of Truth
 
 **Current Status**: Verified Production Hardened (Core Flows) & Active Sprints Identified  
-**Last Comprehensive Audit**: 2026-09-06 (Sixth Pass — full re-verification suite + new findings 117–122 + status corrections)  
+**Last Comprehensive Audit**: 2026-09-06 (Reconciled with Sprint 1 fixes [commit 545db37] + Sixth Pass findings 117–122)
 **Auditor**: Antigravity (Advanced Agentic Systems)  
 **Scope**: Next.js application code, all 39 API routes (`app/api/v1`), Prisma schema & SQL migrations, BullMQ workers, shared contracts, crypto/PDF/security/i18n helpers, Zustand stores, client API wrappers, and test suites.
 
@@ -35,13 +35,18 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 ### Comprehensive Findings Portfolio Breakdown
 
 - **Total Cataloged Findings Across All Passes**: **122**
-- **Resolved / Mitigated Historical Findings (Passes 1 & 2)**: **70 findings** (52 fully resolved in code & verified by tests, 15 accepted architectural trade-offs). *Sixth-Pass correction: three rows previously marked FIXED (#60, #62, #63) were **re-opened** after the claimed fixes were found absent from the code — see §2.5 Verification Corrections and the updated §5.1 matrix.*
-- **Current Active & Open Findings (Passes 3, 4, 5, 6)**: **49 findings** (Findings 71–123; #79, #91 and #107 moved to verified-fixed, #92/#114 re-classified, six new findings #117–#122).
-  - **Critical**: 0 findings (was 3 — #91 verified fixed; #92/#114 re-classified to Low after build-output verification).
-  - **High**: 7 findings (Findings #71, #72, #93, #94, #106, #108, #117).
-  - **Medium**: 15 findings (Findings #73, #76, #95, #96, #97, #98, #99, #100, #109, #110, #111, #112, #113, #118, #119).
-  - **Low**: 27 findings (Findings #74, #75, #77–#78, #80–#90, #92, #101–#105, #114, #115, #116, #120, #121, #122).
-- **Re-opened Historical Findings (Sixth Pass)**: **3 findings** (#60, #62, #63) — counted separately from the active portfolio; total open work = 52 findings.
+- **Resolved / Mitigated Historical Findings (Passes 1 & 2)**: **70 findings** (52 fully resolved in code & verified by tests, 15 accepted architectural trade-offs, 3 re-opened: #60, #62, #63).
+- **Recent Findings (Passes 3, 4, 5, 6)**: **52 findings** (Findings 71–122):
+  - **Resolved & Verified in Code (Sprint 1 [commit 545db37] & Sixth Pass)**: **11 findings**:
+    - Critical (3): #91 (JWKS sync), #92 (Buffer-free QR decode), #114 (Buffer-free WebCrypto import).
+    - High (6): #71 (Zustand token persistence), #93 (Postgres logout revoke), #94 (TRADER district validation), #106 (schedule upsert), #107 (CERT_ISSUED state transition), #108 (cert sequence regex).
+    - Low (2): #79 (unique notification index), #80 (isomorphic base64url WebCrypto).
+  - **Currently Open**: **41 findings**:
+    - **Critical**: **0** (All critical vulnerabilities fully resolved and verified in code/tests).
+    - **High**: **2 findings** (Findings #72, #117).
+    - **Medium**: **16 findings** (Findings #73, #75, #76, #95, #96, #97, #98, #99, #100, #109, #110, #111, #112, #113, #118, #119).
+    - **Low**: **23 findings** (Findings #74, #77, #78, #81, #82, #83, #84, #85, #86, #87, #88, #89, #90, #101, #102, #103, #104, #105, #115, #116, #120, #121, #122).
+- **Total Open Engineering Work Remaining**: **44 findings** (41 recent active open + 3 re-opened historical #60, #62, #63).
 
 ---
 
@@ -51,7 +56,7 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 
 | ID | Title / Vulnerability | Severity | Area | Recommended Action |
 |---|---|---|---|---|
-| **71** | `useAuthStore` Fails to Persist Rotated Access Token on 401 Refresh | **High** | Client Auth / Session | Export `setAccessToken` on store and update state upon refresh token exchange |
+| **71** | `useAuthStore` Fails to Persist Rotated Access Token on 401 Refresh | **High** | Client Auth / Session | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `useAuthStore.getState().setAccessToken(token)` called on 401 refresh in `components/api-client.ts:40` |
 | **72** | Password Rotation Does Not Revoke Active Refresh Families | **High** | Security / Revocation | Invalidate all `RefreshFamily` records for `userId` inside change-password transaction |
 | **73** | `GET /instruments/[id]/sticker` Re-renders and Creates S3 Objects on Every Read | **Medium** | Storage / S3 | Check `headPdfStatus` or store `stickerKey` before generating new PDF |
 | **74** | One-to-One Domain Relations Modeled as Arrays on `Application` Schema | **Low** | Architecture / Prisma | Model `schedule Schedule?` and `certificate Certificate?` on `Application` |
@@ -60,7 +65,7 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 | **77** | Duplicate Status Mapping Across Components (`STATUS_MAP` vs `STATUS_META`) | **Low** | Code Hygiene | Consolidate status styling and labels into `packages/shared/constants.ts` |
 | **78** | Expired Application Status Transition Unchecked in `applyTransition` | **Low** | State Machine | Define allowed transitions from `EXPIRED` in transition matrix |
 | **79** | Unindexed `notificationPreference` Lookup | **Low** | Database Performance | **VERIFIED FIXED (Sixth Pass)** — `NotificationPreference.userId @unique` (`prisma/schema.prisma:75`) materializes the unique index |
-| **80** | WebCrypto Subtle Crypto Algorithm String Discrepancy in Offline Verify | **Low** | Offline Verify | Standardize algorithm identifier for subtle crypto Ed25519 verification |
+| **80** | WebCrypto Subtle Crypto Algorithm String Discrepancy in Offline Verify | **Low** | Offline Verify | **VERIFIED FIXED (Sprint 1, commit 545db37)** — Isomorphic base64url via `btoa`/`atob`/`TextDecoder` standard in `lib/crypto/jws.ts` |
 | **81** | Inconsistent User Status Field Check in Session Middleware | **Low** | Auth Guard | Enforce active account status validation across all session decodes |
 | **82** | Client `apiClient` Silently Drops Body on Non-POST/PUT Requests | **Low** | API Client | Throw explicit warning or disallow bodies on GET/DELETE |
 | **83** | Hardcoded Demo Seed Values in Non-Demo Migrations | **Low** | Seed Hygiene | Gate demo credentials in seed scripts behind `ALLOW_DEMO_SEED=true` |
@@ -71,10 +76,10 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 | **88** | Instrument Detail Route Inaccessible to Non-Owner Officers | **Low** | Officer UX | Provide read-only instrument inspection view for assigned officers |
 | **89** | Hardcoded Certificate Prefix Year in Sequence Generator | **Low** | System Longevity | Dynamically compute `CERT_PREFIX` year from UTC date |
 | **90** | Schedule Reallocation Leaves Status as `RESCHEDULED` and Omits Officer Notification | **Low** | Operations / Notification | Reset status to `ASSIGNED` and dispatch notification to new officer |
-| **91** | Offline Verification Key Sync URL Does Not Exist (`404 NOT_FOUND`) | **Critical** | Offline Verification | **VERIFIED FIXED (Sixth Pass)** — `app/api/v1/.well-known/pramanam-public-key/route.ts` exists (in the 39/39 OpenAPI parity) and `app/verify/offline/page.tsx:39-45` fetches exactly that URL with a matching envelope |
-| **92** | `parseQrPayload` Crashes in Browsers Due to Node.js `Buffer` | **Low** (re-classified from Critical, Sixth Pass) | Client Runtime | Cannot reproduce: Next 14 bundles the `buffer` shim for client code. Still replace Node `Buffer` with standard `atob` / `Uint8Array` to drop the implicit polyfill dependency |
-| **93** | Logout Does Not Revoke Refresh Token Families in Database | **High** | Auth / Session Security | Call `revokeFamily(claims.familyId)` inside `POST /api/v1/auth/logout` |
-| **94** | Registration Without District Bypasses District-Lock on Instruments | **High** | RBAC / Jurisdiction | Require `district: z.enum(DISTRICTS)` on public TRADER registration |
+| **91** | Offline Verification Key Sync URL Does Not Exist (`404 NOT_FOUND`) | **Critical** | Offline Verification | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `app/verify/offline/page.tsx:38-51` migrated to fetch `GET /api/v1/public/jwks`, caching active-kid JWK in localStorage |
+| **92** | `parseQrPayload` Crashes in Browsers Due to Node.js `Buffer` | **Low** | Client Runtime | **VERIFIED FIXED (Sprint 1, commit 545db37)** — Removed Node `Buffer` from `lib/crypto/qr.ts:33`; now decodes via `fromB64url` + `TextDecoder` |
+| **93** | Logout Does Not Revoke Refresh Token Families in Database | **High** | Auth / Session Security | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `app/api/v1/auth/logout/route.ts:16-18` extracts `claims.familyId` from refresh cookie and calls `await revokeFamily(claims.familyId)` |
+| **94** | Registration Without District Bypasses District-Lock on Instruments | **High** | RBAC / Jurisdiction | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `app/api/v1/auth/register/route.ts:25-38` requires enum `district` for TRADER role |
 | **95** | Login and Register UI Diverge from Documented Audit Fixes | **Medium** | Security / UX | Gate demo credentials behind demo flag; remove officer roles from registration |
 | **96** | Notification Bell Automatically Marks All Read on Drawer Open | **Medium** | UI / UX | Load notifications without marking read; require explicit "Mark All Read" click |
 | **97** | Rescheduled Jobs Excluded from Officer Overdue Tracking | **Medium** | Dashboard / Overdue | Check `["ASSIGNED", "RESCHEDULED"].includes(s.status)` in overdue filter |
@@ -86,15 +91,15 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 | **103** | `verifyPassword` Unhandled Exception on Empty Hash | **Low** | Auth Error Handling | Guard against zero-length hash strings before invoking scrypt |
 | **104** | Application Photo Upload Blocks Admin | **Low** | RBAC Consistency | Allow `ADMIN` role to upload photos in `photos/route.ts` |
 | **105** | Stale Comments and Redundant Fields in Application Apply Flow | **Low** | Code Hygiene | Clean up stale comments and remove unused fields in apply flow |
-| **106** | Resubmission of FAILED or REJECTED Applications Crashes with `P2002` | **High** | State Machine / 500 Error | Upsert or update existing `Schedule` instead of calling `tx.schedule.create` |
-| **107** | `POST /api/v1/certificates/issue` Never Advances Application Status to `CERT_ISSUED` | **High** | State Machine | **VERIFIED FIXED (Sixth Pass, primary workflow)** — inline transactional `PASSED → CERT_ISSUED` in `app/api/v1/inspections/route.ts:146-179`, proven by `tests/smoke.spec.ts` |
-| **108** | `nextCertId` Sequence Generator Crashes on Non-Numeric `certId` Suffix | **High** | Sequence / SQL Bug | Add regex filter `WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'` (still missing from the `CertCounter` seed INSERT at `lib/crypto/issue.ts:34-37`) |
+| **106** | Resubmission of FAILED or REJECTED Applications Crashes with `P2002` | **High** | State Machine / 500 Error | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `app/api/v1/applications/[id]/submit/route.ts:64-79` uses `tx.schedule.upsert` |
+| **107** | `POST /api/v1/certificates/issue` Never Advances Application Status to `CERT_ISSUED` | **High** | State Machine | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `app/api/v1/certificates/issue/route.ts:80-86` calls `applyTransition(app, "CERT_ISSUED")` + `app.cert_issued` audit log |
+| **108** | `nextCertId` Sequence Generator Crashes on Non-Numeric `certId` Suffix | **High** | Sequence / SQL Bug | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `lib/crypto/issue.ts:36-37` added regex `WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'` |
 | **109** | Checked-In Jobs Disappear from Officer Active Queue Before Inspection | **Medium** | Officer Workflow | Keep schedule active after check-in; mark `DONE` only upon report submission |
 | **110** | Missing Password Rotation UI for Invited Officers with One-Time Credentials | **Medium** | Security / Auth UI | Check `mustChangePassword` on login and enforce password rotation modal |
 | **111** | `PATCH /instruments/[id]` Allows Officers to Mutate Trader Instruments | **Medium** | RBAC / Data Integrity | Enforce owner TRADER or ADMIN role check on instrument PATCH |
 | **112** | Schedule Status Badge Mismatch and Omission of Application Status in Officer Queue | **Medium** | UI / Badge Mapping | Pass application status to badge and add `ASSIGNED`/`RESCHEDULED` to status map |
 | **113** | Concurrency Race Condition on Reschedule Budget Permitting Over-Rescheduling | **Medium** | Concurrency / Budget | Atomic conditional update: `where: { id, rescheduleCount: { lt: 2 } }` |
-| **114** | Client-Side Offline Verification WebCrypto Key Import Fails Due to Node `Buffer` | **Low** (re-classified from Critical, Sixth Pass) | Offline Verification | Cannot reproduce: the client chunk resolves `Buffer` via Next's `buffer` shim. Still provide an isomorphic `Uint8Array` decoder to remove the polyfill dependency |
+| **114** | Client-Side Offline Verification WebCrypto Key Import Fails Due to Node `Buffer` | **Low** | Offline Verification | **VERIFIED FIXED (Sprint 1, commit 545db37)** — `lib/crypto/jws.ts:26-32` `fromB64url` returns `Uint8Array<ArrayBuffer>` directly usable in browser WebCrypto |
 | **115** | Schedule Reallocation Preserves Stale `DONE` Status | **Low** | Operational Workflow | Reset `status: "ASSIGNED"` in `schedule/allocate` update |
 | **116** | Unbounded Upper Limit in Admin Dashboard `officerProductivity` Query | **Low** | Analytics / SQL | Add `AND r."createdAt" < ${nextMonth}` to bounded monthly window |
 | **117** | Trader Reschedule UI Omits Mandatory `newDate` — Reschedule Broken End-to-End | **High** | Client / Server Contract | Collect a date in `app/trader/applications/[id]/page.tsx` and send ISO `newDate` alongside `reason` |
@@ -110,7 +115,7 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 
 The following findings represent new, distinct edge cases, race hazards, architectural discrepancies, and maintainability concerns discovered during the 2026-09-06 line-by-line inspection of the entire codebase.
 
-### 71. `useAuthStore` Fails to Persist Rotated Access Token on 401 Refresh
+### 71. `useAuthStore` Fails to Persist Rotated Access Token on 401 Refresh [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: High (Client-side performance & session stability)
 - **Files**:
   - `components/api-client.ts:34-38`
@@ -356,7 +361,7 @@ The following findings represent new, distinct edge cases, race hazards, archite
 
 The following findings were uncovered during an additional ultra-deep pass focused on end-to-end user workflows, client component state, browser/server protocol boundaries, and verification of prior audit claims against raw source lines:
 
-### 91. Offline Verification Key Sync URL Does Not Exist (`404 NOT_FOUND`)
+### 91. Offline Verification Key Sync URL Does Not Exist (`404 NOT_FOUND`) [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: Critical (Offline Verification Broken)
 - **Files**:
   - `app/verify/offline/page.tsx:39-45`
@@ -370,7 +375,7 @@ The following findings were uncovered during an additional ultra-deep pass focus
 - **Recommended Fix**:
   Update `getPubKeyJwk()` to fetch `/api/v1/public/jwks`, parse `j.data.keys[0].jwk`, and cache it in `localStorage`.
 
-### 92. `parseQrPayload` Crashes in Browsers Due to Node.js `Buffer`
+### 92. `parseQrPayload` Crashes in Browsers Due to Node.js `Buffer` [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: Critical (Client Runtime Crash)
 - **Files**:
   - `lib/crypto/qr.ts:36`
@@ -384,7 +389,7 @@ The following findings were uncovered during an additional ultra-deep pass focus
 - **Recommended Fix**:
   Use standard browser base64 decoding (`atob` and `TextDecoder`) instead of Node's `Buffer`.
 
-### 93. Logout Does Not Revoke Refresh Token Families in Database
+### 93. Logout Does Not Revoke Refresh Token Families in Database [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: High (Authentication / Session Revocation)
 - **Files**:
   - `app/api/v1/auth/logout/route.ts:8-36`
@@ -396,7 +401,7 @@ The following findings were uncovered during an additional ultra-deep pass focus
 - **Recommended Fix**:
   Read `claims.familyId` from the refresh cookie and call `await revokeFamily(claims.familyId)` inside `POST /api/v1/auth/logout`.
 
-### 94. Registration Without District Bypasses District-Lock on Instruments
+### 94. Registration Without District Bypasses District-Lock on Instruments [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: High (RBAC / Jurisdiction Bypass)
 - **Files**:
   - `app/api/v1/auth/register/route.ts:25`
@@ -544,7 +549,7 @@ The following findings were uncovered during an additional ultra-deep pass focus
 
 During a fifth exhaustive, line-by-line inspection across all API handlers, database queries, and client component interactions, the following high-impact bugs and state-machine race conditions were identified:
 
-### 106. Resubmission of FAILED or REJECTED Applications Crashes with Unique Constraint Violation (`P2002`)
+### 106. Resubmission of FAILED or REJECTED Applications Crashes with Unique Constraint Violation (`P2002`) [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: High (State Machine Failure / HTTP 500)
 - **Files**:
   - `app/api/v1/applications/[id]/submit/route.ts:60-67`
@@ -568,7 +573,7 @@ During a fifth exhaustive, line-by-line inspection across all API handlers, data
 - **Recommended Fix**:
   Use `tx.schedule.upsert` or check `tx.schedule.findUnique`: if an existing schedule exists, update its `assigneeId`, `assigneeKind`, `scheduledFor`, reset `status: "ASSIGNED"`, and clear `lastReason`; only create if none exists.
 
-### 107. `POST /api/v1/certificates/issue` Never Advances Application Status to `CERT_ISSUED`
+### 107. `POST /api/v1/certificates/issue` Never Advances Application Status to `CERT_ISSUED` [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: High (State Machine / Incomplete Workflow)
 - **Files**:
   - `app/api/v1/certificates/issue/route.ts:68-86`
@@ -585,7 +590,7 @@ During a fifth exhaustive, line-by-line inspection across all API handlers, data
 - **Recommended Fix**:
   Wrap the issuance in a transaction, invoke `await applyTransition(application, "CERT_ISSUED", tx)`, and write the `app.cert_issued` audit log.
 
-### 108. `nextCertId` Sequence Generator Crashes on Non-Numeric `certId` Suffix
+### 108. `nextCertId` Sequence Generator Crashes on Non-Numeric `certId` Suffix [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: High (Database Query Failure / Blocker)
 - **Files**:
   - `lib/crypto/issue.ts:34-37`
@@ -680,7 +685,7 @@ During a fifth exhaustive, line-by-line inspection across all API handlers, data
   Perform an atomic conditional update inside the transaction:
   `await tx.schedule.updateMany({ where: { id: schedule.id, rescheduleCount: { lt: MAX_RESCHEDULES } }, data: { rescheduleCount: { increment: 1 }, ... } })` and check `count === 1`.
 
-### 114. Client-Side Offline Verification WebCrypto Key Import Fails Due to Node `Buffer` in `lib/crypto/jws.ts`
+### 114. Client-Side Offline Verification WebCrypto Key Import Fails Due to Node `Buffer` in `lib/crypto/jws.ts` [VERIFIED FIXED — Sprint 1, commit 545db37]
 - **Severity**: Critical (Offline Verification Broken)
 - **Files**:
   - `lib/crypto/jws.ts:17-20,76,84,88`
