@@ -1,13 +1,13 @@
 # PRAMANAM Comprehensive Project Audit & Current Source of Truth
 
 **Current Status**: Verified Production Hardened (Core Flows) & Active Sprints Identified  
-**Last Comprehensive Audit**: 2026-09-06  
+**Last Comprehensive Audit**: 2026-09-06 (Sixth Pass — full re-verification suite + new findings 117–122 + status corrections)  
 **Auditor**: Antigravity (Advanced Agentic Systems)  
 **Scope**: Next.js application code, all 39 API routes (`app/api/v1`), Prisma schema & SQL migrations, BullMQ workers, shared contracts, crypto/PDF/security/i18n helpers, Zustand stores, client API wrappers, and test suites.
 
 > [!IMPORTANT]
 > **DOCUMENT ARCHITECTURE & AUDIT REORGANIZATION**  
-> This document serves as the **authoritative current source of truth** for the PRAMANAM repository. Active verification metrics, open findings (Findings 71–116), prioritized sprints, and current architecture notes are presented first. All historical findings (Findings 1–70) that have been verified, resolved, or accepted as architectural trade-offs are consolidated under [Section 5: Resolved Historical Findings & Audit Archive](#5-resolved-historical-findings--audit-archive).
+> This document serves as the **authoritative current source of truth** for the PRAMANAM repository. Active verification metrics, open findings (Findings 71–123), prioritized sprints, and current architecture notes are presented first. All historical findings (Findings 1–70) that have been verified, resolved, or accepted as architectural trade-offs are consolidated under [Section 5: Resolved Historical Findings & Audit Archive](#5-resolved-historical-findings--audit-archive).
 
 ---
 
@@ -15,37 +15,39 @@
 
 Following the initial audit passes (Findings 1–70), an exhaustive line-by-line re-audit of every source file was conducted to evaluate the codebase's structural integrity, security posture, concurrency guarantees, and deployment readiness.
 
-### Live Verification Results (2026-09-06)
+### Live Verification Results (2026-09-06, Sixth Pass)
 
 - **`npm.cmd run typecheck`**: Passed (zero errors, `tsc --noEmit` clean).
 - **`npm.cmd run lint`**: Passed (`next lint` reports zero ESLint warnings or errors).
 - **`npm.cmd run openapi:check`**: Passed (39 documented OpenAPI paths strictly match 39 live route files with method-level parity).
-- **`npm.cmd test`**: Passed across all 8 test files (33 total tests passed in 6.15s):
+- **`npm.cmd run i18n:check`**: Passed (EN/HI key parity verified).
+- **`npm.cmd test`**: Passed across all 8 test files (33 total tests passed in 7.71s):
   - `components/export-buttons.test.ts` (2 tests)
   - `components/verify-ui.test.ts` (6 tests)
   - `components/api-client.test.ts` (6 tests)
   - `components/offline-verify.test.ts` (4 tests)
   - `tests/pdf-fit.test.ts` (3 tests)
   - `tests/negative.spec.ts` (3 tests)
-  - `tests/smoke.spec.ts` (5 tests)
+  - `tests/smoke.spec.ts` (5 tests) — including "inspection PASS issues a certificate (hook) → application CERT_ISSUED", the regression proof for Finding #107
   - `tests/audit.spec.ts` (4 tests)
-- **`npm.cmd run build`**: Verified clean build to `.next-build` with worker side effects cleanly gated.
+- **`npm.cmd run build`**: Verified clean build (`✓ Compiled successfully`) with output to `.next-build` and worker side effects cleanly gated — `instrumentation.ts` imports no worker/queue code at all, so no BullMQ/ioredis module can enter the web build graph. Client-bundle output was additionally inspected: the `/verify/offline` page chunk resolves `Buffer` through Next.js's automatic `buffer` npm shim (module `6434` = base64-js/ieee754), which is the evidence used to re-classify Findings #92/#114 (see §2.5).
 
 ### Comprehensive Findings Portfolio Breakdown
 
-- **Total Cataloged Findings Across All Passes**: **116**
-- **Resolved / Mitigated Historical Findings (Passes 1 & 2)**: **70 findings** (55 fully resolved in code & verified by tests, 15 accepted architectural trade-offs).
-- **Current Active & Open Findings (Passes 3, 4, 5)**: **46 findings** (Findings 71–116).
-  - **Critical**: 3 findings (Findings #91, #92, #114 — all centered on client-side browser offline verification runtime compatibility).
-  - **High**: 7 findings (Findings #71, #72, #93, #94, #106, #107, #108).
-  - **Medium**: 13 findings (Findings #73, #76, #95, #96, #97, #98, #99, #100, #109, #110, #111, #112, #113).
-  - **Low**: 23 findings (Findings #74, #75, #77–90, #101–105, #115, #116).
+- **Total Cataloged Findings Across All Passes**: **122**
+- **Resolved / Mitigated Historical Findings (Passes 1 & 2)**: **70 findings** (52 fully resolved in code & verified by tests, 15 accepted architectural trade-offs). *Sixth-Pass correction: three rows previously marked FIXED (#60, #62, #63) were **re-opened** after the claimed fixes were found absent from the code — see §2.5 Verification Corrections and the updated §5.1 matrix.*
+- **Current Active & Open Findings (Passes 3, 4, 5, 6)**: **49 findings** (Findings 71–123; #79, #91 and #107 moved to verified-fixed, #92/#114 re-classified, six new findings #117–#122).
+  - **Critical**: 0 findings (was 3 — #91 verified fixed; #92/#114 re-classified to Low after build-output verification).
+  - **High**: 7 findings (Findings #71, #72, #93, #94, #106, #108, #117).
+  - **Medium**: 15 findings (Findings #73, #76, #95, #96, #97, #98, #99, #100, #109, #110, #111, #112, #113, #118, #119).
+  - **Low**: 27 findings (Findings #74, #75, #77–#78, #80–#90, #92, #101–#105, #114, #115, #116, #120, #121, #122).
+- **Re-opened Historical Findings (Sixth Pass)**: **3 findings** (#60, #62, #63) — counted separately from the active portfolio; total open work = 52 findings.
 
 ---
 
-## 2. Current Active & Open Findings (Findings 71 – 116)
+## 2. Current Active & Open Findings (Findings 71 – 123)
 
-### 2.1 Active & Open Findings Index (Findings 71 – 116)
+### 2.1 Active & Open Findings Index (Findings 71 – 123)
 
 | ID | Title / Vulnerability | Severity | Area | Recommended Action |
 |---|---|---|---|---|
@@ -57,7 +59,7 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 | **76** | Schedule Check-In Endpoint Lacks Database Transaction | **Medium** | State Concurrency | Wrap schedule check-in and audit record creation in `db.$transaction` |
 | **77** | Duplicate Status Mapping Across Components (`STATUS_MAP` vs `STATUS_META`) | **Low** | Code Hygiene | Consolidate status styling and labels into `packages/shared/constants.ts` |
 | **78** | Expired Application Status Transition Unchecked in `applyTransition` | **Low** | State Machine | Define allowed transitions from `EXPIRED` in transition matrix |
-| **79** | Unindexed `notificationPreference` Lookup | **Low** | Database Performance | Ensure index on `NotificationPreference.userId` |
+| **79** | Unindexed `notificationPreference` Lookup | **Low** | Database Performance | **VERIFIED FIXED (Sixth Pass)** — `NotificationPreference.userId @unique` (`prisma/schema.prisma:75`) materializes the unique index |
 | **80** | WebCrypto Subtle Crypto Algorithm String Discrepancy in Offline Verify | **Low** | Offline Verify | Standardize algorithm identifier for subtle crypto Ed25519 verification |
 | **81** | Inconsistent User Status Field Check in Session Middleware | **Low** | Auth Guard | Enforce active account status validation across all session decodes |
 | **82** | Client `apiClient` Silently Drops Body on Non-POST/PUT Requests | **Low** | API Client | Throw explicit warning or disallow bodies on GET/DELETE |
@@ -69,8 +71,8 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 | **88** | Instrument Detail Route Inaccessible to Non-Owner Officers | **Low** | Officer UX | Provide read-only instrument inspection view for assigned officers |
 | **89** | Hardcoded Certificate Prefix Year in Sequence Generator | **Low** | System Longevity | Dynamically compute `CERT_PREFIX` year from UTC date |
 | **90** | Schedule Reallocation Leaves Status as `RESCHEDULED` and Omits Officer Notification | **Low** | Operations / Notification | Reset status to `ASSIGNED` and dispatch notification to new officer |
-| **91** | Offline Verification Key Sync URL Does Not Exist (`404 NOT_FOUND`) | **Critical** | Offline Verification | Change URL to `/api/v1/public/jwks` and parse `keys[0].jwk` |
-| **92** | `parseQrPayload` Crashes in Browsers Due to Node.js `Buffer` | **Critical** | Client Runtime | Replace Node `Buffer` with standard `atob` / `TextDecoder` |
+| **91** | Offline Verification Key Sync URL Does Not Exist (`404 NOT_FOUND`) | **Critical** | Offline Verification | **VERIFIED FIXED (Sixth Pass)** — `app/api/v1/.well-known/pramanam-public-key/route.ts` exists (in the 39/39 OpenAPI parity) and `app/verify/offline/page.tsx:39-45` fetches exactly that URL with a matching envelope |
+| **92** | `parseQrPayload` Crashes in Browsers Due to Node.js `Buffer` | **Low** (re-classified from Critical, Sixth Pass) | Client Runtime | Cannot reproduce: Next 14 bundles the `buffer` shim for client code. Still replace Node `Buffer` with standard `atob` / `Uint8Array` to drop the implicit polyfill dependency |
 | **93** | Logout Does Not Revoke Refresh Token Families in Database | **High** | Auth / Session Security | Call `revokeFamily(claims.familyId)` inside `POST /api/v1/auth/logout` |
 | **94** | Registration Without District Bypasses District-Lock on Instruments | **High** | RBAC / Jurisdiction | Require `district: z.enum(DISTRICTS)` on public TRADER registration |
 | **95** | Login and Register UI Diverge from Documented Audit Fixes | **Medium** | Security / UX | Gate demo credentials behind demo flag; remove officer roles from registration |
@@ -85,16 +87,22 @@ Following the initial audit passes (Findings 1–70), an exhaustive line-by-line
 | **104** | Application Photo Upload Blocks Admin | **Low** | RBAC Consistency | Allow `ADMIN` role to upload photos in `photos/route.ts` |
 | **105** | Stale Comments and Redundant Fields in Application Apply Flow | **Low** | Code Hygiene | Clean up stale comments and remove unused fields in apply flow |
 | **106** | Resubmission of FAILED or REJECTED Applications Crashes with `P2002` | **High** | State Machine / 500 Error | Upsert or update existing `Schedule` instead of calling `tx.schedule.create` |
-| **107** | `POST /api/v1/certificates/issue` Never Advances Application Status to `CERT_ISSUED` | **High** | State Machine | Call `applyTransition(app, "CERT_ISSUED", tx)` and log audit event |
-| **108** | `nextCertId` Sequence Generator Crashes on Non-Numeric `certId` Suffix | **High** | Sequence / SQL Bug | Add regex filter `WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'` |
+| **107** | `POST /api/v1/certificates/issue` Never Advances Application Status to `CERT_ISSUED` | **High** | State Machine | **VERIFIED FIXED (Sixth Pass, primary workflow)** — inline transactional `PASSED → CERT_ISSUED` in `app/api/v1/inspections/route.ts:146-179`, proven by `tests/smoke.spec.ts` |
+| **108** | `nextCertId` Sequence Generator Crashes on Non-Numeric `certId` Suffix | **High** | Sequence / SQL Bug | Add regex filter `WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'` (still missing from the `CertCounter` seed INSERT at `lib/crypto/issue.ts:34-37`) |
 | **109** | Checked-In Jobs Disappear from Officer Active Queue Before Inspection | **Medium** | Officer Workflow | Keep schedule active after check-in; mark `DONE` only upon report submission |
 | **110** | Missing Password Rotation UI for Invited Officers with One-Time Credentials | **Medium** | Security / Auth UI | Check `mustChangePassword` on login and enforce password rotation modal |
 | **111** | `PATCH /instruments/[id]` Allows Officers to Mutate Trader Instruments | **Medium** | RBAC / Data Integrity | Enforce owner TRADER or ADMIN role check on instrument PATCH |
 | **112** | Schedule Status Badge Mismatch and Omission of Application Status in Officer Queue | **Medium** | UI / Badge Mapping | Pass application status to badge and add `ASSIGNED`/`RESCHEDULED` to status map |
 | **113** | Concurrency Race Condition on Reschedule Budget Permitting Over-Rescheduling | **Medium** | Concurrency / Budget | Atomic conditional update: `where: { id, rescheduleCount: { lt: 2 } }` |
-| **114** | Client-Side Offline Verification WebCrypto Key Import Fails Due to Node `Buffer` | **Critical** | Offline Verification | Provide isomorphic `Uint8Array` decoder for browser WebCrypto key import |
+| **114** | Client-Side Offline Verification WebCrypto Key Import Fails Due to Node `Buffer` | **Low** (re-classified from Critical, Sixth Pass) | Offline Verification | Cannot reproduce: the client chunk resolves `Buffer` via Next's `buffer` shim. Still provide an isomorphic `Uint8Array` decoder to remove the polyfill dependency |
 | **115** | Schedule Reallocation Preserves Stale `DONE` Status | **Low** | Operational Workflow | Reset `status: "ASSIGNED"` in `schedule/allocate` update |
 | **116** | Unbounded Upper Limit in Admin Dashboard `officerProductivity` Query | **Low** | Analytics / SQL | Add `AND r."createdAt" < ${nextMonth}` to bounded monthly window |
+| **117** | Trader Reschedule UI Omits Mandatory `newDate` — Reschedule Broken End-to-End | **High** | Client / Server Contract | Collect a date in `app/trader/applications/[id]/page.tsx` and send ISO `newDate` alongside `reason` |
+| **118** | Optional Free-Form `district` at Registration Defeats the Trader Home-District Lock | **Medium** | RBAC / Jurisdiction | Require `district: z.enum(DISTRICTS)` for TRADER registration; reject `!session.district` in `POST /instruments` |
+| **119** | `officerProductivity` Groups by Non-Unique `u."name"` Merging Distinct Officers | **Medium** | Analytics / SQL | `GROUP BY u."id", u."name"` in `dashboards/admin` raw SQL |
+| **120** | Apply-Flow Client Comments / Payload Contradict Server Contract | **Low** | Doc Drift / TZ Edge | Fix stale comment, drop `declarationAccepted` from create payload, align client date guard with business timezone |
+| **121** | `schedule/allocate` Reassignment Leaves a Pre-Existing `SUBMITTED` Application Without `SCHEDULED` Transition | **Low** | State-Machine Edge | Hoist `SUBMITTED → SCHEDULED` out of the create-only branch and transactionalize the flow |
+| **122** | Architecture Note Misstates `instrumentation.ts` Worker Boot Behavior | **Low** | Documentation Accuracy | Corrected in §4 this pass — `instrumentation.ts` never imports workers; workers boot only via `npm run worker` |
 
 ---
 
@@ -715,39 +723,130 @@ During a fifth exhaustive, line-by-line inspection across all API handlers, data
 - **Recommended Fix**:
   Add `AND r."createdAt" < ${nextMonth}` to the raw SQL query.
 
+### 2.5 Sixth-Pass Deep Inspection Findings (Findings 117 – 122) & Verification Corrections
+
+#### 2.5.1 New Findings
+
+### 117. Trader Reschedule UI Omits Mandatory `newDate` — Reschedule Broken End-to-End
+- **Severity**: High (Client / Server Contract Mismatch)
+- **Files**:
+  - `app/trader/applications/[id]/page.tsx:47-55`
+  - `app/api/v1/applications/[id]/reschedule/route.ts:9-19,47-50`
+- **Problem**:
+  The Fifth Pass hardened `POST /applications/[id]/reschedule` to require a real new date (audit finding #14): the server body schema now declares `newDate: z.string().datetime().refine((v) => new Date(v).getTime() >= startOfBusinessToday().getTime(), ...)` — **required**, not `.optional()`. The trader application-detail page was never updated: `reschedule()` still sends only `JSON.stringify({ reason })` and the reschedule form renders no date input at all. Every UI submission fails `safeParse` and returns `VALIDATION_ERROR` with `fieldErrors.newDate`.
+- **Impact**:
+  The "Request Reschedule" action is unusable from the trader portal — the reschedule workflow is broken end-to-end (HTTP callers must reverse-engineer `newDate`). Regression introduced when the server side of #14 landed without the client counterpart.
+- **Recommended Fix**:
+  Add a date field to the reschedule form, require it, and send `{ reason, newDate: new Date(`${dateValue}T00:00:00.000Z`).toISOString() }` mirroring the apply-flow `preferredDate` serialization; disable the confirm button until a valid date is chosen and render `zodFieldErrors(err.details).newDate`.
+
+### 118. Optional Free-Form `district` at Registration Defeats the Trader Home-District Lock
+- **Severity**: Medium (RBAC / Jurisdiction Bypass)
+- **Files**:
+  - `app/api/v1/auth/register/route.ts:25,57-58`
+  - `app/api/v1/instruments/route.ts:87-100`
+  - `prisma/schema.prisma:59`
+- **Problem**:
+  Registration validates `district: z.string().min(1).optional()` — both **optional** (a TRADER can register with `User.district = null`) and **free-form** (any string accepted, not `z.enum(DISTRICTS)`). The instrument-creation guard added for findings #57/#94 then short-circuits for district-less traders: `if (session!.district && parsed.data.district !== session!.district)` — when `session.district` is `null` the left operand is falsy and the home-district check is skipped entirely.
+- **Impact**:
+  A trader who self-registers without a district (the API allows it; the UI merely defaults to "Guntur") can register instruments — and thereby trigger officer allocation and field work — in **any** district, defeating the home-district lock. A trader registered with a bogus district string is silently locked out of every jurisdiction-scoped flow instead of being rejected at registration.
+- **Recommended Fix**:
+  For `role === "TRADER"` require `district: z.enum(DISTRICTS)`. In `POST /instruments`, fail closed: `if (!session!.district || parsed.data.district !== session!.district) return jsonErr("JURISDICTION_FORBIDDEN", ...)`.
+
+### 119. `officerProductivity` Groups by Non-Unique `u."name"`, Merging Distinct Officers
+- **Severity**: Medium (Analytics / SQL Integrity) — extends Findings #99/#116
+- **Files**:
+  - `app/api/v1/dashboards/admin/route.ts:46-55`
+- **Problem**:
+  The raw query runs `SELECT u."name" AS name, COUNT(*)::int AS "inspectionsThisMonth" ... GROUP BY u."name" ORDER BY "inspectionsThisMonth" DESC LIMIT 5`. `User.name` is not unique, so two officers sharing a name are merged into one row with summed counts; the merged row can also push real officers out of the `LIMIT 5` ranking. The window still lacks the `r."createdAt" < ${nextMonth}` upper bound (Finding #116 open).
+- **Impact**:
+  Misreported productivity metrics on the admin dashboard wherever officers share a name.
+- **Recommended Fix**:
+  `WHERE r."createdAt" >= ${monthStart} AND r."createdAt" < ${nextMonth}` and `GROUP BY u."id", u."name"`.
+
+### 120. Apply-Flow Client Comments / Payload Contradict Server Contract
+- **Severity**: Low (Doc Drift / Timezone Edge)
+- **Files**:
+  - `app/trader/apply/[instrumentId]/page.tsx:37-44,58`
+  - `app/api/v1/applications/route.ts:14-23`
+- **Problem**:
+  Three stale artifacts remain in the apply flow: (1) the comment "server accepts any datetime for preferredDate, so the UI is the only place a past date gets caught" is false — the server has validated `preferredDate >= startOfBusinessToday()` (Asia/Kolkata) since finding #15; (2) the client's past-date guard compares **UTC** date strings (`new Date().toISOString().slice(0, 10)`) while the server validates in the business timezone, so between 00:00–05:30 IST the two disagree at the boundary; (3) the create payload still sends `declarationAccepted: true` (line 58) even though the create schema ignores it — contradicting the §5 archive claim that "the create payload no longer pretends to carry `declarationAccepted`".
+- **Impact**:
+  Functionally harmless today (Zod strips unknown keys; the server stays authoritative), but the false comment and archive inaccuracy mislead maintainers, and the UTC/IST boundary mismatch can produce a client-side rejection the server would accept.
+- **Recommended Fix**:
+  Update the comment, remove `declarationAccepted` from the create payload, and either drop the redundant client guard or align it with business-timezone "today".
+
+### 121. `schedule/allocate` Reassignment Leaves a Pre-Existing `SUBMITTED` Application Without the `SCHEDULED` Transition
+- **Severity**: Low (State-Machine Edge / Non-Atomic Writes)
+- **Files**:
+  - `app/api/v1/schedule/allocate/route.ts:41-96`
+- **Problem**:
+  The reassignment branch (lines 69-75) updates the existing schedule row, but the `SUBMITTED → SCHEDULED` transition only runs inside the **create** branch (lines 80-86). The inverse data-repair case — a `SUBMITTED` application that already has a schedule row — is unhandled: the schedule is reassigned while the application remains `SUBMITTED`. The transition, schedule update, and audit write are also three separate, non-transactional writes (cf. Finding #76).
+- **Impact**:
+  Dashboards count the application as pending-`SUBMITTED` while the officer queue already shows the assigned job; a crash between writes leaves inconsistent audit evidence.
+- **Recommended Fix**:
+  Run the `SUBMITTED → SCHEDULED` transition whenever `application.status === "SUBMITTED"` (both branches), and wrap transition + schedule update + audit in `db.$transaction(async (tx) => ...)`.
+
+### 122. Architecture Note Misstates `instrumentation.ts` Worker Boot Behavior
+- **Severity**: Low (Documentation Accuracy)
+- **Files**:
+  - `PROJECT_AUDIT.md` §4 (`instrumentation.ts` bullet)
+  - `instrumentation.ts:9-18`
+- **Problem**:
+  §4 claimed "Only boots worker runtime when `ENABLE_WORKERS=true`". The file contains no `ENABLE_WORKERS` reference and never imports worker code — it only short-circuits during `phase-production-build` and runs `assertProductionEnv()` on the nodejs runtime. Workers boot exclusively via `npm run worker` (`workers/worker-entry.ts`).
+- **Impact**:
+  Operators could wrongly conclude the web process starts BullMQ consumers (implying a Redis dependency and possible double-consumption in the web tier).
+- **Recommended Fix**:
+  Corrected in §4 this pass; keep the note aligned with `workers/worker-entry.ts` going forward.
+
+#### 2.5.2 Verification Corrections (Previously-Open Findings Re-Checked Against Code)
+
+- **#91 — VERIFIED FIXED.** `app/api/v1/.well-known/pramanam-public-key/route.ts` exists (one of the 39/39 OpenAPI-parity routes) and returns `{ ok, data: { kty, crv, x, kid, alg, keyFingerprint } }`. `app/verify/offline/page.tsx:39-45` fetches exactly this URL and asserts `j?.ok && j.data?.kty === "OKP" && j.data?.x`, so the offline key-sync path is live.
+- **#107 — VERIFIED FIXED (primary workflow).** `app/api/v1/inspections/route.ts:146-179` performs `CHECKED_IN → PASSED → CERT_ISSUED` inline inside the issuance transaction and writes the `app.cert_issued` audit row (`lib/crypto/issue.ts:4-7` documents the consumer-side flip). Regression proof: `tests/smoke.spec.ts` — "inspection PASS issues a certificate (hook) → application CERT_ISSUED" passes. Residual (accepted): the manual `POST /certificates/issue` route still returns without transitioning (`issue/route.ts:68-85`); it is documented as an idempotent reissue entry point and `workers/index.ts repairStrandedPasses()` repairs stranded `PASSED` rows in the worker process.
+- **#79 — VERIFIED FIXED.** `prisma/schema.prisma:75` declares `NotificationPreference.userId @unique`, which materializes the unique index the finding asked for.
+- **#92 / #114 — CANNOT REPRODUCE; re-classified Critical → Low.** Build-output inspection of `.next-build/static/chunks/app/verify/offline/page-ade087bd17adad95.js` shows webpack compiles `Buffer` to `var l = n(6434).Buffer`, and module `6434` (`.next-build/static/chunks/28-1f91d4f62c9c8310.js`) is Next.js's automatic `buffer` npm shim (base64-js/ieee754). Next 14 client bundles therefore **do** provide `Buffer.from`, so `parseQrPayload` and `verifyCredential` do not throw in the browser — offline verification is not broken by `Buffer`. Both findings remain open as Low hygiene items: an isomorphic crypto path depending on an implicit bundler polyfill is fragile (bundler swap, standalone/edge builds), so the recommended isomorphic `Uint8Array`/`atob` decoder still stands. The client chunks were also explicitly searched for `window.Buffer` / `globalThis.Buffer` definitions to confirm the shim is module-scoped rather than a global.
+- **#60, #62, #63 — RE-OPENED (historical rows were marked FIXED without code support):**
+  - **#60**: `NEXT_PUBLIC_DEMO_MODE` / `DEMO_MODE` appears nowhere in the repository (recursive source search). `app/login/page.tsx:19-20` still defaults the form to `ravi@demo.in` / `Passw0rd!demo` and lines 177-197 always render the demo quick presets. §5.1 row updated to **RE-OPENED**.
+  - **#62**: `components/Badge.tsx:81` renders `{m.word}` in the non-hero branch — the `word` prop is still ignored outside hero mode (only the hero branch at line 66 uses `word ?? m.word`). §5.1 row updated to **RE-OPENED**.
+  - **#63**: `components/CountdownRing.tsx:32-37` still falls back to `0.75` when neither `fraction` nor `validUntil` is provided. §5.1 row updated to **RE-OPENED**.
+
 ---
 
 ## 3. Prioritized Action Plan & Engineering Roadmap
 
-1. **Critical (Sprint 1 - Immediate)**:
-   - Fix offline verification in browser: replace `Buffer` in `lib/crypto/jws.ts` and `lib/crypto/qr.ts` with browser-compatible `Uint8Array` / `atob` / `TextDecoder` (Findings #80, #92, #114).
-   - Fix `/verify/offline` key sync endpoint to point to `/api/v1/public/jwks` (Finding #91).
-   - Fix resubmission of FAILED/REJECTED applications in `submit/route.ts` to upsert/update existing `Schedule` instead of crashing on unique constraint (Finding #106).
-   - Add `WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'` in `lib/crypto/issue.ts` to prevent cast crashes on non-numeric cert IDs (Finding #108).
-   - Complete `POST /api/v1/certificates/issue` to transition application to `CERT_ISSUED` (Finding #107).
-   - Revoke `RefreshFamily` in PostgreSQL on logout (Finding #93).
-   - Require `district` enum on TRADER registration (Finding #94).
-   - Fix `useAuthStore` token update in `components/api-client.ts` (Finding #71).
+*(Updated by the Sixth Pass: offline-verification browser items #91/#92/#114 are closed or re-classified; #107 verified fixed; new items #117–#122 mapped in.)*
+
+1. **Critical (Sprint 1 - Immediate / Blockers)**:
+   - Fix resubmission of FAILED/REJECTED applications in `submit/route.ts` to upsert/update the existing `Schedule` instead of crashing on the unique constraint (Finding #106).
+   - Add `WHERE "certId" ~ '^PRM-CERT-[0-9]{4}-[0-9]{5}$'` to the `CertCounter` seed INSERT in `lib/crypto/issue.ts` to prevent cast crashes on non-numeric cert IDs (Finding #108).
+   - Restore the trader reschedule flow: collect a date in `app/trader/applications/[id]/page.tsx` and send the mandatory `newDate` (Finding **#117 — new**).
+   - Revoke `RefreshFamily` rows in PostgreSQL on logout (Finding #93).
+   - Require enum-validated `district` on TRADER registration and fail closed in `POST /instruments` when the session has no district (Findings #94, **#118 — new**).
+   - Fix `useAuthStore` token update in `components/api-client.ts` — export `setAccessToken` and persist the rotated token on 401 refresh (Finding #71).
+   - ~~Fix `/verify/offline` key sync endpoint (#91)~~ — **VERIFIED FIXED** (Sixth Pass); ~~replace `Buffer` in `lib/crypto/jws.ts`/`lib/crypto/qr.ts` (#80, #92, #114)~~ — **re-classified to Sprint 3 hygiene** after build-output verification (Next's `buffer` shim prevents the claimed browser crash).
 
 2. **Hardening (Sprint 2)**:
    - Invalidate refresh families on password rotation (Finding #72).
    - Add password rotation UI/modal for invited officers with one-time credentials (Finding #110).
    - Do not mark `schedule.status = "DONE"` on check-in; only mark done on inspection submission (Finding #109).
    - Restrict `PATCH /instruments/[id]` to owner TRADER and ADMIN (Finding #111).
-   - Gate demo presets on login page and restrict register UI to `TRADER` (Finding #95).
+   - Gate demo presets on the login page and restrict the register UI to `TRADER` (Findings #95, re-opened #60).
    - Update officer overdue counts to include `RESCHEDULED` jobs (Finding #97).
    - Prevent reschedule budget race condition using atomic conditional update (Finding #113).
    - Wrap schedule check-in in a database transaction (Finding #76).
-   - Fix `officerProductivity` SQL to group by `u."id", u."name"` and add `< ${nextMonth}` bound (Findings #99, #116).
-   - Update verify page manual input to call `/api/v1/public/certificates/lookup` (Finding #100).
+   - Fix `officerProductivity` SQL: group by `u."id", u."name"` (**#99, #119 — new**) and add the `< ${nextMonth}` bound (#116).
+   - Update the verify page manual input to call `/api/v1/public/certificates/lookup` (Finding #100).
+   - Transactionalize the `schedule/allocate` reassignment path and hoist the `SUBMITTED → SCHEDULED` transition (**#121 — new**).
 
 3. **Polish & Cleanup (Sprint 3)**:
    - Return `appStatus` in `/schedule/mine` and add `ASSIGNED`/`RESCHEDULED` to `STATUS_MAP` (Finding #112).
    - Reset `status: "ASSIGNED"` when reallocating schedules (Finding #115).
    - Add caching to `GET /instruments/[id]/sticker` (Finding #73).
-   - Default new instrument form district to trader's district (Finding #101).
-   - Include `"PASSED"` in open application duplicate check (Finding #102).
-   - Add explicit "Mark All Read" button to notification bell (Finding #96).
+   - Default new instrument form district to the trader's district (Finding #101).
+   - Include `"PASSED"` in the open-application duplicate check (Finding #102).
+   - Add an explicit "Mark All Read" button to the notification bell (Finding #96).
+   - Replace Node `Buffer` in `lib/crypto/jws.ts` / `lib/crypto/qr.ts` with an isomorphic `Uint8Array`/`atob` decoder to remove the implicit polyfill dependency (re-classified #80, #92, #114).
+   - Re-apply the three re-opened historical fixes: gate demo presets behind a demo flag (#60), use `{word ?? m.word}` in both `Badge` branches (#62), render an indeterminate state instead of `0.75` in `CountdownRing` (#63).
+   - Apply-flow hygiene: fix the stale "server accepts any datetime" comment, drop `declarationAccepted` from the create payload, align the client date guard with the business timezone (**#120 — new**).
 
 
 ---
@@ -758,7 +857,7 @@ During a fifth exhaustive, line-by-line inspection across all API handlers, data
 - **`package.json`**: Dependency versions are clean and focused. All scripts (`typecheck`, `lint`, `openapi:check`, `test`, `build`, `worker`, `db:indexes`) execute cleanly. Engine requirement `>=20` is documented in README.
 - **`next.config.mjs`**: Properly configured with `.next-build` output for production builds to isolate from `.next` dev server caches.
 - **`middleware.ts`**: Clear architectural separation. Correctly documented as client UX routing assistance while all server API endpoints enforce authoritative RBAC.
-- **`instrumentation.ts`**: Cleanly decoupled. Only boots worker runtime when `ENABLE_WORKERS=true`.
+- **`instrumentation.ts`**: Cleanly decoupled. **(Sixth-Pass correction)** it never imports worker/queue code and contains no `ENABLE_WORKERS` gate — it only short-circuits during `phase-production-build` and runs `assertProductionEnv()` on the nodejs runtime. Workers boot exclusively via `npm run worker` (`workers/worker-entry.ts`); no BullMQ/ioredis module can enter the web build graph.
 - **`docker-compose.yml`**: Provisions PostgreSQL 16, Redis 7, and MinIO with clean volume mounts and health checks.
 
 ### Core Security & Authentication
@@ -862,10 +961,10 @@ Total findings cataloged across the first two passes: **70 findings**.
 | **57** | Trader Can Select Any District for Instrument | Medium | **FIXED** | Enforces `instrument.district === session.district` (`app/api/v1/instruments/route.ts:92-96`). |
 | **58** | Apply Flow Comment Claims Server Accepts Any Date | Low | **FIXED** | Comment updated to document server-side business date validation. |
 | **59** | Apply Flow Sends Unused Field to Creation Schema | Low | **FIXED** | Cleaned payload in `app/trader/apply/[instrumentId]/page.tsx`. |
-| **60** | Login Page Prepopulates Demo Credentials | Medium | **FIXED** | Demo presets rendered only when `NEXT_PUBLIC_DEMO_MODE=true` (`app/login/page.tsx`). |
+| **60** | Login Page Prepopulates Demo Credentials | Medium | **RE-OPENED** | Sixth-Pass verification: `NEXT_PUBLIC_DEMO_MODE` does not exist anywhere in the repo; `app/login/page.tsx:19-20,177-197` still hardcodes demo defaults and always renders the demo presets. |
 | **61** | Header Navigation Shows Unauthenticated Links | Low | **FIXED** | Dynamic role-filtered navigation items post-hydration (`components/Header.tsx`). |
-| **62** | Badge Ignores Translated Word in Non-Hero Mode | Low | **FIXED** | Uses localized word in all render modes (`components/Badge.tsx:82`). |
-| **63** | CountdownRing Shows Arbitrary 0.75 Placeholder | Low | **FIXED** | Renders neutral indeterminate state when fraction is undefined (`components/CountdownRing.tsx`). |
+| **62** | Badge Ignores Translated Word in Non-Hero Mode | Low | **RE-OPENED** | Sixth-Pass verification: `components/Badge.tsx:81` still renders `{m.word}` in the non-hero branch; only the hero branch (line 66) uses `word ?? m.word`. |
+| **63** | CountdownRing Shows Arbitrary 0.75 Placeholder | Low | **RE-OPENED** | Sixth-Pass verification: `components/CountdownRing.tsx:32-37` still falls back to `0.75` when neither `fraction` nor `validUntil` is provided. |
 | **64** | Public Stats Cache Stored in Local Memory | Low | **FIXED** | Redis-backed caching with 60-second TTL (`lib/public/badge.ts:131-133`). |
 | **65** | Public Stats Active Count Includes Expired Rows | Low | **FIXED** | Added `validUntil > now` predicate to SQL query (`lib/public/badge.ts:140-143`). |
 | **66** | OpenAPI Endpoint Reads File from Disk at Runtime | Low | **FIXED** | OpenAPI specification statically imported at build time (`app/api/v1/openapi.json/route.ts`). |
