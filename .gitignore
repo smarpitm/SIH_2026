@@ -47,7 +47,6 @@ next-env.d.ts
 
 # local working docs / artifacts kept out of the repo
 /AGENTS.md
-/PROJECT_AUDIT.md
 /BOOK_MANAV_API_CORE.pdf
 /PRD.pdf
 /DEPLOYMENT.md
