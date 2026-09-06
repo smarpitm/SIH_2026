@@ -43,18 +43,40 @@ export async function POST(req: Request) {
     return jsonErr("VALIDATION_ERROR", "outside check-in window");
   }
 
-  const transition = await applyTransition(schedule.application, "CHECKED_IN");
-  if (transition instanceof Response) return transition;
-
-  await db.schedule.update({ where: { id: schedule.id }, data: { status: "DONE" } });
-  await audit({
-    actorId: session!.userId,
-    actorKind: session!.role,
-    action: "schedule.checkin",
-    entity: "schedule",
-    entityId: schedule.id,
-    meta: { applicationId: schedule.applicationId },
-  });
+  // AUDIT FINDINGS #76 + #109: the state transition and the audit row commit
+  // atomically (a crash mid-write can no longer strand a half-checked-in
+  // schedule), and check-in NO LONGER marks the schedule DONE — arrival on
+  // site is not a completed inspection. The schedule only becomes DONE when
+  // the inspection report is submitted (app/api/v1/inspections/route.ts), so
+  // the job stays visible in the officer's active queue until then.
+  type TransitionFailure = { response: Response };
+  try {
+    await db.$transaction(async (tx) => {
+      const transition = await applyTransition(schedule.application, "CHECKED_IN", tx);
+      if (transition instanceof Response) throw { response: transition } as TransitionFailure;
+      await audit(
+        {
+          actorId: session!.userId,
+          actorKind: session!.role,
+          action: "schedule.checkin",
+          entity: "schedule",
+          entityId: schedule.id,
+          meta: { applicationId: schedule.applicationId },
+        },
+        tx
+      );
+    });
+  } catch (e) {
+    if (
+      e &&
+      typeof e === "object" &&
+      "response" in e &&
+      (e as TransitionFailure).response instanceof Response
+    ) {
+      return (e as TransitionFailure).response;
+    }
+    throw e;
+  }
 
   return jsonOk({ status: "CHECKED_IN", scheduleId: schedule.id });
 }

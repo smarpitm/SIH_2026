@@ -68,9 +68,18 @@ export async function POST(req: Request) {
   let action: string;
   if (existing) {
     // REASSIGN: update the row in place (no duplicate) — reschedule path.
+    // AUDIT FINDING #115: a reallocated schedule must not keep a stale
+    // RESCHEDULED (or DONE) status — the fresh assignment starts as ASSIGNED
+    // and the superseded reschedule reason is cleared.
     schedule = await db.schedule.update({
       where: { id: existing.id },
-      data: { assigneeId: officer.id, assigneeKind: officer.role, scheduledFor },
+      data: {
+        assigneeId: officer.id,
+        assigneeKind: officer.role,
+        scheduledFor,
+        status: "ASSIGNED",
+        lastReason: null,
+      },
     });
     action = "schedule.reassigned";
   } else {

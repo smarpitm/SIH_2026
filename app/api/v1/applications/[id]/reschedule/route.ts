@@ -50,42 +50,56 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const scheduledFor = new Date(parsed.data.newDate);
-  // AUDIT FINDING #14: schedule update + audit commit atomically.
-  await db.$transaction(async (tx) => {
-    await tx.schedule.update({
-      where: { id: schedule.id },
-      data: {
-        rescheduleCount: { increment: 1 },
-        lastReason: parsed.data.reason,
-        scheduledFor,
-        status: "RESCHEDULED",
-      },
-    });
-    // keep the trader's preference in sync so downstream re-allocations reuse it
-    await tx.application.update({
-      where: { id: application.id },
-      data: { preferredDate: scheduledFor },
-    });
-    await audit(
-      {
-        actorId: session!.userId,
-        actorKind: session!.role,
-        action: "application.reschedule",
-        entity: "application",
-        entityId: application.id,
-        meta: {
-          reason: parsed.data.reason,
-          rescheduleCount: schedule.rescheduleCount + 1,
-          scheduledFor: scheduledFor.toISOString(),
+  // AUDIT FINDING #113: the MAX_RESCHEDULES budget is enforced ATOMICALLY.
+  // updateMany with `rescheduleCount: { lt: MAX_RESCHEDULES }` in the WHERE
+  // clause makes read-check+increment a single conditional statement — two
+  // concurrent reschedules can never both pass (the loser matches 0 rows).
+  type BudgetFailure = { budget: true };
+  let newCount = 0;
+  try {
+    await db.$transaction(async (tx) => {
+      const bumped = await tx.schedule.updateMany({
+        where: { id: schedule.id, rescheduleCount: { lt: MAX_RESCHEDULES } },
+        data: {
+          rescheduleCount: { increment: 1 },
+          lastReason: parsed.data.reason,
+          scheduledFor,
+          status: "RESCHEDULED",
         },
-      },
-      tx
-    );
-  });
+      });
+      if (bumped.count !== 1) throw { budget: true } as BudgetFailure;
+      newCount = schedule.rescheduleCount + 1;
+      // keep the trader's preference in sync so downstream re-allocations reuse it
+      await tx.application.update({
+        where: { id: application.id },
+        data: { preferredDate: scheduledFor },
+      });
+      await audit(
+        {
+          actorId: session!.userId,
+          actorKind: session!.role,
+          action: "application.reschedule",
+          entity: "application",
+          entityId: application.id,
+          meta: {
+            reason: parsed.data.reason,
+            rescheduleCount: newCount,
+            scheduledFor: scheduledFor.toISOString(),
+          },
+        },
+        tx
+      );
+    });
+  } catch (e) {
+    if (e && typeof e === "object" && (e as BudgetFailure).budget) {
+      return jsonErr("RESCHEDULE_BUDGET_EXHAUSTED", "Reschedule budget exhausted");
+    }
+    throw e;
+  }
 
   return jsonOk({
     status: "SCHEDULED",
-    rescheduleCount: schedule.rescheduleCount + 1,
+    rescheduleCount: newCount,
     scheduledFor: scheduledFor.toISOString(),
   });
 }

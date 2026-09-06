@@ -47,6 +47,11 @@ const STATUS_MAP: Record<string, { tone: Tone; icon: string }> = {
   PENDING: { tone: "warning", icon: "…" },
   UNDER_REVIEW: { tone: "info", icon: "◎" },
   NO_CERTIFICATE: { tone: "neutral", icon: "—" },
+  // AUDIT FINDING #112: schedule-level statuses rendered in the officer queue —
+  // without these every job card fell back to the neutral grey pill.
+  ASSIGNED: { tone: "info", icon: "◷" },
+  RESCHEDULED: { tone: "warning", icon: "⟳" },
+  DONE: { tone: "success", icon: "✓" },
 };
 
 /* StatusBadge — unified status pill across the whole app. */

@@ -46,10 +46,13 @@ export async function POST(req: Request) {
   // AUDIT FINDING (duplicate open applications): at most one non-terminal
   // application per instrument — a second open application would double-book
   // the same physical instrument for inspection.
+  // AUDIT FINDING #102: PASSED is non-terminal too (the certificate issues a
+  // moment later, but a crash/retry could strand it) — include it so a PASSED
+  // instrument cannot take a second concurrent application.
   const openApplication = await db.application.findFirst({
     where: {
       instrumentId: instrument.id,
-      status: { in: ["DRAFT", "SUBMITTED", "SCHEDULED", "CHECKED_IN"] },
+      status: { in: ["DRAFT", "SUBMITTED", "SCHEDULED", "CHECKED_IN", "PASSED"] },
     },
     select: { id: true },
   });

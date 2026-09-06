@@ -20,8 +20,13 @@ import type { InspectionPassEvent } from "../hooks";
 
 type Tx = Prisma.TransactionClient;
 
-const CERT_PREFIX = "PRM-CERT-2026-";
 const CERT_SEQ_LEN = 5;
+
+// AUDIT FINDING #89: the prefix year was hardcoded ("PRM-CERT-2026-") — on
+// 2027-01-01 every new certificate would silently keep numbering as 2026.
+// The sequence year is computed from the UTC clock at issuance time; the
+// CertCounter seed regex (any 4-digit year) stays cross-year safe.
+const certPrefix = () => `PRM-CERT-${new Date().getUTCFullYear()}-`;
 
 /** Atomic, self-initializing sequence (audit finding #3). The guarded INSERT
  *  seeds the counter past any pre-existing certificate (so legacy rows and
@@ -39,7 +44,7 @@ async function nextCertId(tx: Tx): Promise<string> {
   const rows = await tx.$queryRaw<{ lastNumber: number }[]>`
     UPDATE "CertCounter" SET "lastNumber" = "lastNumber" + 1
     WHERE "id" = 'cert' RETURNING "lastNumber"`;
-  return CERT_PREFIX + String(rows[0].lastNumber).padStart(CERT_SEQ_LEN, "0");
+  return certPrefix() + String(rows[0].lastNumber).padStart(CERT_SEQ_LEN, "0");
 }
 
 export type IssueResult = Awaited<ReturnType<typeof buildCertificate>> | null;

@@ -27,6 +27,9 @@ export default function VerifyPage() {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [serverError, setServerError] = useState(false);
+  // AUDIT FINDING #100/#22: a serial number can match certificates in multiple
+  // districts — surface the disambiguation candidates instead of a raw 404.
+  const [candidates, setCandidates] = useState<{ certId: string; district: string }[]>([]);
   const [typedId, setTypedId] = useState("");
   // review: a verification event should feel like a real event — mint one ID per
   // page load (client-side only; the public registry keeps no per-lookup log)
@@ -36,19 +39,36 @@ export default function VerifyPage() {
     setLoading(true);
     setNotFound(false);
     setServerError(false);
+    setCandidates([]);
 
+    // AUDIT FINDING #100: the typed form may carry an instrument SERIAL, which
+    // the [certId] route cannot resolve. On NOT_FOUND fall back to the
+    // rate-limited /lookup?q= endpoint (matches certId OR serial, with #22
+    // multi-district disambiguation) instead of showing a false "not found".
     fetch(`/api/v1/public/certificates/${certId}`)
       .then((r) => r.json())
       .then((j) => {
         if (j && j.ok && j.data) {
           setBadge(j.data);
-        } else if (j && !j.ok && j.error?.code === "NOT_FOUND") {
-          // lookup contract: missing cert -> amber "check the ID", never a raw 404
-          setNotFound(true);
-        } else {
-          // server/network fault — do NOT masquerade as "record not found"
-          setServerError(true);
+          return;
         }
+        if (j && !j.ok && j.error?.code === "NOT_FOUND") {
+          return fetch(`/api/v1/public/certificates/lookup?q=${encodeURIComponent(certId)}`)
+            .then((r) => r.json())
+            .then((l) => {
+              const d = l && l.ok ? l.data : null;
+              if (d && typeof d === "object" && "verdict" in d) {
+                setBadge(d as BadgeDTO);
+              } else if (d && d.ambiguous && Array.isArray(d.candidates)) {
+                setCandidates(d.candidates);
+                setNotFound(true);
+              } else {
+                setNotFound(true);
+              }
+            });
+        }
+        // server/network fault — do NOT masquerade as "record not found"
+        setServerError(true);
       })
       .catch(() => setServerError(true))
       .finally(() => setLoading(false));
@@ -155,6 +175,33 @@ export default function VerifyPage() {
             :{" "}
             <span className="font-mono font-bold text-zinc-900 dark:text-white">{certId}</span>
           </p>
+
+          {/* AUDIT FINDING #100/#22: serial matched certificates in multiple
+              districts — offer the candidates instead of a dead end */}
+          {candidates.length > 0 && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-white p-3 dark:border-amber-800/40 dark:bg-zinc-900">
+              <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+                {t(
+                  "verify.ambiguous",
+                  "This number matches certificates in multiple districts — pick one:"
+                )}
+              </p>
+              <div className="mt-2 flex flex-col gap-1">
+                {candidates.map((c) => (
+                  <Link
+                    key={c.certId}
+                    href={`/verify/${encodeURIComponent(c.certId)}`}
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-1.5 text-xs transition outline-none hover:border-accent-400 hover:bg-accent-50 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:hover:border-accent-400/40 dark:hover:bg-accent-400/10"
+                  >
+                    <span className="font-mono font-semibold text-zinc-900 dark:text-white">
+                      {c.certId}
+                    </span>
+                    <span className="text-zinc-500 dark:text-zinc-400">{c.district}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="mt-6 flex flex-col gap-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
             <Link

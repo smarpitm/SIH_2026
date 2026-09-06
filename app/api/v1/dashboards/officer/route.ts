@@ -28,7 +28,15 @@ export async function GET(req: Request) {
         orderBy: { scheduledFor: "asc" },
         include: { application: { include: { instrument: { select: { category: true, serialNumber: true } } } } },
       }),
-      db.schedule.count({ where: { assigneeId: userId, status: "ASSIGNED", scheduledFor: { lt: new Date(now) } } }),
+      db.schedule.count({
+        where: {
+          assigneeId: userId,
+          // AUDIT FINDING #97: a rescheduled job keeps status RESCHEDULED — its
+          // overdue tracking must not silently exclude it.
+          status: { in: ["ASSIGNED", "RESCHEDULED"] },
+          scheduledFor: { lt: new Date(now) },
+        },
+      }),
       db.schedule.count({ where: { assigneeId: userId } }),
       db.inspectionReport.count({ where: { inspectorId: userId } }),
       db.inspectionReport.count({ where: { inspectorId: userId, createdAt: { gte: monthStart, lt: nextMonth } } }),
@@ -51,7 +59,8 @@ export async function GET(req: Request) {
         applicationId: s.applicationId,
         scheduledFor: s.scheduledFor.toISOString(),
         status: s.status,
-        overdue: s.status === "ASSIGNED" && s.scheduledFor.getTime() < now,
+        // AUDIT FINDING #97: RESCHEDULED jobs are overdue too once their date passes
+        overdue: ["ASSIGNED", "RESCHEDULED"].includes(s.status) && s.scheduledFor.getTime() < now,
         instrumentCategory: s.application.instrument.category,
         instrumentSerial: s.application.instrument.serialNumber,
         traderName: trader?.name ?? null,

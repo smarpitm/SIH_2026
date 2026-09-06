@@ -4,6 +4,7 @@ import { jsonOk, jsonErr } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 import { hashPassword, verifyPassword } from "@/lib/hash";
+import { revokeAllUserFamilies } from "@/lib/auth/refresh-store";
 
 // POST /api/v1/auth/change-password — authenticated password rotation.
 // Completes the invite loop (audit finding #6): invited officers land with a
@@ -39,13 +40,16 @@ export async function POST(req: Request) {
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
   try {
-    await db.$transaction([
-      db.user.update({
+    // AUDIT FINDING #72: the credential update, the revocation of ALL the
+    // user's live refresh families (stolen refresh tokens would otherwise keep
+    // rotating for up to 7 days) and the audit row commit atomically.
+    await db.$transaction(async (tx) => {
+      await tx.user.update({
         where: { id: user.id },
         data: { passwordHash, mustChangePassword: false },
-      }),
-      // audit inside the same transaction as the credential update
-      db.auditLog.create({
+      });
+      await revokeAllUserFamilies(user.id, tx);
+      await tx.auditLog.create({
         data: {
           actorId: user.id,
           actorKind: user.role,
@@ -53,8 +57,8 @@ export async function POST(req: Request) {
           entity: "user",
           entityId: user.id,
         },
-      }),
-    ]);
+      });
+    });
   } catch (e) {
     if (e instanceof Prisma.PrismaClientKnownRequestError) {
       return jsonErr("INTERNAL", "Password update failed");

@@ -59,3 +59,14 @@ next-env.d.ts
 tmp-*.ts
 tmp-*.txt
 test-output.txt
+
+# mobile (Expo/React Native) - deps, caches and native build outputs only;
+# mobile/src + config stay trackable
+mobile/node_modules/
+mobile/.expo/
+mobile/.claude/
+mobile/android/.gradle/
+mobile/android/.kotlin/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/local.properties

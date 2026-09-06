@@ -63,7 +63,10 @@ export function NotificationBell() {
       return;
     }
     setOpen(true);
-    load(true);
+    // AUDIT FINDING #96: opening the drawer must NOT mark everything read —
+    // unread badges survive browsing; marking all read is an explicit action
+    // ("Mark all read" button in the drawer header).
+    load(false);
   }
 
   return (
@@ -87,8 +90,19 @@ export function NotificationBell() {
           {/* click-away backdrop */}
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} aria-hidden />
           <div className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="border-b border-zinc-200 bg-zinc-50/75 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-600 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-300">
-              {t("bell.title")}
+            <div className="flex items-center justify-between border-b border-zinc-200 bg-zinc-50/75 px-4 py-2.5 dark:border-zinc-800 dark:bg-zinc-800/50">
+              <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                {t("bell.title")}
+              </span>
+              {unread > 0 && (
+                <button
+                  type="button"
+                  onClick={() => load(true)}
+                  className="text-[11px] font-semibold text-accent-700 outline-none transition-colors hover:text-accent-800 hover:underline focus-visible:ring-2 focus-visible:ring-accent dark:text-accent-300"
+                >
+                  {t("bell.markAllRead", "Mark all read")}
+                </button>
+              )}
             </div>
             <div className="max-h-80 overflow-y-auto">
               {loading && items.length === 0 && (

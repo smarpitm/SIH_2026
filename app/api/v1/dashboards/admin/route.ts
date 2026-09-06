@@ -49,8 +49,8 @@ export async function GET(req: Request) {
     SELECT u."name" AS name, COUNT(*)::int AS "inspectionsThisMonth"
     FROM "InspectionReport" r
     JOIN "User" u ON u."id" = r."inspectorId"
-    WHERE r."createdAt" >= ${monthStart}
-    GROUP BY u."name"
+    WHERE r."createdAt" >= ${monthStart} AND r."createdAt" < ${nextMonth}
+    GROUP BY u."id", u."name"
     ORDER BY "inspectionsThisMonth" DESC
     LIMIT 5`;
 

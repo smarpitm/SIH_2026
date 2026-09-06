@@ -190,6 +190,25 @@ export const en: Record<string, string> = {
   "auth.forgot": "Forgot password?",
   "auth.forgotHint": "Contact your district Legal Metrology office to reset",
   "auth.secureNote": "Encrypted connection · Sessions are audited under Legal Metrology Act 2009",
+  "auth.pwChangedBanner": "✓ Password updated — sign in with your new password.",
+
+  // ---- change password page (audit finding #110) ----
+  "cp.title": "Set a New Password",
+  "cp.subtitle": "Your account uses a one-time temporary credential. Choose a new password to secure it.",
+  "cp.current": "Current Password",
+  "cp.new": "New Password",
+  "cp.confirm": "Confirm New Password",
+  "cp.policyHint": "At least 8 characters, including a digit.",
+  "cp.mismatch": "Passwords do not match.",
+  "cp.update": "Update Password",
+  "cp.updating": "Updating…",
+  "cp.failedHead": "Password update failed",
+  "cp.sessionNote": "For your security, all signed-in sessions are ended after the password change.",
+
+  // ---- audit findings #95 / #96 / #100 ----
+  "reg.rolesHint": "Officer accounts are created via admin invitation — public signup is for traders only.",
+  "bell.markAllRead": "Mark all read",
+  "verify.ambiguous": "This number matches certificates in multiple districts — pick one:",
 
   // ---- register ----
   "reg.title": "Create an Account",

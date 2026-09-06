@@ -182,6 +182,14 @@ export async function POST(req: Request) {
         if (fail instanceof Response) throw { response: fail } as TransitionFailure;
       }
 
+      // AUDIT FINDING #109: the schedule is only DONE when the report is
+      // actually submitted (check-in no longer closes it) — the job leaves the
+      // officer's active queue exactly here, inside the same transaction.
+      await tx.schedule.update({
+        where: { id: schedule.id },
+        data: { status: "DONE" },
+      });
+
       await audit(
         {
           actorId: session!.userId,

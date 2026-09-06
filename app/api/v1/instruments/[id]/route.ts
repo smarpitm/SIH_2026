@@ -47,8 +47,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const guard = requireRole(session);
   if (guard) return guard;
 
-  const { error } = await scopeInstrument(session!, params.id);
+  const { error, instrument } = await scopeInstrument(session!, params.id);
   if (error) return error;
+
+  // AUDIT FINDING #111: scopeInstrument is a READ scope — a same-district
+  // LMO/GATC officer passes its jurisdiction gate but must never mutate a
+  // trader's instrument (MA2 item 5: only the owner TRADER or ADMIN edits
+  // instrument details).
+  if (
+    session!.role !== "ADMIN" &&
+    (session!.role !== "TRADER" || instrument!.ownerId !== session!.userId)
+  ) {
+    return jsonErr("AUTH_FORBIDDEN", "Only the owner may edit this instrument");
+  }
 
   const parsed = patchSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

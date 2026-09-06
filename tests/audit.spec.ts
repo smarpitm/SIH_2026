@@ -348,4 +348,45 @@ describe("PROJECT_AUDIT regression battery", () => {
     const afterRevoke = await refresh(second!);
     expect(afterRevoke.status).toBe(401);
   });
+
+  it("PATCH /instruments/[id] is owner-or-admin only — same-district officer gets AUTH_FORBIDDEN", async () => {
+    const instrumentId = await createInstrument("patch111");
+
+    // owner TRADER may edit address/capacity (MA2 item 5)
+    const owner = await call<{ id: string; address: string; capacity: string }>(
+      `/api/v1/instruments/${instrumentId}`,
+      {
+        method: "PATCH",
+        headers: auth(traderToken),
+        body: JSON.stringify({ address: "Audit Owner Patch Lane, Krishna" }),
+      }
+    );
+    expect(owner.status).toBe(200);
+    expect(owner.body.ok).toBe(true);
+    expect(owner.body.data!.address).toBe("Audit Owner Patch Lane, Krishna");
+
+    // same-district LMO passes the READ-scope jurisdiction gate but must never
+    // mutate a trader's instrument (finding #111)
+    const officer = await call(`/api/v1/instruments/${instrumentId}`, {
+      method: "PATCH",
+      headers: auth(officerToken),
+      body: JSON.stringify({ capacity: "999kg" }),
+    });
+    expect(officer.status).toBe(403);
+    expect(officer.body.ok).toBe(false);
+    expect(officer.body.error!.code).toBe("AUTH_FORBIDDEN");
+
+    // ADMIN may edit
+    const admin = await call<{ id: string; capacity: string }>(
+      `/api/v1/instruments/${instrumentId}`,
+      {
+        method: "PATCH",
+        headers: auth(adminToken),
+        body: JSON.stringify({ capacity: "160kg" }),
+      }
+    );
+    expect(admin.status).toBe(200);
+    expect(admin.body.ok).toBe(true);
+    expect(admin.body.data!.capacity).toBe("160kg");
+  });
 });

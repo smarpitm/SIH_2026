@@ -14,6 +14,9 @@ interface ScheduleJob {
   scheduledFor: string;
   rescheduleCount: number;
   status: string;
+  // AUDIT FINDING #112: the badge should show WHERE THE APPLICATION IS
+  // (SCHEDULED vs CHECKED_IN) — the schedule status alone reads as static.
+  appStatus?: string;
   overdue: boolean;
   instrumentCategory: string;
   instrumentSerial: string;
@@ -112,7 +115,9 @@ export default function OfficerPage() {
               )}
             </span>
           </div>
-          <StatusBadge status={job.status} />
+          {/* AUDIT FINDING #112: badge the application status (falls back to the
+              schedule status for old payloads without appStatus) */}
+          <StatusBadge status={job.appStatus ?? job.status} />
         </div>
 
         <div className="mt-3 flex flex-col gap-2 border-t border-zinc-100 pt-3 sm:flex-row sm:items-center sm:justify-between dark:border-zinc-800">

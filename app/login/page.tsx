@@ -13,11 +13,17 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const passwordChanged = searchParams.get("passwordChanged");
   const emailParam = searchParams.get("email");
   const from = searchParams.get("from");
 
-  const [email, setEmail] = useState(emailParam || (registered ? "" : "ravi@demo.in"));
-  const [password, setPassword] = useState(registered ? "" : "Passw0rd!demo");
+  // AUDIT FINDING #95: demo presets/credentials are a DEV affordance — they must
+  // never render in a production build. Gate on the build-time public flag.
+  const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+  const [email, setEmail] = useState(
+    emailParam || (registered || !DEMO_MODE ? "" : "ravi@demo.in")
+  );
+  const [password, setPassword] = useState(registered || !DEMO_MODE ? "" : "Passw0rd!demo");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -39,12 +45,24 @@ function LoginForm() {
     try {
       // Real login: API sets the httpOnly pm_refresh cookie itself; we keep the
       // accessToken in zustand (memory) and the user in localStorage via setAuth.
-      const data = await api<{ accessToken: string; user: UserDTO }>("/api/v1/auth/login", {
+      const data = await api<{
+        accessToken: string;
+        user: UserDTO;
+        mustChangePassword?: boolean;
+      }>("/api/v1/auth/login", {
         method: "POST",
         body: JSON.stringify({ email, password }),
       });
 
       setAuth(data.user, data.accessToken);
+
+      // AUDIT FINDING #110: invited officers sign in with a one-time credential
+      // (mustChangePassword=true) — force the rotation screen BEFORE any
+      // dashboard route. POST /auth/change-password clears the flag.
+      if (data.mustChangePassword) {
+        router.push("/change-password");
+        return;
+      }
 
       // Role-based redirect
       if (from && from.startsWith("/")) {
@@ -99,6 +117,13 @@ function LoginForm() {
         {registered && (
           <div className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800/40 dark:bg-green-950/40 dark:text-green-300">
             {t("auth.registeredBanner")}
+          </div>
+        )}
+
+        {/* Password rotation success banner (audit finding #110) */}
+        {passwordChanged && (
+          <div className="mb-5 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800/40 dark:bg-green-950/40 dark:text-green-300">
+            {t("auth.pwChangedBanner", "✓ Password updated — sign in with your new password.")}
           </div>
         )}
 
@@ -174,27 +199,29 @@ function LoginForm() {
           </p>
         </form>
 
-        {/* Demo Quick Presets */}
-        <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-          <span className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400">
-            {t("auth.demoPresets")}
-          </span>
-          <div className="mt-2 grid grid-cols-2 gap-1.5">
-            {demoAccounts.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => {
-                  setEmail(acc.email);
-                  setPassword("Passw0rd!demo");
-                }}
-                className="truncate rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-left text-xs font-medium text-zinc-700 transition outline-none hover:border-accent-300 hover:bg-accent-50 hover:text-accent-800 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-accent-400/40 dark:hover:bg-accent-400/10 dark:hover:text-accent-300"
-              >
-                {t(acc.k, acc.label)}
-              </button>
-            ))}
+        {/* Demo Quick Presets — gated behind NEXT_PUBLIC_DEMO_MODE (audit finding #95) */}
+        {DEMO_MODE && (
+          <div className="mt-6 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400">
+              {t("auth.demoPresets")}
+            </span>
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              {demoAccounts.map((acc) => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  onClick={() => {
+                    setEmail(acc.email);
+                    setPassword("Passw0rd!demo");
+                  }}
+                  className="truncate rounded-lg border border-zinc-200 bg-zinc-50 px-2 py-1 text-left text-xs font-medium text-zinc-700 transition outline-none hover:border-accent-300 hover:bg-accent-50 hover:text-accent-800 focus-visible:ring-2 focus-visible:ring-accent dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-accent-400/40 dark:hover:bg-accent-400/10 dark:hover:text-accent-300"
+                >
+                  {t(acc.k, acc.label)}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mt-6 text-center text-xs text-zinc-500 dark:text-zinc-400">
           {t("auth.noAccount")}{" "}

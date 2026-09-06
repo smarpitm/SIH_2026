@@ -44,8 +44,34 @@ export async function GET(req: Request) {
     ...(q ? { serialNumber: { contains: q, mode: "insensitive" } } : {}),
   };
 
-  const instruments = await db.instrument.findMany({ where, orderBy: { createdAt: "desc" } });
-  return jsonOk(instruments.map(toInstrumentDTO));
+  const instruments = await db.instrument.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    // AUDIT FINDING #98: the trader dashboard's countdown rings need the
+    // ACTIVE certificate window — carry the latest live cert per instrument.
+    include: {
+      certificates: {
+        where: { status: { in: ["ACTIVE", "EXPIRING_SOON"] } },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
+    },
+  });
+  return jsonOk(
+    instruments.map((i) => ({
+      ...toInstrumentDTO(i),
+      ...(i.certificates[0]
+        ? {
+            certificate: {
+              certId: i.certificates[0].certId,
+              status: i.certificates[0].status,
+              validFrom: i.certificates[0].validFrom.toISOString(),
+              validUntil: i.certificates[0].validUntil.toISOString(),
+            },
+          }
+        : {}),
+    }))
+  );
 }
 
 const instrumentFieldsSchema = z.object({

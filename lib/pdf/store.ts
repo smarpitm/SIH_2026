@@ -98,6 +98,58 @@ export async function putVersionedPdf(
 }
 
 /**
+ * Sticker cache helpers (audit finding #73). Stickers live under the distinct
+ * `stickers/<certId>/vN.pdf` prefix so sticker reads never append render
+ * versions to the certificate-sheet prefix `certs/<certId>/`.
+ */
+export async function latestStickerKey(certId: string): Promise<string | null> {
+  const prefix = `stickers/${certId}/v`;
+  let maxV = 0;
+  let best: string | null = null;
+  let token: string | undefined;
+  do {
+    const listed = await s3().send(
+      new ListObjectsV2Command({
+        Bucket: bucket(),
+        Prefix: prefix,
+        ...(token ? { ContinuationToken: token } : {}),
+      })
+    );
+    for (const obj of listed.Contents ?? []) {
+      const match = (obj.Key ?? "").match(/v(\d+)\.pdf$/);
+      if (match && Number(match[1]) > maxV) {
+        maxV = Number(match[1]);
+        best = obj.Key!;
+      }
+    }
+    token = listed.IsTruncated ? listed.NextContinuationToken : undefined;
+  } while (token);
+  return best;
+}
+
+/** Stores a sticker as the next version under `stickers/<certId>/`. */
+export async function putStickerPdf(
+  certId: string,
+  pdf: Uint8Array,
+  meta: { status: string }
+): Promise<string> {
+  await ensureBucket();
+  const prev = await latestStickerKey(certId);
+  const nextV = prev ? Number(prev.match(/v(\d+)\.pdf$/)![1]) + 1 : 1;
+  const key = `stickers/${certId}/v${nextV}.pdf`;
+  await s3().send(
+    new PutObjectCommand({
+      Bucket: bucket(),
+      Key: key,
+      Body: pdf,
+      ContentType: "application/pdf",
+      Metadata: { "cert-status": meta.status },
+    })
+  );
+  return key;
+}
+
+/**
  * Renders the object at `key` invisible to HeadObject so the next call to
  * putVersionedPdf re-discovers versions from scratch (used by tests only).
  * In practice: delete-probe helper kept private.

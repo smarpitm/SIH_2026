@@ -47,7 +47,11 @@ export async function GET(req: Request) {
         scheduledFor: s.scheduledFor.toISOString(),
         rescheduleCount: s.rescheduleCount,
         status: s.status,
-        overdue: s.status === "ASSIGNED" && s.scheduledFor.getTime() < now,
+        // AUDIT FINDING #112: the officer queue badges the APPLICATION status,
+        // not the schedule status (which is always ASSIGNED/RESCHEDULED/DONE).
+        appStatus: s.application.status,
+        // AUDIT FINDING #97: RESCHEDULED jobs are overdue too once their date passes
+        overdue: ["ASSIGNED", "RESCHEDULED"].includes(s.status) && s.scheduledFor.getTime() < now,
         instrumentCategory: s.application.instrument.category,
         instrumentSerial: s.application.instrument.serialNumber,
         traderName: trader?.name ?? null,

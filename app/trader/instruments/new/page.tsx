@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { INSTRUMENT_CATEGORIES, DISTRICTS } from "@/packages/shared/constants";
 import { api, ApiError, zodFieldErrors } from "@/components/api-client";
 import { PhotoInput } from "@/components/PhotoInput";
 import { useTranslation } from "@/lib/i18n";
+import { readStoredUser } from "@/lib/store";
 import type { InstrumentDTO } from "@/packages/shared/types";
 
 export default function NewInstrumentPage() {
@@ -19,9 +20,20 @@ export default function NewInstrumentPage() {
     model: "",
     serialNumber: "",
     capacity: "",
-    district: "Guntur",
+    // AUDIT FINDING #101: default to DISTRICTS[0]; the effect below narrows it
+    // to the trader's registered district (POST /instruments enforces it).
+    district: DISTRICTS[0] as string,
     address: "",
   });
+
+  // AUDIT FINDING #101: default the district dropdown to the trader's own
+  // registered district — POST /instruments rejects instruments outside the
+  // trader's home district, so a hardcoded "Guntur" default was a trap for
+  // every non-Guntur trader.
+  useEffect(() => {
+    const own = readStoredUser()?.district;
+    if (own) setForm((f) => ({ ...f, district: own }));
+  }, []);
 
   const [loading, setLoading] = useState(false);
   const [out, setOut] = useState<InstrumentDTO | null>(null);

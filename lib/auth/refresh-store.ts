@@ -10,6 +10,7 @@
 //   are serialized by the row lock and exactly one wins.
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
+import type { Prisma } from "@prisma/client";
 
 // Keep in sync with REFRESH_TTL in lib/auth/jwt.ts (7 days).
 const FAMILY_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -68,6 +69,21 @@ export async function rotateFamily(
 export async function revokeFamily(familyId: string): Promise<void> {
   await db.refreshFamily.updateMany({
     where: { id: familyId, revoked: false },
+    data: { revoked: true },
+  });
+}
+
+/** AUDIT FINDING #72: revoke EVERY live family of a user (password rotation,
+ *  account compromise). Pass `tx` to join the caller's transaction — e.g. the
+ *  change-password tx — so the credential update and the session invalidation
+ *  commit or roll back together. */
+export async function revokeAllUserFamilies(
+  userId: string,
+  tx?: Prisma.TransactionClient
+): Promise<void> {
+  const client = (tx ?? db) as Prisma.TransactionClient;
+  await client.refreshFamily.updateMany({
+    where: { userId, revoked: false },
     data: { revoked: true },
   });
 }

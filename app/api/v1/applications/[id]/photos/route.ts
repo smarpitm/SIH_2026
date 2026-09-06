@@ -28,6 +28,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let allowed = false;
   if (session!.role === "TRADER") {
     allowed = application.instrument.ownerId === session!.userId;
+  } else if (session!.role === "ADMIN") {
+    // AUDIT FINDING #104: ADMIN is a support/supervision role — it must be able
+    // to attach evidence photos just like the owner or the assigned officer.
+    allowed = true;
   } else if (session!.role === "LMO" || session!.role === "GATC") {
     const assigned = await db.schedule.findFirst({
       where: { applicationId: application.id, assigneeId: session!.userId },

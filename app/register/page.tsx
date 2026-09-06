@@ -172,10 +172,14 @@ export default function RegisterPage() {
                 onChange={(e) => updateField("role", e.target.value as Role)}
                 className="field-input"
               >
+                {/* AUDIT FINDING #95: public signup is TRADER-only — LMO/GATC
+                    accounts are created via POST /auth/invite (admin), and
+                    selecting them here always failed with AUTH_FORBIDDEN. */}
                 <option value="TRADER">{t("reg.roleTrader")}</option>
-                <option value="LMO">{t("reg.roleLmo")}</option>
-                <option value="GATC">{t("reg.roleGatc")}</option>
               </select>
+              <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                {t("reg.rolesHint", "Officer accounts are created via admin invitation — public signup is for traders only.")}
+              </p>
             </div>
 
             <div>

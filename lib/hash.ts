@@ -20,6 +20,10 @@ export async function verifyPassword(password: string, stored: string): Promise<
   if (!saltHex || !hashHex) return false;
   const salt = Buffer.from(saltHex, "hex");
   const expected = Buffer.from(hashHex, "hex");
+  // AUDIT FINDING #103: a malformed/empty stored hash must fail CLOSED —
+  // scrypt with a zero-length salt/keylen throws, which would 500 the login
+  // route instead of cleanly rejecting the credential.
+  if (salt.length === 0 || expected.length === 0) return false;
   const actual = await scrypt(password, salt, expected.length);
   return timingSafeEqual(actual, expected);
 }
