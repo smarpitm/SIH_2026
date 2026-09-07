@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    {
+      "path": "/api/v1/cron/expiry-scan",
+      "schedule": "30 19 * * *"
+    }
+  ]
+}

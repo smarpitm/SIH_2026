@@ -59,6 +59,10 @@ next-env.d.ts
 tmp-*.ts
 tmp-*.txt
 test-output.txt
+fulltest*.txt
+lint*.txt
+tc*.txt
+pa-remote.md
 
 # mobile (Expo/React Native) - deps, caches and native build outputs only;
 # mobile/src + config stay trackable

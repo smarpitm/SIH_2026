@@ -1139,6 +1139,30 @@
         }
       }
     },
+    "/cron/expiry-scan": {
+      "get": {
+        "tags": [
+          "certificates"
+        ],
+        "summary": "Vercel Cron nightly expiry sweep (Bearer CRON_SECRET): runs the expiry ladder + stranded-PASSED repair inline for serverless hosting",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "$ref": "#/components/responses/Ok"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "503": {
+            "$ref": "#/components/responses/Internal"
+          }
+        }
+      }
+    },
     "/certificates/{id}": {
       "get": {
         "tags": [
