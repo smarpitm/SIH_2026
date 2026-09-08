@@ -15,6 +15,13 @@ const bodySchema = z.object({
   role: z.enum(["LMO", "GATC"]),
   district: z.enum(DISTRICTS),
   orgName: z.string().min(1),
+  // promptbook_phone: mobile is mandatory for officers too — traders must be
+  // able to reach the officer handling their application. Same 10-digit Indian
+  // mobile rule as public registration (trimmed before validating).
+  phone: z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : v),
+    z.string().regex(/^[6-9]\d{9}$/, "Phone must be a valid 10-digit Indian mobile number")
+  ),
 });
 
 // AUDIT FINDING #6: unique one-time temporary credentials per invite — never a
@@ -40,7 +47,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return jsonErr("VALIDATION_ERROR", "Invalid invite payload", parsed.error.flatten());
   }
-  const { name, email, role, district, orgName } = parsed.data;
+  const { name, email, role, district, orgName, phone } = parsed.data;
 
   const normalizedEmail = email.toLowerCase();
   const existing = await db.user.findUnique({ where: { email: normalizedEmail } });
@@ -49,7 +56,7 @@ export async function POST(req: Request) {
   const tempPassword = generateTempPassword();
   const passwordHash = await hashPassword(tempPassword);
   const user = await db.user.create({
-    data: { name, email: normalizedEmail, passwordHash, role, district, orgName, mustChangePassword: true },
+    data: { name, email: normalizedEmail, passwordHash, role, district, orgName, phone, mustChangePassword: true },
   });
 
   await audit({

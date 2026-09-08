@@ -21,7 +21,13 @@ const bodySchema = z.object({
     .regex(/\d/, "Password must contain at least one digit"),
   role: z.enum(ROLES),
   orgName: z.string().min(1).optional(),
-  phone: z.string().min(1).optional(),
+  // promptbook_phone: mandatory 10-digit Indian mobile (starts 6-9, digits only).
+  // Trimmed before validation so " 9876543210 " registers cleanly. The DB column
+  // stays nullable — legacy/seed users keep working (no migration, no backfill).
+  phone: z.preprocess(
+    (v) => (typeof v === "string" ? v.trim() : v),
+    z.string().regex(/^[6-9]\d{9}$/, "Phone must be a valid 10-digit Indian mobile number")
+  ),
   district: z.enum(DISTRICTS).optional(),
 }).superRefine((val, ctx) => {
   // AUDIT FINDING #94: a TRADER without a district has session.district ===

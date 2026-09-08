@@ -47,6 +47,89 @@ beforeAll(async () => {
   adminToken = await login("admin@demo.in");
 });
 
+// promptbook_phone Prompt 1 — public registration boundary: a 10-digit Indian
+// mobile (/^[6-9]\d{9}$/) is mandatory for every register call. Self-cleaning:
+// the success-case user (and its refresh families) is deleted in afterAll so
+// reruns on the shared dev DB never hit the email-conflict guard.
+describe("register phone validation (promptbook_phone)", () => {
+  const registeredEmails: string[] = [];
+
+  afterAll(async () => {
+    if (registeredEmails.length > 0) {
+      const users = await db.user.findMany({ where: { email: { in: registeredEmails } }, select: { id: true } });
+      const ids = users.map((u) => u.id);
+      if (ids.length > 0) {
+        await db.refreshFamily.deleteMany({ where: { userId: { in: ids } } });
+        await db.auditLog.deleteMany({ where: { actorId: { in: ids } } });
+        await db.user.deleteMany({ where: { id: { in: ids } } });
+      }
+    }
+  });
+
+  it("rejects registration without a phone (400, fieldErrors.phone)", async () => {
+    const email = `reg-nophone-${Date.now()}@test.in`;
+    const { status, body } = await call("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "No Phone",
+        email,
+        password: "Passw0rd!test",
+        role: "TRADER",
+        district: "Krishna",
+      }),
+    });
+    expect(status).toBe(400);
+    expect(body.ok).toBe(false);
+    expect(body.error?.code).toBe("VALIDATION_ERROR");
+    const fieldErrors = (body.error?.details as { fieldErrors?: Record<string, string[]> })?.fieldErrors;
+    expect(fieldErrors?.phone).toBeDefined();
+  });
+
+  it("rejects a malformed phone like 12345 (400)", async () => {
+    const email = `reg-badphone-${Date.now()}@test.in`;
+    const { status, body } = await call("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Bad Phone",
+        email,
+        password: "Passw0rd!test",
+        role: "TRADER",
+        district: "Krishna",
+        phone: "12345",
+      }),
+    });
+    expect(status).toBe(400);
+    expect(body.error?.code).toBe("VALIDATION_ERROR");
+    const fieldErrors = (body.error?.details as { fieldErrors?: Record<string, string[]> })?.fieldErrors;
+    expect(fieldErrors?.phone?.[0]).toBe("Phone must be a valid 10-digit Indian mobile number");
+  });
+
+  it("accepts a valid 10-digit mobile and stores it (trimmed)", async () => {
+    const email = `reg-okphone-${Date.now()}@test.in`;
+    registeredEmails.push(email);
+    const { status, body } = await call<{ phone?: string }>("/api/v1/auth/register", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        name: "Good Phone",
+        email,
+        password: "Passw0rd!test",
+        role: "TRADER",
+        district: "Krishna",
+        phone: "  9876543210  ",
+      }),
+    });
+    expect(status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.data?.phone).toBe("9876543210");
+    // persisted on the user record
+    const stored = await db.user.findUnique({ where: { email }, select: { phone: true } });
+    expect(stored?.phone).toBe("9876543210");
+  });
+});
+
 afterAll(async () => {
   if (invitedOfficerIds.length > 0) {
     // delete schedules first (schedule.assigneeId references the user), then
@@ -68,6 +151,9 @@ async function inviteKrishnaOfficer(name: string, email: string): Promise<string
       role: "LMO",
       district: "Krishna",
       orgName: "Audit Verification Office",
+      // promptbook_phone: the invite API now requires a 10-digit Indian mobile
+      // for officers (traders must be able to reach them)
+      phone: "9876543210",
     })
   );
   expect(invite.body.ok).toBe(true);
