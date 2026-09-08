@@ -53,6 +53,7 @@ next-env.d.ts
 /BOOK_MANAV_API_CORE.pdf
 /PRD.pdf
 /DEPLOYMENT.md
+/PROMPTBOOK_PHONE.md
 
 # local helper scripts that embed real credentials — never commit
 /scripts/check-b2.ts
