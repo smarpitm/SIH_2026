@@ -61,7 +61,7 @@
 
 ### The Problem
 
-Under the Legal Metrology Act, 2009, every commercial weighing and measuring instrument must be periodically verified by government-authorized officers. The current process is manual, paper-driven, and prone to fraud — traders physically visit offices, certificates are hand-issued with no cryptographic integrity, and public verification of authenticity is impossible.
+Under the Legal Metrology Act, 2009, every commercial weighing and measuring instrument must be periodically verified by government-authorized officers. The current process is manual, paper-driven, and prone to  fraud — traders physically visit offices, certificates are hand-issued with no cryptographic integrity, and public verification of authenticity is impossible.
 
 ### Our Solution
 
