@@ -12,7 +12,7 @@ through **Vercel Cron** instead (already wired — see below).
 | Next.js web app | ✅ Native | App Router, `npm run build` / `next start` — zero config |
 | PostgreSQL | ⚠️ External | Use [Neon](https://neon.tech) (serverless Postgres) or Supabase |
 | Redis | ⚠️ External | Use [Upstash](https://upstash.com) (serverless Redis, `rediss://` URL) |
-| S3 storage | ⚠️ External | MinIO **cannot** run on Vercel — use Cloudflare R2, Backblaze B2, AWS S3, or a hosted MinIO (Render/Railway) |
+| S3 storage | ⚠️ External | MinIO **cannot** run on Vercel — see `MINIO_PUBLIC_ACCESS.md` (tunnel Manav's LAN MinIO, or use Cloudflare R2 / Render MinIO) |
 | BullMQ worker | 🔁 Replaced | `vercel.json` cron → `GET /api/v1/cron/expiry-scan` (Bearer `CRON_SECRET`) at 19:00 UTC = 00:30 IST |
 | Cert signing (Ed25519) | ✅ Works | Keys via env vars, `node:crypto` in the Node runtime |
 | Boot gate (`lib/security/env.ts`) | ⚠️ Active | Production refuses to boot without real secrets — fill every env var below |

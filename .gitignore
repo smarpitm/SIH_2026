@@ -34,6 +34,8 @@ yarn-error.log*
 # local infra data
 /pgdata
 /miniodata
+/.minio-data/
+/.tools/
 
 # verification screenshots are tracked; keep the archive out
 /screenshots.zip
@@ -50,6 +52,11 @@ next-env.d.ts
 /BOOK_MANAV_API_CORE.pdf
 /PRD.pdf
 /DEPLOYMENT.md
+
+# local helper scripts that embed real credentials — never commit
+/scripts/check-b2.ts
+/scripts/smoke-s3.ts
+/scripts/check-env.ts
 
 .render-secrets.local.txt
 
@@ -74,3 +81,4 @@ mobile/android/.kotlin/
 mobile/android/build/
 mobile/android/app/build/
 mobile/android/local.properties
+.neon

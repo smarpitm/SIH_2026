@@ -44,9 +44,20 @@ export function ensureBucket(): Promise<void> {
     } catch {
       await s3().send(new CreateBucketCommand({ Bucket: b }));
     }
-    await s3().send(
-      new PutBucketVersioningCommand({ Bucket: b, VersioningConfiguration: { Status: "Enabled" } })
-    );
+    // S3-native bucket versioning is optional: the app versions objects via v<N>
+    // key prefixes (see lib/pdf/store.ts), never by overwrite. Providers without
+    // PutBucketVersioning (e.g. Backblaze B2, which has always-on native
+    // versioning) reject this call — tolerate that instead of failing boot.
+    try {
+      await s3().send(
+        new PutBucketVersioningCommand({ Bucket: b, VersioningConfiguration: { Status: "Enabled" } })
+      );
+    } catch (err) {
+      console.warn(
+        `[minio] PutBucketVersioning rejected by provider (ok if native versioning exists):`,
+        err instanceof Error ? err.message : err
+      );
+    }
   })();
   return ensurePromise;
 }
