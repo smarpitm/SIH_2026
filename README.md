@@ -1,6 +1,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/SIH-2026-orange?style=for-the-badge&logo=government&logoColor=white" alt="SIH 2026" />
   <img src="https://img.shields.io/badge/Problem_ID-SIH26036-blue?style=for-the-badge" alt="Problem ID" />
+  <a href="https://sih-2026-ashy-gamma.vercel.app/"><img src="https://img.shields.io/badge/Live-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white" alt="Live on Vercel" /></a>
   <img src="https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=nextdotjs" alt="Next.js 14" />
   <img src="https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" />
@@ -310,6 +311,7 @@ npm run dev
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
+| 🌍 **Live (Vercel)** | https://sih-2026-ashy-gamma.vercel.app/ | Demo account seeded on prod DB |
 | 🌐 **Web App** | http://localhost:3000 | See [Demo Accounts](#-demo-accounts) |
 | 📦 **MinIO Console** | http://localhost:9001 | `pramanam` / `pramanam123` |
 | 📄 **API Docs** | http://localhost:3000/docs | OpenAPI 3.0 spec |
@@ -729,11 +731,13 @@ npx tsx lib/pdf/pdf-selftest.ts       # PDF rendering + MinIO versioning
 
 ## 🚢 Deployment
 
-PRAMANAM is designed for **Render** as a classic long-running Node deployment — not serverless.
+**🟢 Live now:** [https://sih-2026-ashy-gamma.vercel.app/](https://sih-2026-ashy-gamma.vercel.app/) — deployed on **Vercel** (Next.js preset, Vercel Cron for the nightly expiry sweep). Full Vercel setup + env var guide: [`VERCEL_DEPLOYMENT.md`](./VERCEL_DEPLOYMENT.md).
 
-### Why Not Vercel?
+The repo also ships a **Render** topology (`render.yaml`) as a classic long-running Node deployment — useful as a fallback or for the full web + BullMQ-worker model.
 
-The app requires: a persistent Postgres, Redis for BullMQ, MinIO (no filesystem upload fallback), and a separate long-running worker process. Vercel's serverless model has none of these. Render fits the "one long-lived process" model natively.
+### Why Not Vercel? (original assessment)
+
+The app requires: a persistent Postgres, Redis for BullMQ, MinIO (no filesystem upload fallback), and a separate long-running worker process. Vercel's serverless model has none of these. Render fits the "one long-lived process" model natively. *(Since updated: Vercel works by moving the worker into a cron route and using hosted Postgres/Redis/S3 — see `VERCEL_DEPLOYMENT.md`.)*
 
 ### Render Blueprint Architecture
 
