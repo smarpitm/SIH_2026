@@ -1,12 +1,30 @@
 "use client";
 
-import { useState, type FormEvent, Suspense } from "react";
+import { useEffect, useState, type FormEvent, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/store";
 import { useTranslation } from "@/lib/i18n";
 import { api, ApiError } from "@/components/api-client";
 import type { UserDTO } from "@/packages/shared/types";
+
+// Single source of truth for role → dashboard routing. The middleware only
+// guards /trader, /officer, /admin — /login is public — so a user who already
+// has a session (persisted pm_user + hint cookies) and lands on /login must be
+// pushed to their own portal instead of being left staring at the form.
+function dashboardForRole(role: string): string {
+  switch (role) {
+    case "TRADER":
+      return "/trader";
+    case "LMO":
+    case "GATC":
+      return "/officer";
+    case "ADMIN":
+      return "/admin";
+    default:
+      return "/trader";
+  }
+}
 
 function LoginForm() {
   const { t } = useTranslation();
@@ -28,6 +46,18 @@ function LoginForm() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  // Already signed in? (persisted pm_user in localStorage + hint cookies) → skip
+  // the form and go straight to that role's dashboard. middleware guards
+  // /trader|/officer|/admin but /login itself is public, so a logged-in trader
+  // landing on /login was previously never redirected anywhere.
+  useEffect(() => {
+    useAuthStore.getState().rehydrate();
+    const existing = useAuthStore.getState().user;
+    if (existing) {
+      router.replace(dashboardForRole(existing.role));
+    }
+  }, [router]);
 
   // Demo accounts helper
   const demoAccounts = [
@@ -68,20 +98,7 @@ function LoginForm() {
       if (from && from.startsWith("/")) {
         router.push(from);
       } else {
-        switch (data.user.role) {
-          case "TRADER":
-            router.push("/trader");
-            break;
-          case "LMO":
-          case "GATC":
-            router.push("/officer");
-            break;
-          case "ADMIN":
-            router.push("/admin");
-            break;
-          default:
-            router.push("/trader");
-        }
+        router.push(dashboardForRole(data.user.role));
       }
     } catch (e) {
       setErrorMessage(
