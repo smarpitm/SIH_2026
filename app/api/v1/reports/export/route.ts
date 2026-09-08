@@ -12,7 +12,7 @@ type Entity = "instruments" | "applications" | "certificates";
 
 const HEADERS: Record<Entity, string[]> = {
   instruments: ["id", "category", "make", "model", "serialNumber", "capacity", "district", "address", "createdAt"],
-  applications: ["id", "instrumentId", "traderId", "type", "status", "preferredDate", "feeAmount", "feePaidAt", "declarationAccepted", "createdAt"],
+  applications: ["id", "instrumentId", "traderId", "traderName", "traderPhone", "type", "status", "preferredDate", "feeAmount", "feePaidAt", "declarationAccepted", "createdAt"],
   certificates: ["id", "certId", "applicationId", "instrumentId", "status", "validFrom", "validUntil", "issuedById", "issuedByKind", "createdAt"],
 };
 
@@ -76,12 +76,33 @@ export async function GET(req: Request) {
     const data = await db.instrument.findMany({ where: scope as Prisma.InstrumentWhereInput, orderBy: { createdAt: "asc" } });
     rows = data.map((r) => [r.id, r.category, r.make, r.model, r.serialNumber, r.capacity, r.district, r.address, r.createdAt.toISOString()]);
   } else if (entity === "applications") {
-    const data = await db.application.findMany({ where: scope as Prisma.ApplicationWhereInput, orderBy: { createdAt: "asc" } });
-    rows = data.map((r) => [
-      r.id, r.instrumentId, r.traderId, r.type, r.status,
-      r.preferredDate?.toISOString() ?? "", r.feeAmount, r.feePaidAt?.toISOString() ?? "",
-      String(r.declarationAccepted), r.createdAt.toISOString(),
-    ]);
+    // promptbook_phone Prompt 4: officer/admin exports carry the trader's name
+    // + phone ("—" when a legacy user has none). TRADER scope (own exports)
+    // never includes the phone — the cells come back empty for them.
+    const officerView = role === "ADMIN" || role === "LMO" || role === "GATC";
+    const data = await db.application.findMany({
+      where: scope as Prisma.ApplicationWhereInput,
+      orderBy: { createdAt: "asc" },
+      ...(officerView
+        ? { include: { instrument: { select: { district: true } } } }
+        : {}),
+    });
+    const traderIds = Array.from(new Set(data.map((r) => r.traderId)));
+    const traders = officerView && traderIds.length
+      ? await db.user.findMany({ where: { id: { in: traderIds } }, select: { id: true, name: true, phone: true } })
+      : [];
+    const traderBy = new Map(traders.map((t) => [t.id, t]));
+    rows = data.map((r) => {
+      const trader = officerView ? traderBy.get(r.traderId) : undefined;
+      return [
+        r.id, r.instrumentId, r.traderId,
+        officerView ? trader?.name ?? "" : "",
+        officerView ? trader?.phone ?? "—" : "",
+        r.type, r.status,
+        r.preferredDate?.toISOString() ?? "", r.feeAmount, r.feePaidAt?.toISOString() ?? "",
+        String(r.declarationAccepted), r.createdAt.toISOString(),
+      ];
+    });
   } else {
     const data = await db.certificate.findMany({ where: scope as Prisma.CertificateWhereInput, orderBy: { createdAt: "asc" } });
     rows = data.map((r) => [

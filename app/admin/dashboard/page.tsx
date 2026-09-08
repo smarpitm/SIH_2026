@@ -35,12 +35,13 @@ export default function AdminDashboardPage() {
   const [dashError, setDashError] = useState(false);
 
   // invite-user miniform (MA5 item 1: POST /auth/invite, ADMIN only)
-  const [invite, setInvite] = useState<{ name: string; email: string; role: string; district: string; orgName: string }>({
+  const [invite, setInvite] = useState<{ name: string; email: string; role: string; district: string; orgName: string; phone: string }>({
     name: "",
     email: "",
     role: "LMO",
     district: DISTRICTS[0],
     orgName: "",
+    phone: "",
   });
   const [inviting, setInviting] = useState(false);
   const [inviteMsg, setInviteMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -64,7 +65,7 @@ export default function AdminDashboardPage() {
         ok: true,
         text: `${t("admin.invited")} ${res.user.email} — ${t("admin.tempPassword")} ${res.tempPassword} — ${res.banner}.`,
       });
-      setInvite({ name: "", email: "", role: "LMO", district: DISTRICTS[0], orgName: "" });
+      setInvite({ name: "", email: "", role: "LMO", district: DISTRICTS[0], orgName: "", phone: "" });
     } catch (err) {
       const fields = err instanceof ApiError ? zodFieldErrors(err.details) : null;
       const first = fields ? Object.values(fields)[0]?.[0] : null;
@@ -254,6 +255,19 @@ export default function AdminDashboardPage() {
                 placeholder={t("admin.phOrg")}
                 value={invite.orgName}
                 onChange={(e) => setInvite({ ...invite, orgName: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label htmlFor="inv-phone" className="field-label">{t("admin.phPhone")}</label>
+              <input
+                id="inv-phone"
+                required
+                type="tel"
+                inputMode="tel"
+                placeholder={t("admin.phPhone")}
+                value={invite.phone}
+                onChange={(e) => setInvite({ ...invite, phone: e.target.value })}
                 className={inputCls}
               />
             </div>
