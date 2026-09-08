@@ -2,7 +2,9 @@ import type { User, Instrument, Application } from "@prisma/client";
 import type { UserDTO, InstrumentDTO, ApplicationDTO } from "@/packages/shared/types";
 
 /** Prisma User -> frozen UserDTO (packages/shared/types.ts). Optional fields are
- *  emitted only when present, matching the shared mock shape exactly. */
+ *  emitted only when present, matching the shared mock shape exactly. phone is
+ *  exposed so authenticated counterparties (officer↔trader) can reach each other —
+ *  it is NEVER emitted on public certificate/verification payloads. */
 export function toUserDTO(user: User): UserDTO {
   return {
     id: user.id,
@@ -11,6 +13,7 @@ export function toUserDTO(user: User): UserDTO {
     role: user.role,
     ...(user.orgName ? { orgName: user.orgName } : {}),
     ...(user.district ? { district: user.district } : {}),
+    ...(user.phone ? { phone: user.phone } : {}),
   };
 }
 

@@ -24,6 +24,7 @@ async function main() {
       passwordHash: hash,
       role: "TRADER",
       orgName: "Ravi Traders",
+      phone: "9876543210",
       district: "Guntur",
     },
   });
@@ -34,14 +35,15 @@ async function main() {
       passwordHash: hash,
       role: "TRADER",
       orgName: "Laxmi Stores",
+      phone: "9876543211",
       district: "Krishna",
     },
   });
   const lmoGuntur = await db.user.create({
-    data: { name: "LMO Guntur", email: "lmo.guntur@demo.in", passwordHash: hash, role: "LMO", district: "Guntur" },
+    data: { name: "LMO Guntur", email: "lmo.guntur@demo.in", passwordHash: hash, role: "LMO", phone: "9876543212", district: "Guntur" },
   });
   const lmoKrishna = await db.user.create({
-    data: { name: "LMO Krishna", email: "lmo.krishna@demo.in", passwordHash: hash, role: "LMO", district: "Krishna" },
+    data: { name: "LMO Krishna", email: "lmo.krishna@demo.in", passwordHash: hash, role: "LMO", phone: "9876543213", district: "Krishna" },
   });
   const gatc = await db.user.create({
     data: {
@@ -50,6 +52,7 @@ async function main() {
       passwordHash: hash,
       role: "GATC",
       orgName: "Vizag Test Centre",
+      phone: "9876543214",
       district: "Vijayawada",
     },
   });

@@ -11,6 +11,7 @@ export interface UserDTO {
   role: Role;
   orgName?: string;
   district?: string;
+  phone?: string;
 }
 
 export interface InstrumentDTO {
@@ -33,6 +34,11 @@ export interface ApplicationDTO {
   preferredDate?: string;
   feePaidAt?: string;
   createdAt: string;
+  /** Officer-facing only (LMO/GATC/ADMIN): the trader's name + mobile so the
+   *  officer can call ahead before a site visit. NEVER present for a TRADER
+   *  requester (promptbook_phone trust boundary). */
+  traderName?: string;
+  traderPhone?: string;
 }
 
 export interface ScheduleDTO {
@@ -42,6 +48,10 @@ export interface ScheduleDTO {
   assigneeKind: "LMO" | "GATC";
   scheduledFor: string;
   rescheduleCount: number;
+  /** Officer-facing: the trader's contact so the officer can call ahead of a
+   *  site visit (promptbook_phone). */
+  traderName?: string;
+  traderPhone?: string;
 }
 
 export interface CertificateDTO {

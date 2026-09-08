@@ -233,6 +233,9 @@ export const hi: Record<string, string> = {
   "reg.create": "खाता बनाएं",
   "reg.already": "पहले से पंजीकृत हैं?",
   "reg.signIn": "साइन इन",
+  "reg.phone": "मोबाइल नंबर",
+  "reg.phPhone": "98765 43210",
+  "reg.phoneError": "10 अंकों का सही मोबाइल नंबर दर्ज करें",
 
   // ---- statuses ----
   "status.DRAFT": "प्रारूप",
@@ -462,6 +465,7 @@ export const hi: Record<string, string> = {
   "officer.overdueLabel": "विलंबित:",
   "officer.overdue": "विलंबित",
   "officer.traderWord": "व्यापारी",
+  "officer.traderContact": "व्यापारी संपर्क",
   "officer.rescheduledX": "पुनर्निर्धारित",
   "officer.scheduled": "🕒 निर्धारित:",
   "officer.openJob": "कार्य खोलें →",
@@ -565,6 +569,7 @@ export const hi: Record<string, string> = {
   "admin.inviteDesc": "LMO/GATC खाता बनाएं। साख (अस्थायी पासवर्ड) प्रशासक द्वारा ऑफलाइन साझा की जानी चाहिए।",
   "admin.invited": "आमंत्रित किया गया",
   "admin.tempPassword": "अस्थायी पासवर्ड",
+  "admin.phPhone": "मोबाइल नंबर",
   "admin.inviteFailed": "आमंत्रण विफल",
   "admin.phName": "पूरा नाम",
   "admin.phEmail": "ईमेल",

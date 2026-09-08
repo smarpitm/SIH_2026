@@ -17,6 +17,7 @@ export default function RegisterPage() {
     password: "",
     role: "TRADER" as Role,
     orgName: "",
+    phone: "",
     district: "Guntur",
   });
 
@@ -52,6 +53,15 @@ export default function RegisterPage() {
 
     if (!passwordValid) {
       setErrorMessages([t("reg.passwordError")]);
+      return;
+    }
+
+    // promptbook_phone: client-side mirror of the server rule — mandatory
+    // 10-digit Indian mobile (starts 6-9). Server enforces the same via Zod,
+    // so a stale client can never bypass it.
+    const phoneValid = /^[6-9]\d{9}$/.test(form.phone.trim());
+    if (!phoneValid) {
+      setErrorMessages([t("reg.phoneError")]);
       return;
     }
 
@@ -136,6 +146,26 @@ export default function RegisterPage() {
               required
               className="field-input"
             />
+          </div>
+
+          <div>
+            <label className="field-label">
+              {t("reg.phone")}
+            </label>
+            <input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel"
+              maxLength={10}
+              value={form.phone}
+              onChange={(e) => updateField("phone", e.target.value)}
+              placeholder={t("reg.phPhone")}
+              required
+              className="field-input"
+            />
+            <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+              {t("reg.phoneError")}
+            </p>
           </div>
 
           <div>

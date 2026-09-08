@@ -234,6 +234,9 @@ export const en: Record<string, string> = {
   "reg.create": "Create Account",
   "reg.already": "Already registered?",
   "reg.signIn": "Sign in",
+  "reg.phone": "Mobile Number",
+  "reg.phPhone": "98765 43210",
+  "reg.phoneError": "Enter a valid 10-digit Indian mobile number",
 
   // ---- application / certificate statuses ----
   "status.DRAFT": "Draft",
@@ -463,6 +466,7 @@ export const en: Record<string, string> = {
   "officer.overdueLabel": "Overdue:",
   "officer.overdue": "Overdue",
   "officer.traderWord": "Trader",
+  "officer.traderContact": "Trader contact",
   "officer.rescheduledX": "rescheduled",
   "officer.scheduled": "🕒 Scheduled:",
   "officer.openJob": "Open job →",
@@ -566,6 +570,7 @@ export const en: Record<string, string> = {
   "admin.inviteDesc": "Create an LMO/GATC account. Credentials (temp password) must be shared offline by the admin.",
   "admin.invited": "Invited",
   "admin.tempPassword": "temp password",
+  "admin.phPhone": "Mobile Number",
   "admin.inviteFailed": "Invite failed",
   "admin.phName": "Full name",
   "admin.phEmail": "Email",
