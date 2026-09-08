@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   // trader name from the application's trader (User)
   const traderIds = Array.from(new Set(schedules.map((s) => s.application.traderId)));
   const traders = traderIds.length
-    ? await db.user.findMany({ where: { id: { in: traderIds } }, select: { id: true, name: true, orgName: true } })
+    ? await db.user.findMany({ where: { id: { in: traderIds } }, select: { id: true, name: true, orgName: true, phone: true } })
     : [];
   const traderBy = new Map(traders.map((t) => [t.id, t]));
 
@@ -56,6 +56,7 @@ export async function GET(req: Request) {
         instrumentSerial: s.application.instrument.serialNumber,
         traderName: trader?.name ?? null,
         traderOrg: trader?.orgName ?? null,
+        traderPhone: trader?.phone ?? null,
       };
     })
   );

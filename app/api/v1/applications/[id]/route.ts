@@ -30,5 +30,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const { error, application } = await scopeApplication(session!, params.id);
   if (error) return error;
-  return jsonOk(toApplicationDTO(application!));
+  const dto = toApplicationDTO(application!);
+  // promptbook_phone trust boundary: officer/admin viewers get the trader's
+  // contact so they can call ahead of a visit; a TRADER requester (owner) must
+  // NOT receive traderPhone — the response shape stays exactly as before.
+  if (session!.role !== "TRADER") {
+    const trader = await db.user.findUnique({
+      where: { id: application!.traderId },
+      select: { name: true, phone: true },
+    });
+    if (trader?.name) dto.traderName = trader.name;
+    if (trader?.phone) dto.traderPhone = trader.phone;
+  }
+  return jsonOk(dto);
 }

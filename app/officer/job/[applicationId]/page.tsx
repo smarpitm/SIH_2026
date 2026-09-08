@@ -170,6 +170,21 @@ function JobPageInner() {
         <p className="mt-0.5 text-xs text-zinc-500">
           {inst?.serialNumber ?? t("common.instrument")} · {inst?.district ?? "—"} ·{" "}
           <span className="font-mono">APP-{applicationId.slice(-6).toUpperCase()}</span>
+          {/* promptbook_phone Prompt 3: the job header carries the same trader
+              contact line as the queue — tappable only when a phone exists
+              (legacy accounts show "—"). The API only emits traderPhone to
+              LMO/GATC/ADMIN requesters, never to a TRADER. */}
+          {app?.traderPhone && (
+            <>
+              {" "}· {t("officer.traderContact", "Trader contact")}:{" "}
+              <a
+                href={`tel:${app.traderPhone}`}
+                className="font-semibold text-emerald-700 transition-colors outline-none hover:text-emerald-800 focus-visible:ring-2 focus-visible:ring-accent dark:text-emerald-300 dark:hover:text-emerald-200"
+              >
+                ☎ {app.traderPhone}
+              </a>
+            </>
+          )}
         </p>
       </div>
 

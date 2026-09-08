@@ -109,5 +109,30 @@ export async function GET(req: Request) {
       if (jurisdiction) return jurisdiction;
     }
   }
-  return jsonOk(applications.map(toApplicationDTO));
+  // promptbook_phone trust boundary: the trader's contact rides along ONLY for
+  // officer/admin viewers so they can call ahead of a site visit. A TRADER
+  // listing applications NEVER receives traderPhone (and the response shape
+  // stays exactly as before for them). Application has no trader relation in
+  // the schema (traderId only) — batch-fetch the traders like schedule/mine.
+  if (session!.role !== "TRADER") {
+    const traderIds = Array.from(new Set(applications.map((a) => a.traderId)));
+    const traders = traderIds.length
+      ? await db.user.findMany({
+          where: { id: { in: traderIds } },
+          select: { id: true, name: true, phone: true },
+        })
+      : [];
+    const traderBy = new Map(traders.map((t) => [t.id, t]));
+    return jsonOk(
+      applications.map((a) => {
+        const trader = traderBy.get(a.traderId);
+        return {
+          ...toApplicationDTO(a),
+          ...(trader?.name ? { traderName: trader.name } : {}),
+          ...(trader?.phone ? { traderPhone: trader.phone } : {}),
+        };
+      })
+    );
+  }
+  return jsonOk(applications.map((a) => toApplicationDTO(a)));
 }

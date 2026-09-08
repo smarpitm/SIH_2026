@@ -22,6 +22,7 @@ interface ScheduleJob {
   instrumentSerial: string;
   traderName: string | null;
   traderOrg: string | null;
+  traderPhone: string | null;
 }
 
 export default function OfficerPage() {
@@ -105,6 +106,22 @@ export default function OfficerPage() {
             </div>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               {job.traderName ?? job.traderOrg ?? t("officer.traderWord")} · {districts[job.instrumentSerial] ?? "—"}
+            </span>
+            {/* promptbook_phone: direct line to the trader — officers call ahead
+                to confirm the site/instrument is ready before travelling. Legacy
+                accounts without a phone show "—" and no link. */}
+            <span className="text-xs text-zinc-500">
+              {t("officer.traderContact", "Trader contact")}:{" "}
+              {job.traderPhone ? (
+                <a
+                  href={`tel:${job.traderPhone}`}
+                  className="inline-flex items-center gap-1 font-semibold text-emerald-700 transition outline-none hover:text-emerald-800 focus-visible:ring-2 focus-visible:ring-accent dark:text-emerald-300 dark:hover:text-emerald-200"
+                >
+                  ☎ {job.traderPhone}
+                </a>
+              ) : (
+                <span aria-label="no phone">—</span>
+              )}
             </span>
             <span className="text-xs text-zinc-500">
               {t("common.application")} <span className="font-mono">APP-{job.applicationId.slice(-6).toUpperCase()}</span>
