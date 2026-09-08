@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "outputDirectory": ".next-build",
+  "outputDirectory": ".next",
   "crons": [
     {
       "path": "/api/v1/cron/expiry-scan",
