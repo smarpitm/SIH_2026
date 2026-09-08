@@ -870,7 +870,7 @@ Ownership and day-to-day status live in `context.txt`.
 
 ## 📄 License
 
-Built for **Smart India Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
+Built for **Smart India  Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
 
 ---
 
