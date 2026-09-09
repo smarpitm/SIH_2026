@@ -9,8 +9,12 @@ import { audit } from "@/lib/auth/audit";
 const bodySchema = z.object({ scheduleId: z.string().min(1) });
 
 // book MA3 item 4 — POST /schedule/checkin
-const CHECKIN_WINDOW_MS = 2 * 60 * 60 * 1000; // -2h
-const CHECKIN_GRACE_MS = 8 * 60 * 60 * 1000; // +8h
+// Check-in is allowed at ANY time relative to scheduledFor — before, on, or
+// long after the scheduled date. The trader picks a DATE only (no time slot),
+// so the old fixed window around the stored timestamp (a UTC-midnight pick
+// anchored at 05:30 IST windowed to 03:30–13:30) locked out every overdue job
+// and every early-morning/late-day arrival. The officer records arrival when
+// they are actually on site; the scheduled date is a target, not a hard gate.
 
 export async function POST(req: Request) {
   const session = await getSession(req);
@@ -35,12 +39,6 @@ export async function POST(req: Request) {
 
   if (schedule.assigneeId !== session!.userId) {
     return jsonErr("AUTH_FORBIDDEN", "Not your assigned schedule");
-  }
-
-  const now = Date.now();
-  const target = schedule.scheduledFor.getTime();
-  if (now < target - CHECKIN_WINDOW_MS || now > target + CHECKIN_GRACE_MS) {
-    return jsonErr("VALIDATION_ERROR", "outside check-in window");
   }
 
   // AUDIT FINDINGS #76 + #109: the state transition and the audit row commit

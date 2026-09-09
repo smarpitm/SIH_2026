@@ -6,7 +6,7 @@ import { getSession, requireRole, type Session } from "@/lib/auth/session";
 import { assertJurisdiction } from "@/lib/auth/rbac";
 import { toApplicationDTO } from "@/lib/auth/dto";
 import { audit } from "@/lib/auth/audit";
-import { startOfBusinessToday } from "@/lib/time";
+import { startOfBusinessDay, startOfBusinessToday } from "@/lib/time";
 
 const bodySchema = z.object({
   instrumentId: z.string().min(1),
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
       traderId: session!.userId,
       type: parsed.data.type,
       feeAmount: FEE_PAISA,
-      ...(parsed.data.preferredDate ? { preferredDate: new Date(parsed.data.preferredDate) } : {}),
+      ...(parsed.data.preferredDate ? { preferredDate: startOfBusinessDay(new Date(parsed.data.preferredDate)) } : {}),
       ...(parsed.data.reVerificationReason ? { reVerificationReason: parsed.data.reVerificationReason } : {}),
     },
   });

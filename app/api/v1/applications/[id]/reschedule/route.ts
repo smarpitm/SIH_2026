@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
 import { audit } from "@/lib/auth/audit";
 import { MAX_RESCHEDULES } from "@/packages/shared/constants";
-import { startOfBusinessToday } from "@/lib/time";
+import { startOfBusinessDay, startOfBusinessToday } from "@/lib/time";
 
 const bodySchema = z.object({
   reason: z.string().min(10),
@@ -49,7 +49,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return jsonErr("VALIDATION_ERROR", "Invalid reschedule payload", parsed.error.flatten());
   }
 
-  const scheduledFor = new Date(parsed.data.newDate);
+  // Normalize to the business-day start: the trader picks a DATE, so the
+  // stored anchor is IST midnight of that day (no stray 05:30 UTC-midnight drift).
+  const scheduledFor = startOfBusinessDay(new Date(parsed.data.newDate));
   // AUDIT FINDING #113: the MAX_RESCHEDULES budget is enforced ATOMICALLY.
   // updateMany with `rescheduleCount: { lt: MAX_RESCHEDULES }` in the WHERE
   // clause makes read-check+increment a single conditional statement — two

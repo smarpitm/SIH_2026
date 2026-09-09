@@ -105,7 +105,7 @@ Trader                    PRAMANAM                          LMO / GATC          
 | **2** | Trader | Apply for verification | Chooses NEW or RE_VERIFICATION. Pays fee (demo mock). Submits with declaration |
 | **3** | System | Auto-allocate officer | Picks the least-loaded LMO/GATC in the instrument's district. Application → SCHEDULED |
 | **4** | Officer | View inspection queue | `/schedule/mine` — ordered by date, overdue jobs flagged |
-| **5** | Officer | GPS check-in | Within `[scheduledFor - 2h, +8h]` time window |
+| **5** | Officer | GPS check-in | Any time — before, on, or after the scheduled date |
 | **6** | Officer | Conduct inspection | Records result, observations (validated config), photos, GPS coordinates |
 | **7** | System | Issue certificate | Ed25519-signed JWS + QR payload. Trader notified via bell |
 | **8** | Public | Verify authenticity | By certificate ID, QR scan, or offline sticker — signature verified in-browser via WebCrypto |
@@ -385,7 +385,7 @@ All seeded accounts use the password: **`Passw0rd!demo`**
 ## 🔀 Application State Machine
 
 ```
-                 pay + declaration        auto-allocation           check-in window
+                 pay + declaration        auto-allocation           check-in (any time)
   ┌──────┐                        ┌───────────┐            ┌───────────┐             ┌────────────┐
   │ DRAFT├───────────────────────►│ SUBMITTED ├───────────►│ SCHEDULED ├────────────►│ CHECKED_IN │
   └──────┘                        └─────┬─────┘            └─────┬─────┘             └──────┬─────┘
@@ -497,7 +497,7 @@ All endpoints respond with a unified JSON envelope:
 | Method | Path | Description |
 |:------:|------|-------------|
 | `GET` | `/api/v1/schedule/mine` | Officer's inspection queue — ordered by date, overdue flagged |
-| `POST` | `/api/v1/schedule/checkin` | Check-in within `[scheduledFor - 2h, +8h]` window |
+| `POST` | `/api/v1/schedule/checkin` | Check-in any time (before/on/after the scheduled date) |
 | `POST` | `/api/v1/schedule/allocate` | Manual re-run of officer allocation |
 | `POST` | `/api/v1/inspections` | Multipart: result, observations, ≥1 photo, GPS. PASS → certificate issued in same transaction |
 

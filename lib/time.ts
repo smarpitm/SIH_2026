@@ -68,3 +68,29 @@ export function startOfBusinessNextMonth(now: Date = new Date()): Date {
 export function startOfBusinessTomorrow(now: Date = new Date()): Date {
   return startOfBusinessToday(new Date(now.getTime() + 24 * 86_400_000));
 }
+
+/** Midnight (00:00) of the business-timezone day CONTAINING the given instant.
+ *  A trader picks a DATE only (no time slot), so every stored schedule anchor
+ *  is normalized through here — storing a raw UTC-midnight pick ("T00:00Z")
+ *  drifted to 05:30 IST and read as a meaningless time-of-day on the LMO clip.
+ *  Idempotent: an already-normalized instant maps to itself. */
+export function startOfBusinessDay(date: Date): Date {
+  return startOfBusinessToday(date);
+}
+
+/** "YYYY-MM-DD" of an instant in the business timezone (browser-safe — Intl
+ *  with an explicit timeZone). Lexical string compare == chronological compare,
+ *  so the officer queue buckets Today / Upcoming / Past on the same calendar
+ *  date the server uses, regardless of the viewer's local timezone. */
+export function businessDateKey(date: Date = new Date()): string {
+  return partsFmt.format(date);
+}
+
+/** Formats an instant as a business-timezone DATE so every viewer — whatever
+ *  their local timezone — sees the SAME calendar day the trader picked. */
+export function formatBusinessDate(date: Date, style: "long" | "medium" | "short" = "medium"): string {
+  return new Intl.DateTimeFormat([], {
+    timeZone: BUSINESS_TIMEZONE,
+    dateStyle: style,
+  }).format(date);
+}

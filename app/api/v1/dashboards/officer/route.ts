@@ -11,7 +11,6 @@ export async function GET(req: Request) {
   const userId = session!.userId;
 
   // AUDIT FINDING #36: "today"/"this month" windows use the business timezone.
-  const now = Date.now();
   const dayStart = startOfBusinessToday();
   const dayEnd = startOfBusinessTomorrow();
   const monthStart = startOfBusinessMonth();
@@ -34,7 +33,10 @@ export async function GET(req: Request) {
           // AUDIT FINDING #97: a rescheduled job keeps status RESCHEDULED — its
           // overdue tracking must not silently exclude it.
           status: { in: ["ASSIGNED", "RESCHEDULED"] },
-          scheduledFor: { lt: new Date(now) },
+          // Overdue = the scheduled DATE is before today (business timezone) —
+          // a date-only slot must never count as overdue just because the clock
+          // passed its 05:30 UTC-midnight anchor.
+          scheduledFor: { lt: dayStart },
         },
       }),
       db.schedule.count({ where: { assigneeId: userId } }),
@@ -60,7 +62,7 @@ export async function GET(req: Request) {
         scheduledFor: s.scheduledFor.toISOString(),
         status: s.status,
         // AUDIT FINDING #97: RESCHEDULED jobs are overdue too once their date passes
-        overdue: ["ASSIGNED", "RESCHEDULED"].includes(s.status) && s.scheduledFor.getTime() < now,
+        overdue: ["ASSIGNED", "RESCHEDULED"].includes(s.status) && s.scheduledFor.getTime() < dayStart.getTime(),
         instrumentCategory: s.application.instrument.category,
         instrumentSerial: s.application.instrument.serialNumber,
         traderName: trader?.name ?? null,

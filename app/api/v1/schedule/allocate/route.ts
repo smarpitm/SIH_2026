@@ -6,6 +6,7 @@ import { applyTransition } from "@/lib/auth/transition";
 import { pickAllocationOfficer } from "@/lib/auth/allocation";
 import { assertJurisdiction } from "@/lib/auth/rbac";
 import { audit } from "@/lib/auth/audit";
+import { startOfBusinessDay, startOfBusinessToday } from "@/lib/time";
 
 const bodySchema = z.object({
   applicationId: z.string(),
@@ -63,7 +64,11 @@ export async function POST(req: Request) {
     return jsonErr("INTERNAL", "no officer in district");
   }
 
-  const scheduledFor = application.preferredDate ?? new Date(Date.now() + 7 * 86400000);
+  // Anchor to IST midnight of the day (see submit route: a trader picks a DATE,
+  // not a time, so slots never read as a stray 05:30 / clock-time).
+  const scheduledFor = application.preferredDate
+    ? startOfBusinessDay(application.preferredDate)
+    : startOfBusinessDay(new Date(Date.now() + 7 * 86400000));
   let schedule;
   let action: string;
   if (existing) {
@@ -132,7 +137,10 @@ export async function POST(req: Request) {
     scheduledFor: schedule.scheduledFor.toISOString(),
     rescheduleCount: schedule.rescheduleCount,
     status: schedule.status,
-    overdue: schedule.status === "ASSIGNED" && schedule.scheduledFor.getTime() < Date.now(),
+    // Overdue = the scheduled DATE is before today (business timezone), not
+    // before "now" — a date-only slot must never flip to overdue at 05:30 IST.
+    overdue: ["ASSIGNED", "RESCHEDULED"].includes(schedule.status) &&
+      schedule.scheduledFor.getTime() < startOfBusinessToday().getTime(),
     instrumentCategory: application.instrument.category,
     instrumentSerial: application.instrument.serialNumber,
     traderName: trader?.name ?? null,

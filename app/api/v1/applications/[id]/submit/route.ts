@@ -5,6 +5,7 @@ import { getSession, requireRole } from "@/lib/auth/session";
 import { applyTransition } from "@/lib/auth/transition";
 import { pickAllocationOfficer } from "@/lib/auth/allocation";
 import { audit } from "@/lib/auth/audit";
+import { startOfBusinessDay } from "@/lib/time";
 
 const bodySchema = z.object({
   declarationAccepted: z.boolean(),
@@ -38,7 +39,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return jsonErr("INTERNAL", "no officer in district");
   }
 
-  const scheduledFor = application.preferredDate ?? new Date(Date.now() + 7 * 86400000);
+  // Anchor to IST midnight of the day: the trader picks a DATE only, so the
+  // auto-allocated slot must not inherit a time-of-day (a raw UTC-midnight
+  // pick would read as 05:30 IST; the +7d default would read as the current
+  // clock time). Already-normalized preferredDates are unchanged (idempotent).
+  const scheduledFor = application.preferredDate
+    ? startOfBusinessDay(application.preferredDate)
+    : startOfBusinessDay(new Date(Date.now() + 7 * 86400000));
 
   // AUDIT FINDING #12: the entire submit+allocation workflow is ONE transaction
   // — DRAFT->SUBMITTED, declaration, schedule creation, SUBMITTED->SCHEDULED and

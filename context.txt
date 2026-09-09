@@ -834,6 +834,26 @@ to keep one source of truth and avoid merge conflicts.
      call audits schedule.reassigned (totals: 2 schedule rows, 3 audit rows).
 - docs: added pitch deck, demo script, and WCAG accessibility basics (N2 complete)
 - docs(n3): added deployment guide, verification checklist, and final audit docs (N3 complete)
+- K-FIX (Kush, branch kush): check-in is possible ANY TIME + no 05:30 AM ghost time. 
+  Root cause chain: (1) the trader wizard posts a date-only pick as "${date}T00:00:00.000Z"
+  = UTC midnight = 05:30 IST, and allocators stored it verbatim as scheduledFor — so every
+  LMO queue card rendered "…, 5:30 AM" (a slot that was never chosen); (2) checkin locked
+  to [scheduledFor−2h, +8h] ([03:30, 13:30] IST on that anchor) — an overdue/past-date job
+  was permanently impossible to check in, early-morning and evening arrivals were blocked
+  too; (3) overdue was time-based (scheduledFor < now) so a "today" slot flipped to overdue
+  between 00:00–05:30 IST and the queue bucketing used the viewer's UTC date.
+  FIX (12 files + 1 new spec): POST /schedule/checkin window check REMOVED (jurisdiction +
+  assignee + SCHEDULED→CHECKED_IN transition retained); lib/time.ts gains
+  startOfBusinessDay(date) + businessDateKey(date) + formatBusinessDate(date) (all
+  browser-safe Intl, business TZ); preferredDate/scheduledFor normalized to IST midnight
+  at ALL entry points (applications create, reschedule newDate, submit auto-allocate,
+  allocate re-run, incl. the +7d default); overdue is DATE-based everywhere
+  (mine/allocate/dashboards-officer: scheduled DATE < today in Asia/Kolkata, RESCHEDULED
+  included); officer queue renders date-only (formatBusinessDate) and buckets Past/Today/
+  Upcoming on businessDateKey; trader app-detail date renders business-TZ. README flow/API
+  table updated. New tests/checkin-anytime.spec.ts: PAST check-in OK, FUTURE check-in OK,
+  IST-midnight storage (no 05:30). VERIFIED: typecheck 0, lint clean, i18n parity ✅,
+  openapi 40/40, npm test 40/40 (9 files), /officer + /trader pages compile (200).
 --------------------------------------------------------
 MAINTENANCE RULE
 Every task STARTS by reading context.txt and ENDS by updating

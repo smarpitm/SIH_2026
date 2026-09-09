@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { StatusChip } from "@/components/StatusChip";
 import { api, ApiError } from "@/components/api-client";
 import { useTranslation } from "@/lib/i18n";
+import { formatBusinessDate } from "@/lib/time";
 import type { ApplicationDTO, InstrumentDTO } from "@/packages/shared/types";
 
 // success path in frozen transition order (packages/shared/constants TRANSITIONS);
@@ -271,7 +272,7 @@ export default function ApplicationDetailPage() {
               <div className="flex justify-between gap-2 sm:block">
                 <dt className="text-xs text-zinc-500">{t("appd.preferredDate")}</dt>
                 <dd className="text-zinc-900 dark:text-white">
-                  {app.preferredDate ? new Date(app.preferredDate).toLocaleDateString() : "—"}
+                  {app.preferredDate ? formatBusinessDate(new Date(app.preferredDate)) : "—"}
                 </dd>
               </div>
               <div className="flex justify-between gap-2 sm:block">
