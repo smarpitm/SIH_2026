@@ -24,6 +24,7 @@ export default function ApplicationDetailPage() {
   const [reason, setReason] = useState("");
   const [showReschedule, setShowReschedule] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [certBusy, setCertBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -68,6 +69,31 @@ export default function ApplicationDetailPage() {
       }
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Print/download the QR certificate PDF. The PDF endpoint does its own
+  // authz (owner / issuer / district-LMO / admin) and answers with a
+  // short-lived presigned URL (B2, S3-compatible) — we just open it, so no
+  // token handling in the client and no new env/config on Vercel.
+  async function downloadCertificate() {
+    const certId = app?.certificate?.certId;
+    if (!certId || certBusy) return;
+    setCertBusy(true);
+    setErrorMsg(null);
+    try {
+      const { url } = await api<{ url: string }>(`/api/v1/certificates/${certId}/pdf`);
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener,noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      setErrorMsg(e instanceof ApiError ? e.message : t("appd.cert.downloadFailed"));
+    } finally {
+      setCertBusy(false);
     }
   }
 
@@ -286,6 +312,55 @@ export default function ApplicationDetailPage() {
                 <dd className="text-zinc-900 dark:text-white">{new Date(app.createdAt).toLocaleString()}</dd>
               </div>
             </dl>
+          </div>
+
+          {/* Certificate — always visible; greyed out until issued. Enabled
+              state is driven by the certificate row itself (covers ACTIVE,
+              EXPIRED and REVOKED — a revoked cert still prints, watermarked). */}
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-5 shadow-md shadow-zinc-950/5 dark:border-zinc-800 dark:bg-zinc-900 dark:shadow-black/20">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                  {t("appd.cert.title")}
+                </h2>
+                {app.certificate ? (
+                  <p className="mt-0.5 truncate text-xs text-zinc-500">
+                    {t("appd.cert.id")}: <span className="font-mono">{app.certificate.certId}</span>
+                  </p>
+                ) : app.status === "CERT_ISSUED" ? (
+                  <p className="mt-0.5 text-xs text-amber-600 dark:text-amber-400">
+                    {t("appd.cert.generating", "Certificate issued — syncing document (refresh in a moment)")}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-zinc-500">{t("appd.cert.notIssued")}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {app.certificate && (
+                  <a
+                    href={`/verify/${app.certificate.certId}`}
+                    target="_blank"
+                    rel="noopener,noreferrer"
+                    className="shrink-0 rounded-full border border-zinc-200 bg-white px-3.5 py-2 text-xs font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                  >
+                    {t("appd.certVerify", "Public Verify")}
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={downloadCertificate}
+                  disabled={!app.certificate || certBusy}
+                  title={app.certificate ? undefined : t("appd.cert.notIssued")}
+                  className={`shrink-0 rounded-full px-4 py-2 text-xs font-semibold transition outline-none ${
+                    app.certificate
+                      ? "bg-emerald-600 text-white hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-accent"
+                      : "cursor-not-allowed bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600"
+                  }`}
+                >
+                  {certBusy ? t("appd.cert.preparing") : t("appd.cert.download")}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Reschedule (MA3 item 5) */}

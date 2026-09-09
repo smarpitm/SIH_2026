@@ -31,6 +31,16 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const { error, application } = await scopeApplication(session!, params.id);
   if (error) return error;
   const dto = toApplicationDTO(application!);
+  // Certificate summary for the owner/issuer UI: the PDF endpoint still does
+  // its own authz (owner / issuer / district-LMO / admin), so exposing certId
+  // here is safe — additive, no schema change (Neon-safe).
+  const cert = await db.certificate.findUnique({
+    where: { applicationId: application!.id },
+    select: { certId: true, status: true },
+  });
+  if (cert) {
+    dto.certificate = { certId: cert.certId, status: cert.status };
+  }
   // promptbook_phone trust boundary: officer/admin viewers get the trader's
   // contact so they can call ahead of a visit; a TRADER requester (owner) must
   // NOT receive traderPhone — the response shape stays exactly as before.

@@ -42,6 +42,18 @@ const invitedOfficerIds: string[] = [];
 
 beforeAll(async () => {
   await expectServerUp();
+  // Self-healing: wipe any leftover Krishna LMOs from previously aborted runs
+  const stale = await db.user.findMany({
+    where: { role: "LMO", district: "Krishna", email: { not: "lmo.krishna@demo.in" } },
+    select: { id: true },
+  });
+  if (stale.length > 0) {
+    const staleIds = stale.map((u) => u.id);
+    await db.schedule.deleteMany({ where: { assigneeId: { in: staleIds } } });
+    await db.refreshFamily.deleteMany({ where: { userId: { in: staleIds } } });
+    await db.auditLog.deleteMany({ where: { actorId: { in: staleIds } } });
+    await db.user.deleteMany({ where: { id: { in: staleIds } } });
+  }
   traderToken = await login("laxmi@demo.in");
   officerToken = await login("lmo.krishna@demo.in");
   adminToken = await login("admin@demo.in");
