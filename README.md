@@ -91,7 +91,7 @@ Trader                    PRAMANAM                          LMO / GATC          
   │                          │                                 │  6. Inspection         │
   │                          │◄────────────────────────────────│     PASS / FAIL        │
   │                          │   emitInspectionPass() hook     │                        │
-  │  7. 🔔 CERT_ISSUED  ◄─── │   Certificate (JWS + QR)        │                        │
+  │  7. 🔔 CERT_ISSUED  ◄───│   Certificate (JWS + QR)        │                        │
   │                          │                                 │                        │
   │                          │                                 │     8. Verify badge /  │
   │                          │                                 │        QR / sticker ───┤
