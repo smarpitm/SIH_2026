@@ -93,3 +93,8 @@ mobile/android/local.properties
 /MINIO_PUBLIC_ACCESS.md
 /scripts/check-db.ts
 /scripts/minio-public-tunnel.cmd
+
+# internal working docs — kept local, never part of the submitted repo
+/context.txt
+/PRAMANAM_DECISION_DOC.md
+/PROJECT_AUDIT.md
