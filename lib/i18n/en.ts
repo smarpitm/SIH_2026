@@ -291,6 +291,7 @@ export const en: Record<string, string> = {
   "trader.colStatus": "Status",
   "trader.colAction": "Action",
   "trader.apply": "Apply →",
+  "trader.printCert": "🖨 Print Certificate",
   "trader.noInstrumentsRow": "No instruments registered yet.",
   "trader.applications": "Verification Applications",
   "trader.preferred": "Preferred:",

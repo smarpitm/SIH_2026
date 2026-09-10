@@ -26,6 +26,29 @@ export default function TraderPage() {
   // P0#1 progressive disclosure: the ring grid shows the first N instruments
   // (full list lives in the searchable table below); applications cap at N.
   const [instrumentQuery, setInstrumentQuery] = useState("");
+  // Print/download the certificate PDF straight from the dashboard (ring card
+  // + table ACTION cell). The PDF endpoint does its own authz and answers with
+  // a short-lived presigned URL — open it in a new tab, no token handling.
+  const [certBusyId, setCertBusyId] = useState<string | null>(null);
+
+  async function printCertificate(certId: string) {
+    if (certBusyId) return;
+    setCertBusyId(certId);
+    try {
+      const { url } = await api<{ url: string }>(`/api/v1/certificates/${certId}/pdf`);
+      const a = document.createElement("a");
+      a.href = url;
+      a.target = "_blank";
+      a.rel = "noopener,noreferrer";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      // silent on the dashboard — the application detail page surfaces errors
+    } finally {
+      setCertBusyId(null);
+    }
+  }
   const [showAllApps, setShowAllApps] = useState(false);
   const RING_LIMIT = 6;
   const APP_LIMIT = 5; // review: "Only 4-5 rows" for recent applications
@@ -311,7 +334,7 @@ export default function TraderPage() {
                     )}
                   </div>
                 </div>
-                <div className="pl-4">
+                <div className="flex flex-col items-end gap-2 pl-4">
                   {cert ? (
                     <CountdownRing validFrom={cert.validFrom} validUntil={cert.validUntil} size={74} label={t("trader.validity")} />
                   ) : (
@@ -320,6 +343,20 @@ export default function TraderPage() {
                       <br />
                       {t("trader.afterFirstPass")}
                     </span>
+                  )}
+                  {/* print the certificate right from the card — no need to
+                      open the instrument or application page first */}
+                  {cert && (
+                    <button
+                      type="button"
+                      onClick={() => printCertificate(cert.certId)}
+                      disabled={certBusyId === cert.certId}
+                      className="inline-flex items-center gap-1 rounded-full border border-emerald-600 px-3 py-1 text-[11px] font-semibold text-emerald-700 transition outline-none hover:bg-emerald-50 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-60 dark:border-emerald-500 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
+                    >
+                      {certBusyId === cert.certId
+                        ? t("appd.cert.preparing", "Preparing PDF…")
+                        : t("trader.printCert", "🖨 Print Certificate")}
+                    </button>
                   )}
                 </div>
               </div>
@@ -415,12 +452,26 @@ export default function TraderPage() {
                       )}
                     </td>
                     <td className="px-5 py-3.5 text-right">
-                      <Link
-                        href={`/trader/apply/${ins.id}`}
-                        className="inline-flex items-center gap-1 rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
-                      >
-                        {t("trader.apply")}
-                      </Link>
+                      {cert ? (
+                        /* certified instrument → print its certificate */
+                        <button
+                          type="button"
+                          onClick={() => printCertificate(cert.certId)}
+                          disabled={certBusyId === cert.certId}
+                          className="inline-flex items-center gap-1 rounded-full bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition outline-none hover:bg-emerald-500 focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-500 dark:hover:bg-emerald-400"
+                        >
+                          {certBusyId === cert.certId
+                            ? t("appd.cert.preparing", "Preparing PDF…")
+                            : t("trader.printCert", "🖨 Print Certificate")}
+                        </button>
+                      ) : (
+                        <Link
+                          href={`/trader/apply/${ins.id}`}
+                          className="inline-flex items-center gap-1 rounded-full bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition outline-none hover:bg-zinc-800 focus-visible:ring-2 focus-visible:ring-accent dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                        >
+                          {t("trader.apply")}
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 );

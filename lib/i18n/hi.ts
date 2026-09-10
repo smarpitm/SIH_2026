@@ -290,6 +290,7 @@ export const hi: Record<string, string> = {
   "trader.colStatus": "स्थिति",
   "trader.colAction": "कार्रवाई",
   "trader.apply": "आवेदन करें →",
+  "trader.printCert": "🖨 प्रमाणपत्र प्रिंट करें",
   "trader.noInstrumentsRow": "अभी कोई उपकरण पंजीकृत नहीं।",
   "trader.applications": "सत्यापन आवेदन",
   "trader.preferred": "पसंदीदा:",
