@@ -475,7 +475,6 @@ pramanam/
 | `BOOK_MANAV_API_CORE.pdf` | API core reference book |
 
 > 🔒 **Frozen contracts** — the following files are shared across builders and must never be modified: `packages/shared/*`, `prisma/schema.prisma`, `lib/db.ts`, `lib/hooks.ts`, `lib/hash.ts`, `.env.example`, `docker-compose.yml`. Import them, do not edit them.
-
 ---
 
 ## 8. Final Presentation
