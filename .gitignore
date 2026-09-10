@@ -84,3 +84,12 @@ mobile/android/build/
 mobile/android/app/build/
 mobile/android/local.properties
 .neon
+/NSUT-SIH-DEMO/
+
+# dev/agent tooling — never part of the submitted repo
+/.agents/
+/neon.ts
+/skills-lock.json
+/MINIO_PUBLIC_ACCESS.md
+/scripts/check-db.ts
+/scripts/minio-public-tunnel.cmd
