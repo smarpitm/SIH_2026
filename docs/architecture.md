@@ -50,7 +50,6 @@ apply for verification  │  schedule · inspect · certify │
 | Storage | PostgreSQL 16 (Prisma 6) + MinIO (S3) | Relational data, audit log, refresh families; document uploads with magic-byte sniffing |
 | Queues | Redis + BullMQ (`workers/`) | Notifications, nightly expiry sweep (also a Vercel Cron) |
 | Sharing | `packages/shared` | Frozen contracts: types + constants used by UI, API, seed, and the OpenAPI drift guard |
-| Mobile | `mobile/` (Expo) | Companion app (in development) |
 
 ## Security properties
 

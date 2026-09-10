@@ -691,10 +691,6 @@ pramanam/
 │   ├── check-openapi.mjs         #   Drift guard (spec vs live routes)
 │   └── screenshot-pages.mjs      #   Automated screenshot capture
 │
-├── mobile/                       # React Native (Expo) Android app
-│   ├── android/                  #   Native Android build
-│   └── src/                      #   Mobile source (components, hooks, constants)
-│
 ├── docker-compose.yml            # 🔒 Local dev: Postgres + Redis + MinIO
 ├── render.yaml                   # Render Blueprint IaC (5 services)
 ├── prestart.sh                   # Boot sequence: db:push → db:indexes → seed → start
