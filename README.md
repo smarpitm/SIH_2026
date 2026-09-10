@@ -494,14 +494,9 @@ Supporting documents referenced by the presentation:
 ---
 
 ## 9. Demo Video
-
-The demo video walkthrough is documented at:
-
-**🎬 [`submission/DEMO.md`](./submission/DEMO.md)**
-
-The demo runs against the **live production deployment**:
-
-> **🟢 [https://sih-2026-pramanam.vercel.app/](https://sih-2026-pramanam.vercel.app/)**
+- **🎬 Watch Demo Video (Google Drive):** [Google Drive Video Demonstration](https://drive.google.com/file/d/1J5M8EqGVGurHe1Wyyx9-EhdL5dR0_XqC/view?usp=drive_link)
+- **Walkthrough Agenda & Script:** [`submission/DEMO.md`](./submission/DEMO.md)
+- **Live Production App:** [https://sih-2026-pramanam.vercel.app/](https://sih-2026-pramanam.vercel.app/)
 
 The video covers the complete story: Trader registers an instrument → submits application → officer auto-allocation → GPS field inspection with photo evidence → Ed25519 certificate issuance → public QR verification → **offline verification with internet disconnected** → admin oversight and audit trail. Demo credentials for following along are in [section 15](#15-demo-accounts).
 

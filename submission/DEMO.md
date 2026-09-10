@@ -2,9 +2,12 @@
 
 **PRAMANAM — SIH 2026 · PS SIH26036** · Live app: <https://sih-2026-pramanam.vercel.app/>
 
-> ⚠️ **Walkthrough video:** the link below is added here right after the finals.
-> Until then, the **live app itself is the demo** — every flow below can be run by any
-> reviewer without login (public verify) or with the demo accounts documented in the README.
+## Demo Video Link
+
+▶️ **Watch Demo Video (Google Drive):**  
+**<https://drive.google.com/file/d/1J5M8EqGVGurHe1Wyyx9-EhdL5dR0_XqC/view?usp=drive_link>**
+
+---
 
 ## What the demo shows
 
@@ -21,9 +24,5 @@
    - `GET /api/v1/public/stats` → live counters (`ok: true`).
    - Verify a sample certificate from the landing page.
    - Log in with a demo account from the README (password `Passw0rd!demo`).
-
-## Demo video link
-
-*(added after finals — see note above)*
 
 Keep the video focused on the actual project and make sure reviewers can access it without requesting permission.
