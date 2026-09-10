@@ -289,8 +289,8 @@ The Prisma schema defines **12 models** powering the entire system:
 git clone https://github.com/your-org/pramanam.git
 cd pramanam
 
-# 2. Install dependencies
-npm install
+# 2. Install dependencies (lockfile-exact, mirrors Vercel/Render)
+npm ci
 
 # 3. Start infrastructure (Postgres + Redis + MinIO)
 docker compose up -d
@@ -299,8 +299,9 @@ docker compose up -d
 cp .env.example .env
 # Edit .env — fill in secrets (never commit real keys)
 
-# 5. Push database schema & seed demo data
+# 5. Push database schema, search indexes & seed demo data
 npm run db:push
+npm run db:indexes
 npm run db:seed
 
 # 6. Start the development server
@@ -695,8 +696,9 @@ pramanam/
 ├── docker-compose.yml            # 🔒 Local dev: Postgres + Redis + MinIO
 ├── render.yaml                   # Render Blueprint IaC (5 services)
 ├── prestart.sh                   # Boot sequence: db:push → db:indexes → seed → start
-└── context.txt                   # Live project state & ownership matrix
 ```
+
+> Submission-ready structure is documented in [`SUBMISSION_GUIDE.md`](./SUBMISSION_GUIDE.md) — team-internal working docs (`context.txt`, decision/audit records) are intentionally kept out of the repo.
 
 ---
 
@@ -780,32 +782,32 @@ Everything is defined in **one infra-as-code file** (`render.yaml`):
 
 ### Landing Page
 <p align="center">
-  <img src="screenshots/landing.png.1440px.png" alt="Landing Page" width="80%" />
+  <img src="assets/screenshots/01-landing.png" alt="Landing Page" width="80%" />
 </p>
 
 ### Trader Dashboard
 <p align="center">
-  <img src="screenshots/trader.png.1440px.png" alt="Trader Dashboard" width="80%" />
+  <img src="assets/screenshots/04-trader-dashboard.png" alt="Trader Dashboard" width="80%" />
 </p>
 
 ### Officer Inspection Queue
 <p align="center">
-  <img src="screenshots/officer.png.1440px.png" alt="Officer Queue" width="80%" />
+  <img src="assets/screenshots/09-officer-queue.png" alt="Officer Queue" width="80%" />
 </p>
 
 ### Admin Dashboard
 <p align="center">
-  <img src="screenshots/admin_dashboard.png.1440px.png" alt="Admin Dashboard" width="80%" />
+  <img src="assets/screenshots/11-admin-dashboard.png" alt="Admin Dashboard" width="80%" />
 </p>
 
 ### Certificate Verification
 <p align="center">
-  <img src="screenshots/verify.png.1440px.png" alt="Certificate Verification" width="80%" />
+  <img src="assets/screenshots/12-verify-online.png" alt="Certificate Verification" width="80%" />
 </p>
 
 ### Offline Verification
 <p align="center">
-  <img src="screenshots/verify_offline.png.1440px.png" alt="Offline Verify" width="80%" />
+  <img src="assets/screenshots/13-verify-offline.png" alt="Offline Verify" width="80%" />
 </p>
 
 <details>
@@ -813,29 +815,29 @@ Everything is defined in **one infra-as-code file** (`render.yaml`):
 
 #### Login & Registration
 <p align="center">
-  <img src="screenshots/login.png.1440px.png" alt="Login" width="45%" />
-  <img src="screenshots/register.png.1440px.png" alt="Register" width="45%" />
+  <img src="assets/screenshots/03-login.png" alt="Login" width="45%" />
+  <img src="assets/screenshots/02-register.png" alt="Register" width="45%" />
 </p>
 
 #### Trader Flows
 <p align="center">
-  <img src="screenshots/trader_new_instrument.png.1440px.png" alt="New Instrument" width="45%" />
-  <img src="screenshots/trader_apply.png.1440px.png" alt="Apply" width="45%" />
+  <img src="assets/screenshots/05-trader-new-instrument.png" alt="New Instrument" width="45%" />
+  <img src="assets/screenshots/06-trader-apply.png" alt="Apply" width="45%" />
 </p>
 
 <p align="center">
-  <img src="screenshots/trader_instrument.png.1440px.png" alt="Instrument Detail" width="45%" />
-  <img src="screenshots/trader_application.png.1440px.png" alt="Application Detail" width="45%" />
+  <img src="assets/screenshots/07-trader-instrument.png" alt="Instrument Detail" width="45%" />
+  <img src="assets/screenshots/08-trader-application.png" alt="Application Detail" width="45%" />
 </p>
 
 #### Officer Flows
 <p align="center">
-  <img src="screenshots/officer_job.png.1440px.png" alt="Officer Job" width="80%" />
+  <img src="assets/screenshots/10-officer-job.png" alt="Officer Job" width="80%" />
 </p>
 
 #### API Documentation
 <p align="center">
-  <img src="screenshots/docs.png.1440px.png" alt="API Docs" width="80%" />
+  <img src="assets/screenshots/14-docs.png" alt="API Docs" width="80%" />
 </p>
 
 </details>
@@ -853,7 +855,7 @@ The following files are **shared across builders** and must never be modified �
 | **Core Libraries** | `lib/db.ts`, `lib/hooks.ts`, `lib/hash.ts` |
 | **Infrastructure** | `.env.example`, `docker-compose.yml` |
 
-Ownership and day-to-day status live in `context.txt`.
+Ownership and day-to-day status track in the team's local workspace docs (`context.txt`, kept out of the repo — see `SUBMISSION_GUIDE.md`).
 
 ---
 
@@ -871,6 +873,8 @@ Ownership and day-to-day status live in `context.txt`.
 ## 📄 License
 
 Built for **Smart India  Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
+
+Licensed under the **MIT License** — see [LICENSE](./LICENSE).
 
 ---
 
