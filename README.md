@@ -206,9 +206,9 @@ PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: Rea
 │  ┌──────────────────────────────┼────────────────────────────────────────┐  │
 │  │                    Infrastructure                                     │  │
 │  │  ┌─────────────┐   ┌────────▼────┐   ┌──────────────────────────┐     │  │
-│  │  │    MinIO     │   │    Redis    │   │   BullMQ Worker Process  │    │  │
-│  │  │  S3 Storage  │   │   Queues    │   │  Expiry Ladder 00:30 IST │    │  │
-│  │  │  Versioned   │   │  Rate Limit │   │  Repair Sweep on Boot    │    │  │
+│  │  │    MinIO    │   │    Redis    │   │   BullMQ Worker Process  │     │  │
+│  │  │  S3 Storage │   │   Queues    │   │  Expiry Ladder 00:30 IST │     │  │
+│  │  │  Versioned  │   │  Rate Limit │   │  Repair Sweep on Boot    │     │  │
 │  │  └─────────────┘   └─────────────┘   └──────────────────────────┘     │  │
 │  └──────────────────────────────────────────────────────────────────────-┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
