@@ -227,9 +227,9 @@ A certificate is a **compact JWS** signed with **Ed25519** (`alg: "EdDSA"`), pro
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Certificate JWS                        │
+│                   Certificate JWS                       │
 │                                                         │
-│  Header: { "alg": "EdDSA", "kid": "pramanam-2026-...", │
+│  Header: { "alg": "EdDSA", "kid": "pramanam-2026-...",  │
 │            "typ": "JWT" }                               │
 │                                                         │
 │  Payload: { "iss": "pramanam:doca",                     │
