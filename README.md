@@ -84,7 +84,7 @@ Trader                    PRAMANAM                          LMO / GATC          
   │                          │                                 │  6. Inspection         │
   │                          │◄────────────────────────────────│     PASS / FAIL        │
   │                          │   emitInspectionPass() hook     │                        │
-  │  7. 🔔 CERT_ISSUED  ◄───│   Certificate (JWS + QR)        │                        │
+  │  7. 🔔 CERT_ISSUED  ◄─── │   Certificate (JWS + QR)        │                        │
   │                          │                                 │                        │
   │                          │                                 │     8. Verify badge /  │
   │                          │                                 │        QR / sticker ───┤
@@ -105,7 +105,7 @@ Trader                    PRAMANAM                          LMO / GATC          
                                   └────┬─────┘       (SLA)       │                          │
                                        │    re-apply             │                          │
                                        └─────────────────────────┘                          │
-                                                                                          │
+                                                                                            │
                                                           ┌──────▼──┐                ┌──────▼──┐
                                                           │  FAILED │                │ PASSED  │
                                                           └─────────┘                └────┬────┘
@@ -176,28 +176,28 @@ PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: Rea
 │                              PRAMANAM SYSTEM                                │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌─────────────┐  │
-│  │   Trader UI  │   │  Officer UI  │   │   Admin UI   │   │  Public UI  │  │
-│  │  /trader/*   │   │  /officer/*  │   │   /admin/*   │   │  /verify/*  │  │
-│  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──────┬──────┘  │
+│  ┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌─────────────┐   │
+│  │   Trader UI  │   │  Officer UI  │   │   Admin UI   │   │  Public UI  │   │
+│  │  /trader/*   │   │  /officer/*  │   │   /admin/*   │   │  /verify/*  │   │
+│  └──────┬───────┘   └──────┬───────┘   └──────┬───────┘   └──────┬──────┘   │ 
 │         │                  │                   │                  │         │
 │         └──────────────────┼───────────────────┼──────────────────┘         │
 │                            │                   │                            │
 │                    ┌───────▼───────────────────▼────────┐                   │
-│                    │        REST API (app/api/v1)        │                   │
-│                    │   JSON Envelope { ok, data|error }  │                   │
-│                    │     Zod validation · RBAC guards    │                   │
+│                    │        REST API (app/api/v1)       │                   │
+│                    │   JSON Envelope { ok, data|error } │                   │
+│                    │     Zod validation · RBAC guards   │                   │
 │                    └───────┬──────────┬─────────┬───────┘                   │
-│                            │          │         │                            │
+│                            │          │         │                           │
 │              ┌─────────────┤          │         ├─────────────┐             │
 │              │             │          │         │             │             │
-│  ┌───────────▼──┐ ┌────────▼───┐ ┌────▼─────┐ ┌▼──────────┐ ┌▼──────────┐ │
-│  │  lib/auth    │ │lib/uploads │ │lib/crypto│ │  lib/pdf  │ │lib/notify │ │
-│  │  JWT·RBAC    │ │  MinIO·S3  │ │ Ed25519  │ │ A4 · A6   │ │   Bell    │ │
-│  │  Transition  │ │  Multipart │ │ JWS · QR │ │ Sticker   │ │ Prefs     │ │
-│  └──────┬───────┘ └─────┬──────┘ └────┬─────┘ └─────┬─────┘ └─────┬─────┘ │
-│         │               │             │             │             │        │
-│  ┌──────▼───────────────▼─────────────▼─────────────▼─────────────▼─────┐  │
+│  ┌───────────▼──┐ ┌────────▼───┐ ┌────▼─────┐ ┌▼──────────┐ ┌▼──────────┐   │
+│  │  lib/auth    │ │lib/uploads │ │lib/crypto│ │  lib/pdf  │ │lib/notify │   │
+│  │  JWT·RBAC    │ │  MinIO·S3  │ │ Ed25519  │ │ A4 · A6   │ │   Bell    │   │
+│  │  Transition  │ │  Multipart │ │ JWS · QR │ │ Sticker   │ │ Prefs     │   │
+│  └──────┬───────┘ └─────┬──────┘ └────┬─────┘ └─────┬─────┘ └─────┬─────┘   │
+│         │               │             │             │             │         │
+│  ┌──────▼───────────────▼─────────────▼─────────────▼─────────────▼─────┐   │
 │  │                        PostgreSQL (Prisma ORM)                        │  │
 │  │   Users · Instruments · Applications · Schedules · Inspections        │  │
 │  │   Certificates · Notifications · AuditLogs · RefreshFamilies          │  │
@@ -209,8 +209,8 @@ PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: Rea
 │  │  │    MinIO     │   │    Redis    │   │   BullMQ Worker Process  │    │  │
 │  │  │  S3 Storage  │   │   Queues    │   │  Expiry Ladder 00:30 IST │    │  │
 │  │  │  Versioned   │   │  Rate Limit │   │  Repair Sweep on Boot    │    │  │
-│  │  └─────────────┘   └─────────────┘   └──────────────────────────┘    │  │
-│  └──────────────────────────────────────────────────────────────────────┘  │
+│  │  └─────────────┘   └─────────────┘   └──────────────────────────┘     │  │
+│  └──────────────────────────────────────────────────────────────────────-┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
