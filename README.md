@@ -255,7 +255,7 @@ PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: Rea
 
 ### Database Schema
 
-The Prisma schema defines **12 models** powering the entire system:
+The Prisma schema defines **11 models** powering the entire system:
 
 | Model | Purpose |
 |-------|---------|
@@ -394,8 +394,10 @@ All seeded accounts use the password: **`Passw0rd!demo`**
                                         ▼                        │                   ┌──────────────┐
                                   ┌──────────┐                   │                   │  PASS / FAIL │
                                   │ REJECTED │     missed slot   │                   └──────┬───────┘
-                                  └──────────┘       (SLA)       │                          │
-                                                                 │                          │
+                                  └────┬─────┘       (SLA)       │                          │
+                                       │    re-apply             │                          │
+                                       └─────────────────────────┘                          │
+                                                                                          │
                                                           ┌──────▼──┐                ┌──────▼──┐
                                                           │  FAILED │                │ PASSED  │
                                                           └─────────┘                └────┬────┘
@@ -870,7 +872,7 @@ Ownership and day-to-day status live in `context.txt`.
 
 ## 📄 License
 
-Built for **Smart India  Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
+Built for **Smart India Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
 
 ---
 
