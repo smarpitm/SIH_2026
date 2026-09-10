@@ -255,7 +255,7 @@ PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: Rea
 
 ### Database Schema
 
-The Prisma schema defines **11 models** powering the entire system:
+The Prisma schema defines **11 models**  powering the entire system:
 
 | Model | Purpose |
 |-------|---------|
