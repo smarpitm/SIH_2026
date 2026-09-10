@@ -1,6 +1,7 @@
 import { jsonOk } from "@/packages/shared/api";
 import { db } from "@/lib/db";
 import { getSession, requireRole } from "@/lib/auth/session";
+import { startOfBusinessToday } from "@/lib/time";
 
 // book MA3 item 3 — GET /schedule/mine (LMO/GATC only)
 export async function GET(req: Request) {
@@ -35,7 +36,7 @@ export async function GET(req: Request) {
     : [];
   const assigneeBy = new Map(assignees.map((a) => [a.id, a]));
 
-  const now = Date.now();
+  const dayStart = startOfBusinessToday().getTime();
   return jsonOk(
     schedules.map((s) => {
       const trader = traderBy.get(s.application.traderId);
@@ -50,8 +51,10 @@ export async function GET(req: Request) {
         // AUDIT FINDING #112: the officer queue badges the APPLICATION status,
         // not the schedule status (which is always ASSIGNED/RESCHEDULED/DONE).
         appStatus: s.application.status,
-        // AUDIT FINDING #97: RESCHEDULED jobs are overdue too once their date passes
-        overdue: ["ASSIGNED", "RESCHEDULED"].includes(s.status) && s.scheduledFor.getTime() < now,
+        // Overdue = the scheduled DATE is before today in the business timezone
+        // (date-based, not time-of-day — a trader's "today" pick must never
+        // flip to overdue at the 05:30 UTC-midnight boundary).
+        overdue: ["ASSIGNED", "RESCHEDULED"].includes(s.status) && s.scheduledFor.getTime() < dayStart,
         instrumentCategory: s.application.instrument.category,
         instrumentSerial: s.application.instrument.serialNumber,
         traderName: trader?.name ?? null,

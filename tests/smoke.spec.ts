@@ -62,7 +62,8 @@ describe("PRD §14 demo-critical path (HTTP)", () => {
       ...jsonInit(traderToken, "POST", {
         instrumentId,
         type: "NEW",
-        // today → the auto-allocated slot falls inside the check-in window (-2h/+8h)
+        // today → check-in is allowed any time relative to the scheduled date, so
+        // the slot lands on the trader's picked business date
         preferredDate: new Date().toISOString(),
       }),
     });

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { StatusBadge, EmptyState, SkeletonCardRow } from "@/components/ui";
 import { api } from "@/components/api-client";
 import { useTranslation } from "@/lib/i18n";
+import { businessDateKey, formatBusinessDate } from "@/lib/time";
 import type { InstrumentDTO } from "@/packages/shared/types";
 
 // GET /schedule/mine row (MA3) — shape local to the UI
@@ -51,10 +52,15 @@ export default function OfficerPage() {
   // queue = actionable jobs; DONE stays behind as a count
   const active = jobs.filter((j) => j.status !== "DONE");
   const doneCount = jobs.length - active.length;
-  const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
+  // Bucket on the BUSINESS-timezone calendar date. The server sends `overdue`
+  // as "the scheduled DATE is before today", so the three buckets (Past ∪
+  // Today ∪ Future) are complete. Since the trader picks a date — never a time
+  // — a slot must not flicker between buckets at a UTC/IST midnight boundary.
+  const todayKey = businessDateKey();
+  const dayKey = (iso: string) => businessDateKey(new Date(iso));
   const overdue = active.filter((j) => j.overdue);
-  const today = active.filter((j) => !j.overdue && isToday(j.scheduledFor));
-  const upcoming = active.filter((j) => !j.overdue && !isToday(j.scheduledFor));
+  const today = active.filter((j) => !j.overdue && dayKey(j.scheduledFor) === todayKey);
+  const upcoming = active.filter((j) => !j.overdue && dayKey(j.scheduledFor) > todayKey);
 
   // Search + district filter (kept deliberately simple: one search box, one
   // select — the full filter matrix would overwhelm a field-officer screen).
@@ -141,7 +147,10 @@ export default function OfficerPage() {
           <div className="text-[11px] text-zinc-500">
             {t("officer.scheduled")}{" "}
             <span className="font-medium text-zinc-700 dark:text-zinc-300">
-              {new Date(job.scheduledFor).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}
+              {/* The trader picks a DATE only — showing a time-of-day (the old
+                  05:30 IST UTC-midnight anchor) reads as a slot that was never
+                  booked, so render the business-timezone calendar day instead. */}
+              {formatBusinessDate(new Date(job.scheduledFor))}
             </span>
           </div>
           {/* the primary action must dominate the secondary metadata (review): full-height

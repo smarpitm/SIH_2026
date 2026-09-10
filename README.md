@@ -61,7 +61,7 @@
 
 ### The Problem
 
-Under the Legal Metrology Act, 2009, every commercial weighing and measuring instrument must be periodically verified by government-authorized officers. The current process is manual, paper-driven, and prone to fraud — traders physically visit offices, certificates are hand-issued with no cryptographic integrity, and public verification of authenticity is impossible.
+Under the Legal Metrology Act, 2009, every commercial weighing and measuring instrument must be periodically verified by government-authorized officers. The current process is manual, paper-driven, and prone to  fraud — traders physically visit offices, certificates are hand-issued with no cryptographic integrity, and public verification of authenticity is impossible.
 
 ### Our Solution
 
@@ -91,7 +91,7 @@ Trader                    PRAMANAM                          LMO / GATC          
   │                          │                                 │  6. Inspection         │
   │                          │◄────────────────────────────────│     PASS / FAIL        │
   │                          │   emitInspectionPass() hook     │                        │
-  │  7. 🔔 CERT_ISSUED  ◄─── │   Certificate (JWS + QR)        │                        │
+  │  7. 🔔 CERT_ISSUED  ◄───│   Certificate (JWS + QR)        │                        │
   │                          │                                 │                        │
   │                          │                                 │     8. Verify badge /  │
   │                          │                                 │        QR / sticker ───┤
@@ -105,7 +105,7 @@ Trader                    PRAMANAM                          LMO / GATC          
 | **2** | Trader | Apply for verification | Chooses NEW or RE_VERIFICATION. Pays fee (demo mock). Submits with declaration |
 | **3** | System | Auto-allocate officer | Picks the least-loaded LMO/GATC in the instrument's district. Application → SCHEDULED |
 | **4** | Officer | View inspection queue | `/schedule/mine` — ordered by date, overdue jobs flagged |
-| **5** | Officer | GPS check-in | Within `[scheduledFor - 2h, +8h]` time window |
+| **5** | Officer | GPS check-in | Any time — before, on, or after the scheduled date |
 | **6** | Officer | Conduct inspection | Records result, observations (validated config), photos, GPS coordinates |
 | **7** | System | Issue certificate | Ed25519-signed JWS + QR payload. Trader notified via bell |
 | **8** | Public | Verify authenticity | By certificate ID, QR scan, or offline sticker — signature verified in-browser via WebCrypto |
@@ -255,7 +255,7 @@ PRAMANAM is a single Next.js 14 (App Router) full-stack TypeScript monolith: Rea
 
 ### Database Schema
 
-The Prisma schema defines **12 models** powering the entire system:
+The Prisma schema defines **11 models**  powering the entire system:
 
 | Model | Purpose |
 |-------|---------|
@@ -386,7 +386,7 @@ All seeded accounts use the password: **`Passw0rd!demo`**
 ## 🔀 Application State Machine
 
 ```
-                 pay + declaration        auto-allocation           check-in window
+                 pay + declaration        auto-allocation           check-in (any time)
   ┌──────┐                        ┌───────────┐            ┌───────────┐             ┌────────────┐
   │ DRAFT├───────────────────────►│ SUBMITTED ├───────────►│ SCHEDULED ├────────────►│ CHECKED_IN │
   └──────┘                        └─────┬─────┘            └─────┬─────┘             └──────┬─────┘
@@ -395,8 +395,10 @@ All seeded accounts use the password: **`Passw0rd!demo`**
                                         ▼                        │                   ┌──────────────┐
                                   ┌──────────┐                   │                   │  PASS / FAIL │
                                   │ REJECTED │     missed slot   │                   └──────┬───────┘
-                                  └──────────┘       (SLA)       │                          │
-                                                                 │                          │
+                                  └────┬─────┘       (SLA)       │                          │
+                                       │    re-apply             │                          │
+                                       └─────────────────────────┘                          │
+                                                                                          │
                                                           ┌──────▼──┐                ┌──────▼──┐
                                                           │  FAILED │                │ PASSED  │
                                                           └─────────┘                └────┬────┘
@@ -498,7 +500,7 @@ All endpoints respond with a unified JSON envelope:
 | Method | Path | Description |
 |:------:|------|-------------|
 | `GET` | `/api/v1/schedule/mine` | Officer's inspection queue — ordered by date, overdue flagged |
-| `POST` | `/api/v1/schedule/checkin` | Check-in within `[scheduledFor - 2h, +8h]` window |
+| `POST` | `/api/v1/schedule/checkin` | Check-in any time (before/on/after the scheduled date) |
 | `POST` | `/api/v1/schedule/allocate` | Manual re-run of officer allocation |
 | `POST` | `/api/v1/inspections` | Multipart: result, observations, ≥1 photo, GPS. PASS → certificate issued in same transaction |
 
@@ -874,7 +876,7 @@ Ownership and day-to-day status track in the team's local workspace docs (`conte
 
 ## 📄 License
 
-Built for **Smart India  Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
+Built for **Smart India Hackathon 2026** — Digitalization of Legal Metrology verification for the **Department of Consumer Affairs**, Government of India.
 
 Licensed under the **MIT License** — see [LICENSE](./LICENSE).
 

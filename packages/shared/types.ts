@@ -34,6 +34,10 @@ export interface ApplicationDTO {
   preferredDate?: string;
   feePaidAt?: string;
   createdAt: string;
+  /** Present once the certificate row exists (application → CERT_ISSUED).
+   *  Owner-facing UI uses this to enable the PDF download. Always additive;
+   *  the /certificates/{id}/pdf route re-checks authorization itself. */
+  certificate?: { certId: string; status: CertStatus };
   /** Officer-facing only (LMO/GATC/ADMIN): the trader's name + mobile so the
    *  officer can call ahead before a site visit. NEVER present for a TRADER
    *  requester (promptbook_phone trust boundary). */
