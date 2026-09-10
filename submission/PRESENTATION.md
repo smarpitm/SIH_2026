@@ -2,18 +2,24 @@
 
 **PRAMANAM — SIH 2026 · PS SIH26036** · Live app: <https://sih-2026-pramanam.vercel.app/>
 
-## Presentation file
+## Presentation Link
 
-- **Slide deck:** `TeamName_SIH2026_Presentation.pptx` *(uploaded to `submission/` when ready — final version is being polished during the finals week)*
-- **Fallback until then:** the live app URL above **is the demo**. Nothing in this repo ships as an unfinished placeholder link.
+📊 **View Presentation Deck (Google Slides / PPTX):**  
+**<https://docs.google.com/presentation/d/1zYBJx-gNdT75g270ny9U7AVmReAEHLaX/edit?usp=sharing&ouid=112145670920107356148&rtpof=true&sd=true>**
 
-### External presentation link (if the PPT is too large for GitHub)
+---
 
-*(added after finals — Google Drive/OneDrive viewer link, tested logged-out, goes here)*
+## Supporting Project Documents
 
-### Requirements
+| Document | Description |
+|---|---|
+| [`PRD.pdf`](../PRD.pdf) | Product Requirements Document — full feature specification & regulatory background |
+| [`BOOK_MANAV_API_CORE.pdf`](../BOOK_MANAV_API_CORE.pdf) | API core reference handbook — endpoint contracts & cryptography design |
 
-- Only the **final** presentation goes in the repo.
-- Clear filename: `TeamName_SIH2026_Presentation.pptx`.
-- If too large for GitHub: Google Drive/OneDrive **viewer** link below, tested incognito.
-- Reviewers must be able to open it without requesting permission.
+---
+
+## Requirements Checklist
+
+- [x] Link is accessible to reviewers with view permissions.
+- [x] Presentation deck covers problem context, regulatory framework, architecture, and live demo flows.
+- [x] Supporting technical documentation linked and available.

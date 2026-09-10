@@ -480,9 +480,8 @@ pramanam/
 
 ## 8. Final Presentation
 
-The complete project presentation is available at:
-
-**📄 [`submission/PRESENTATION.md`](./submission/PRESENTATION.md)**
+- **📊 View Presentation Deck (Google Slides / PPTX):** [PRAMANAM SIH 2026 Presentation Deck](https://docs.google.com/presentation/d/1zYBJx-gNdT75g270ny9U7AVmReAEHLaX/edit?usp=sharing&ouid=112145670920107356148&rtpof=true&sd=true)
+- **Presentation Details & Hub:** [`submission/PRESENTATION.md`](./submission/PRESENTATION.md)
 
 Supporting documents referenced by the presentation:
 
