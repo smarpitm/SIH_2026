@@ -867,6 +867,8 @@ Ownership and day-to-day status track in the team's local workspace docs (`conte
 | **Smarpit** | Crypto & Backend | Ed25519 keys, JWS, QR, certificate issuance, PDF generation, sticker rendering, expiry ladder, BullMQ workers |
 | **Kush** | Frontend Lead | UI shell, real auth flows, trader portal, officer portal, admin dashboard, verify pages, notification bell |
 | **Nishka** | i18n & Docs | English/Hindi translations, documentation |
+| **Shreyus** | Testing & QA Automation | Test suites, smoke/negative flows, regression battery, verification checklists, deployment smoke checks |
+| **Kanishka** | Research & Documentation | Problem-statement research, Legal Metrology domain notes, docs, presentation & demo materials |
 
 ---
 
